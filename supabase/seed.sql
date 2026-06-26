@@ -1,0 +1,4 @@
+-- Create the first admin manually after signing up in Supabase Auth.
+-- Replace the values below with your auth user id and email, then run:
+-- insert into public.admin_profiles (user_id, email, full_name, role)
+-- values ('00000000-0000-0000-0000-000000000000', 'admin@example.com', 'Admin', 'owner');
