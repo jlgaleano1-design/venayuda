@@ -6,19 +6,20 @@ export default function HomePage() {
           Venayuda Transparencia
         </p>
         <h1 className="max-w-3xl text-4xl font-semibold tracking-normal">
-          Base lista para un ledger manual de donativos y compras.
+          Base lista para campanas de ayuda con transparencia manual.
         </h1>
         <p className="max-w-2xl text-muted-foreground">
           Esta primera versión deja preparada la estructura, seguridad de datos
-          y migraciones. Las pantallas públicas y privadas se construyen encima
+          y migraciones. Las campanas, donativos y compras se construyen encima
           de esta base.
         </p>
       </header>
       <section className="grid gap-4 md:grid-cols-3">
         {[
           ["Donativos", "Pendientes, validados o rechazados por admins."],
+          ["Campanas", "Una persona ayudada directamente en Venezuela."],
           ["Compras", "Gastos aprobados con facturas privadas por defecto."],
-          ["Necesidades", "Items por comprar visibles al publico cuando aplique."],
+          ["Necesidades", "Items por comprar asociados a una campana."],
         ].map(([title, description]) => (
           <div key={title} className="rounded-lg border bg-card p-5">
             <h2 className="font-medium">{title}</h2>
