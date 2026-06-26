@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DonationReportForm } from "@/components/donation-report-form";
+import { SiteFooter } from "@/components/site-footer";
 import { campaigns, getCampaign } from "@/lib/demo-data";
 
 export function generateStaticParams() {
@@ -32,10 +33,10 @@ export default async function DonationReportPage({
         </Link>
 
         <div className="space-y-3">
-          <span className="inline-flex w-fit bg-neutral-100 px-3 py-1 text-sm font-medium text-black">
+          <span className="soft-pill">
             Avisar que doné
           </span>
-          <h1 className="text-3xl font-semibold tracking-normal">
+          <h1 className="text-3xl font-black tracking-normal">
             Reporta tu aporte a {campaign.title}
           </h1>
           <p className="leading-7 text-neutral-700">
@@ -47,6 +48,7 @@ export default async function DonationReportPage({
 
         <DonationReportForm campaign={campaign} />
       </section>
+      <SiteFooter />
     </main>
   );
 }

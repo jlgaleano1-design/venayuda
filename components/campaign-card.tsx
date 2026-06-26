@@ -1,13 +1,13 @@
-import { Card, Chip } from "@heroui/react";
-import { MapPin } from "lucide-react";
+import { Card } from "@heroui/react";
+import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Campaign, formatUsd } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
-  mexico: "Mexico",
-  united_states: "Estados Unidos",
-  venezuela: "Venezuela",
-  international: "Internacional",
+  mexico: "Dona desde México",
+  united_states: "Dona desde Estados Unidos",
+  venezuela: "Dona desde Venezuela",
+  international: "Dona desde otro país",
 };
 
 const statusLabels: Record<Campaign["status"], string> = {
@@ -18,27 +18,25 @@ const statusLabels: Record<Campaign["status"], string> = {
 
 export function CampaignCard({ campaign }: { campaign: Campaign }) {
   return (
-    <Card className="border border-neutral-200 shadow-none">
+    <Card className="surface-card shadow-none">
       <Card.Content className="flex flex-col gap-5 p-5">
         <div className="flex items-start justify-between gap-3">
-          <Chip
+          <span
             className={
               campaign.status === "active"
-                ? "bg-emerald-50 text-emerald-800"
-                : "bg-neutral-100 text-neutral-700"
+                ? "status-pill bg-emerald-50 text-emerald-800"
+                : "status-pill bg-neutral-100 text-neutral-700"
             }
-            size="sm"
-            variant="soft"
           >
             {statusLabels[campaign.status]}
-          </Chip>
+          </span>
           <div className="flex items-center gap-1 text-xs text-neutral-600">
             <MapPin size={14} />
             {campaign.affectedArea}
           </div>
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold tracking-normal">
+          <h3 className="text-xl font-extrabold tracking-normal">
             {campaign.title}
           </h3>
           <p className="text-sm leading-6 text-neutral-600">
@@ -53,17 +51,26 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
           <p>
             <span className="text-neutral-500">Zona:</span> {campaign.location}
           </p>
+          {campaign.instagramHandle ? (
+            <a
+              className="inline-flex w-fit items-center gap-1 font-bold text-[#2D5D5E]"
+              href={`https://instagram.com/${campaign.instagramHandle}`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Instagram size={14} />
+              @{campaign.instagramHandle}
+            </a>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {campaign.receivingCategories.map((category) => (
-            <Chip
+            <span
               key={category}
-              className="border border-neutral-300 bg-white text-neutral-700"
-              size="sm"
-              variant="secondary"
+              className="tag-pill border border-neutral-300 bg-white text-neutral-700"
             >
               {categoryLabels[category]}
-            </Chip>
+            </span>
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2 border-y border-neutral-200 py-4 text-sm">
@@ -83,7 +90,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-neutral-500">{label}</p>
-      <p className="font-semibold">{value}</p>
+      <p className="font-bold">{value}</p>
     </div>
   );
 }

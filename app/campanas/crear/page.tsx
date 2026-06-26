@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CreateCampaignForm } from "@/components/create-campaign-form";
+import { SiteFooter } from "@/components/site-footer";
 
 export default function CreateCampaignPage() {
   return (
@@ -12,14 +13,14 @@ export default function CreateCampaignPage() {
         </Link>
 
         <div className="space-y-3">
-          <span className="inline-flex w-fit bg-neutral-100 px-3 py-1 text-sm font-medium text-black">
+          <span className="soft-pill">
             Crear campaña
           </span>
-          <h1 className="text-3xl font-semibold tracking-normal md:text-4xl">
+          <h1 className="text-3xl font-black tracking-normal md:text-4xl">
             Cuéntanos quién está respondiendo y cómo puede recibir ayuda.
           </h1>
           <p className="max-w-2xl leading-7 text-neutral-700">
-            Las campañas se publican después de una revisión manual. Venayuda no
+            Las campañas se publican después de una revisión manual. Vendonar no
             procesa pagos; solo ayuda a publicar instrucciones, reportar aportes
             y mantener seguimiento transparente.
           </p>
@@ -27,6 +28,7 @@ export default function CreateCampaignPage() {
 
         <CreateCampaignForm />
       </section>
+      <SiteFooter />
     </main>
   );
 }

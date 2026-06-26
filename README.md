@@ -1,4 +1,4 @@
-# Venayuda Transparencia
+# Vendonar Transparencia
 
 Plataforma de transparencia para campañas de ayuda, donaciones internacionales reportadas y compras realizadas.
 
@@ -26,18 +26,31 @@ Esta primera version crea una base solida: proyecto Next.js, estructura para Sup
 Esto no es un sistema bancario ni una reconciliacion automatica. Es un ledger manual de transparencia por campana:
 
 1. Una persona u organizacion solicita crear una campana de ayuda.
-2. La campana describe quien responde, donde ayuda y que metodos externos puede recibir.
+2. La campana describe quien responde, donde ayuda, que metodos externos puede recibir, que Instagram publico ayuda a darle credibilidad y que link personalizado quiere usar para compartirla.
 3. Un admin revisa y publica la campana.
-4. Un donante elige una campana, dona por fuera de la plataforma y reporta su aporte.
-5. El reporte de donacion entra como `pending`.
-6. Un admin revisa manualmente el comprobante y marca la donacion como `verified` o `rejected`.
-7. Los totales publicos solo cuentan donaciones `verified` y compras `approved`.
+4. Al aprobarla, el admin genera o envia un enlace privado para la persona responsable de la campana.
+5. Un donante elige una campana, dona por fuera de la plataforma y reporta su aporte.
+6. El reporte de donacion entra como `pending`.
+7. Un admin revisa manualmente el comprobante y marca la donacion como `verified` o `rejected`.
+8. La persona responsable usa su enlace privado para subir novedades de compras con foto, monto, fecha y descripcion.
+9. Cada compra entra como `pending`; un admin decide si la aprueba y si la foto o factura se muestran publicamente.
+10. Los totales publicos solo cuentan donaciones `verified` y compras `approved`.
 
-Venayuda no procesa pagos. Cada campana publica sus propios metodos de pago e instrucciones abiertas. La plataforma sirve para descubrir campanas, reportar donaciones, revisarlas manualmente y mostrar seguimiento publico.
+Vendonar no procesa pagos. Cada campana publica sus propios metodos de pago e instrucciones abiertas. La plataforma sirve para descubrir campanas, reportar donaciones, revisarlas manualmente y mostrar seguimiento publico.
 
 ## Campanas
 
 Cada campana representa a una persona que esta recibiendo ayuda directa en Venezuela de una forma especifica. Por ejemplo: medicinas, alimentos, transporte medico, examenes, cuidado diario o reparaciones urgentes.
+
+El campo personalizado para compartir es el `slug` de la campana. Es la opcion mas simple porque la tabla `campaigns` ya exige `slug` unico y la app ya usa ese valor para encontrar la campana publica. Si el `slug` ya existe, la solicitud debe rechazarse o pedir otro valor antes de enviarse.
+
+La campana tambien puede guardar un `instagram_handle` opcional. Este dato es publico y sirve como senal rapida de confianza para donantes; no reemplaza la revision manual ni la verificacion admin.
+
+Ejemplo:
+
+- Campo personalizado: `medicinas-valencia`
+- Link corto para compartir: `/medicinas-valencia`
+- Pagina real: `/campanas/medicinas-valencia`
 
 Estados de campana:
 
@@ -66,9 +79,10 @@ Cada campana puede publicar varios metodos de pago. Los campos son deliberadamen
 - `admin_profiles`: perfiles privados de admins ligados a usuarios de Supabase Auth.
 - `campaigns`: solicitudes y campanas publicas de ayuda.
 - `campaign_payment_methods`: metodos externos por los que una campana puede recibir fondos.
+- `campaign_creator_access_links`: enlaces privados, hasheados, para que responsables suban novedades de compra.
 - `donations`: reportes de donacion con codigo publico, datos sensibles privados, comprobante privado y estado de revision.
 - `needs`: necesidades/items por comprar.
-- `purchases`: compras/gastos con factura/foto privada por defecto.
+- `purchases`: compras/gastos con factura/foto privada por defecto; pueden venir del panel admin o del enlace privado del creador.
 - `purchase_items`: lineas de compra ligadas opcionalmente a necesidades.
 
 ## Vistas publicas
@@ -80,7 +94,7 @@ La app publica debe leer desde estas vistas, no desde las tablas privadas:
 - `public_campaign_payment_methods`: metodos activos de campanas activas.
 - `public_campaign_receiving_categories`: categorias para filtros publicos.
 - `public_donations`: donaciones verificadas sin contacto, referencia de transferencia, notas internas ni comprobantes.
-- `public_purchases`: compras aprobadas sin notas internas ni rutas privadas.
+- `public_purchases`: compras aprobadas sin notas internas; solo expone rutas de factura/foto cuando el admin marco esos archivos como publicos.
 - `public_purchase_items`: items de compras aprobadas.
 - `public_needs`: necesidades publicas abiertas o parcialmente financiadas.
 
@@ -93,11 +107,30 @@ Reglas importantes ya incluidas en la migracion:
 - El publico puede enviar solicitudes de campana.
 - El publico puede crear reportes de donacion pendientes, pero no leer la tabla `donations`.
 - Solo admins activos pueden ver o gestionar donaciones completas.
+- Solo admins activos pueden ver, crear o revocar enlaces privados de creador.
 - El publico nunca ve contacto del donante, notas internas, referencias de transferencia ni comprobantes privados.
 - Los comprobantes de donacion viven en el bucket privado `donation-proofs`.
 - Las facturas/fotos/tickets viven en el bucket privado `purchase-documents`.
 - Las facturas y fotos de compras son privadas por defecto.
 - Un documento de compra solo puede ser publico si la compra esta `approved` y el admin marco `is_invoice_public` o `is_photo_public`.
+
+## Acceso del creador
+
+Despues de crear y aprobar una campana, el equipo comparte un enlace privado con la persona responsable. Ese enlace no es una cuenta publica: funciona como acceso acotado a una sola campana y se puede revocar desde admin.
+
+Este acceso es distinto al link publico para compartir. El link publico es corto y visible; el link de creador debe usar un token largo, aleatorio y guardado hasheado en `campaign_creator_access_links`. Asi el organizador puede entrar sin login, pero el equipo puede revocar o vencer el acceso si se filtra.
+
+Desde el portal del creador se captura:
+
+- Titulo de la compra.
+- Monto y moneda.
+- Fecha de compra.
+- Proveedor o tienda.
+- Foto obligatoria de lo comprado.
+- Factura, ticket o captura adicional opcional.
+- Descripcion breve.
+
+El envio crea una compra en estado `pending`. La compra no afecta totales ni aparece en la pagina publica hasta que un admin la apruebe. La foto se mantiene privada salvo que el admin marque `is_photo_public`.
 
 ## Moneda de reporte
 
@@ -114,15 +147,18 @@ La conversion no es automatica en esta version. El admin debe capturar o confirm
 - Fase 2: home publica con hero, filtros por categoria de recepcion y cards de campana.
 - Fase 3: detalle de campana, metodos de pago y flujo "Avisar que done".
 - Fase 4: panel admin para aprobar campanas, verificar donaciones y aprobar compras.
+- Fase 5: portal privado del creador para subir compras con foto.
 
 ## MVP actual
 
 El MVP frontend ya deja navegable el flujo principal con datos semilla en codigo:
 
 - `/`: home publica con hero, CTAs, filtros sticky y cards de campana.
+- `/[slug]`: link corto para compartir una campana; redirige al detalle publico.
 - `/campanas/[slug]`: detalle publico de campana con metodos de pago, resumen, donaciones y compras.
 - `/campanas/[slug]/donar`: formulario visual para reportar una donacion externa.
 - `/campanas/crear`: formulario visual para solicitar una nueva campana.
+- `/creador/[accessCode]`: portal privado demo para subir novedades de compra con foto.
 - `/admin/login`: entrada visual para admins.
 - `/admin`: panel operativo inicial con colas de revision.
 
@@ -151,6 +187,14 @@ cp .env.example .env.local
 ```
 
 Si usas Supabase local, completa los valores despues de iniciar Supabase. Si usas un proyecto remoto, usa la URL y anon key del dashboard de Supabase.
+
+Para usar un dominio propio, define:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://tu-dominio.com
+```
+
+La app usa este valor para construir links publicos de campana como `https://tu-dominio.com/medicinas-valencia`.
 
 ### 3. Iniciar Supabase local
 
@@ -186,6 +230,28 @@ La app quedara en:
 
 ```text
 http://localhost:3000
+```
+
+## Conectar dominio de GoDaddy
+
+El dominio de GoDaddy solo reserva el nombre. Para usarlo con esta app:
+
+1. Despliega la app en un hosting para Next.js, por ejemplo Vercel.
+2. Agrega el dominio comprado en la configuracion del proyecto desplegado.
+3. En GoDaddy, entra a DNS y apunta el dominio a los registros que te indique el hosting.
+4. En el hosting, configura `NEXT_PUBLIC_SITE_URL` con el dominio final, por ejemplo `https://venayuda.com`.
+5. En Supabase Auth, actualiza `site_url` y `additional_redirect_urls` si usas login o enlaces magicos.
+
+Para el producto, ese dominio sera la forma corta de compartir campanas:
+
+```text
+https://tu-dominio.com/medicinas-valencia
+```
+
+El acceso de organizador debe seguir siendo un enlace privado separado:
+
+```text
+https://tu-dominio.com/creador/token-largo-no-adivinable
 ```
 
 ## Estructura creada

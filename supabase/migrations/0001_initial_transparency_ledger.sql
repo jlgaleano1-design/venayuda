@@ -48,6 +48,7 @@ create table public.campaigns (
   description text not null,
   responsible_person_name text not null,
   responsible_organization text,
+  instagram_handle text,
   contact_info text,
   location text,
   affected_area text,
@@ -73,6 +74,20 @@ create table public.campaign_payment_methods (
   transfer_instructions text not null,
   notes text,
   is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.campaign_creator_access_links (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  token_hash text not null unique,
+  label text,
+  recipient_contact text,
+  is_active boolean not null default true,
+  expires_at timestamptz,
+  last_used_at timestamptz,
+  created_by uuid references public.admin_profiles(user_id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -145,6 +160,7 @@ create table public.purchases (
   is_photo_public boolean not null default false,
   status public.purchase_status not null default 'pending',
   admin_notes text,
+  submitted_by_creator_access_id uuid references public.campaign_creator_access_links(id) on delete set null,
   created_by uuid references public.admin_profiles(user_id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -175,6 +191,10 @@ create index campaign_payment_methods_campaign_id_idx
   on public.campaign_payment_methods(campaign_id);
 create index campaign_payment_methods_receiving_category_idx
   on public.campaign_payment_methods(receiving_category);
+create index campaign_creator_access_links_campaign_id_idx
+  on public.campaign_creator_access_links(campaign_id);
+create index campaign_creator_access_links_active_idx
+  on public.campaign_creator_access_links(is_active, expires_at);
 create index donations_status_created_at_idx on public.donations(status, created_at desc);
 create index donations_campaign_id_idx on public.donations(campaign_id);
 create index donations_payment_method_id_idx on public.donations(payment_method_id);
@@ -205,6 +225,10 @@ for each row execute function public.set_updated_at();
 
 create trigger set_campaign_payment_methods_updated_at
 before update on public.campaign_payment_methods
+for each row execute function public.set_updated_at();
+
+create trigger set_campaign_creator_access_links_updated_at
+before update on public.campaign_creator_access_links
 for each row execute function public.set_updated_at();
 
 create trigger set_donations_updated_at
@@ -317,6 +341,7 @@ $$;
 alter table public.admin_profiles enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.campaign_payment_methods enable row level security;
+alter table public.campaign_creator_access_links enable row level security;
 alter table public.donations enable row level security;
 alter table public.needs enable row level security;
 alter table public.purchases enable row level security;
@@ -358,6 +383,12 @@ with check (public.is_submittable_campaign(campaign_id));
 
 create policy "admins can manage payment methods"
 on public.campaign_payment_methods for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "admins can manage creator access links"
+on public.campaign_creator_access_links for all
 to authenticated
 using (public.is_admin())
 with check (public.is_admin());
@@ -414,6 +445,7 @@ select
   c.description,
   c.responsible_person_name,
   c.responsible_organization,
+  c.instagram_handle,
   c.location,
   c.affected_area,
   c.cover_image_path,
@@ -511,7 +543,9 @@ select
   p.purchase_date,
   p.vendor,
   p.is_invoice_public,
+  case when p.is_invoice_public then p.invoice_file_path end as invoice_file_path,
   p.is_photo_public,
+  case when p.is_photo_public then p.photo_file_path end as photo_file_path,
   p.created_at,
   p.approved_at
 from public.purchases p

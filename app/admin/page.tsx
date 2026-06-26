@@ -16,10 +16,10 @@ export default function AdminPage() {
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="space-y-2">
-            <span className="inline-flex w-fit bg-neutral-100 px-3 py-1 text-sm font-medium text-black">
+            <span className="soft-pill">
               Admin MVP
             </span>
-            <h1 className="text-3xl font-semibold tracking-normal">
+            <h1 className="text-3xl font-black tracking-normal">
               Revisión manual
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-neutral-600">
@@ -99,13 +99,13 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <section className="border border-neutral-200">
+    <section className="surface-card">
       <div className="flex flex-col gap-3 p-5">
-        <div className="flex h-10 w-10 items-center justify-center bg-neutral-100">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100">
           {icon}
         </div>
         <p className="text-sm text-neutral-600">{label}</p>
-        <p className="text-2xl font-semibold">{value}</p>
+        <p className="text-2xl font-extrabold">{value}</p>
       </div>
     </section>
   );
@@ -119,9 +119,9 @@ function QueueCard({
   items: { title: string; meta: string; badge: string }[];
 }) {
   return (
-    <section className="border border-neutral-200">
+    <section className="surface-card">
       <div className="flex flex-col gap-4 p-5">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-extrabold">{title}</h2>
         <div className="space-y-3">
           {items.map((item) => (
             <div
@@ -130,10 +130,10 @@ function QueueCard({
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium">{item.title}</p>
+                  <p className="font-bold">{item.title}</p>
                   <p className="mt-1 text-sm text-neutral-600">{item.meta}</p>
                 </div>
-                <span className="bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+                <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
                   {item.badge}
                 </span>
               </div>

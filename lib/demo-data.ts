@@ -17,9 +17,12 @@ export type PaymentMethod = {
 
 export type Campaign = {
   slug: string;
+  creatorAccessCode: string;
   title: string;
   description: string;
   responsible: string;
+  responsibleEmail: string;
+  instagramHandle?: string;
   organization?: string;
   location: string;
   affectedArea: string;
@@ -40,27 +43,32 @@ export type Campaign = {
   }[];
   purchases: {
     title: string;
+    description?: string;
     amount: string;
     date: string;
     invoicePublic: boolean;
+    photoUrl?: string;
   }[];
 };
 
 export const receivingFilters: { key: ReceivingCategory; label: string }[] = [
   { key: "all", label: "Todas" },
-  { key: "mexico", label: "Recibe en Mexico" },
-  { key: "united_states", label: "Recibe en Estados Unidos" },
-  { key: "venezuela", label: "Recibe en Venezuela" },
-  { key: "international", label: "Internacional" },
+  { key: "mexico", label: "Dona desde México" },
+  { key: "united_states", label: "Dona desde Estados Unidos" },
+  { key: "venezuela", label: "Dona desde Venezuela" },
+  { key: "international", label: "Dona desde otro país" },
 ];
 
 export const campaigns: Campaign[] = [
   {
     slug: "medicinas-valencia",
+    creatorAccessCode: "creador-med-valencia",
     title: "Medicinas para respuesta en Valencia",
     description:
       "Compra de tratamientos, analgesicos y material basico para personas atendidas por voluntarios en campo.",
     responsible: "Mariela Torres",
+    responsibleEmail: "mariela@example.com",
+    instagramHandle: "redvecinalvalencia",
     organization: "Red vecinal de apoyo",
     location: "Valencia, Carabobo",
     affectedArea: "Barrios del sur",
@@ -118,24 +126,33 @@ export const campaigns: Campaign[] = [
     purchases: [
       {
         title: "Analgésicos y suero oral",
+        description: "Compra de medicamentos y sobres de rehidratacion entregados al equipo de voluntarios.",
         amount: "USD 420",
         date: "2026-06-25",
         invoicePublic: true,
+        photoUrl:
+          "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80",
       },
       {
         title: "Material de curas",
+        description: "Gasas, alcohol y material basico para curas de emergencia.",
         amount: "USD 500",
         date: "2026-06-26",
         invoicePublic: false,
+        photoUrl:
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=900&q=80",
       },
     ],
   },
   {
     slug: "alimentos-maracay",
+    creatorAccessCode: "creador-ali-maracay",
     title: "Alimentos y agua para Maracay",
     description:
       "Apoyo directo para compras de comida, agua potable y articulos esenciales entregados por una red local.",
     responsible: "Daniel Rivas",
+    responsibleEmail: "daniel@example.com",
+    instagramHandle: "ayudamaracay",
     location: "Maracay, Aragua",
     affectedArea: "Zona norte",
     status: "active",
@@ -176,18 +193,24 @@ export const campaigns: Campaign[] = [
     purchases: [
       {
         title: "Agua potable y harina",
+        description: "Primera compra para familias priorizadas por la red local.",
         amount: "USD 310",
         date: "2026-06-25",
         invoicePublic: true,
+        photoUrl:
+          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80",
       },
     ],
   },
   {
     slug: "traslados-caracas",
+    creatorAccessCode: "creador-tra-caracas",
     title: "Traslados medicos en Caracas",
     description:
       "Fondo para gasolina, taxis y traslados de personas que necesitan atencion o entrega de insumos.",
     responsible: "Sofia Medina",
+    responsibleEmail: "sofia@example.com",
+    instagramHandle: "voluntariosdeleste",
     organization: "Voluntarios del este",
     location: "Caracas",
     affectedArea: "Municipios del este",
@@ -220,9 +243,12 @@ export const campaigns: Campaign[] = [
     purchases: [
       {
         title: "Traslados a centro medico",
+        description: "Apoyo para traslados de pacientes y entrega de insumos.",
         amount: "USD 180",
         date: "2026-06-24",
         invoicePublic: false,
+        photoUrl:
+          "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=80",
       },
     ],
   },
@@ -230,6 +256,10 @@ export const campaigns: Campaign[] = [
 
 export function getCampaign(slug: string) {
   return campaigns.find((campaign) => campaign.slug === slug);
+}
+
+export function getCampaignByCreatorAccessCode(accessCode: string) {
+  return campaigns.find((campaign) => campaign.creatorAccessCode === accessCode);
 }
 
 export function formatUsd(value: number) {

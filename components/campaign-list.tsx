@@ -27,8 +27,8 @@ export function CampaignList() {
               key={item.key}
               className={
                 filter === item.key
-                  ? "h-9 shrink-0 bg-[#2D5D5E] px-3 text-sm font-medium text-[#FAE880]"
-                  : "h-9 shrink-0 bg-neutral-100 px-3 text-sm font-medium text-black"
+                  ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
+                  : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-black"
               }
               type="button"
               variant={filter === item.key ? "primary" : "secondary"}
@@ -47,7 +47,7 @@ export function CampaignList() {
           ))}
         </div>
       ) : (
-        <div className="border border-neutral-200 p-8 text-sm text-neutral-600">
+        <div className="surface-card p-8 text-sm text-neutral-600">
           No hay campañas activas para este filtro todavía.
         </div>
       )}

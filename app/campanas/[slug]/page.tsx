@@ -1,13 +1,14 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Instagram } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SiteFooter } from "@/components/site-footer";
 import { campaigns, formatUsd, getCampaign } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
-  mexico: "Mexico",
-  united_states: "Estados Unidos",
-  venezuela: "Venezuela",
-  international: "Internacional",
+  mexico: "Dona desde México",
+  united_states: "Dona desde Estados Unidos",
+  venezuela: "Dona desde Venezuela",
+  international: "Dona desde otro país",
 };
 
 export function generateStaticParams() {
@@ -41,14 +42,14 @@ export default async function CampaignDetailPage({
           <div className="space-y-6">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <span className="bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
+                <span className="status-pill bg-emerald-50 text-emerald-800">
                   {campaign.status === "active" ? "Activa" : "Pausada"}
                 </span>
-                <span className="bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
+                <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
                   {campaign.location}
                 </span>
               </div>
-              <h1 className="text-4xl font-semibold leading-tight tracking-normal md:text-5xl">
+              <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
                 {campaign.title}
               </h1>
               <p className="max-w-3xl text-lg leading-8 text-neutral-700">
@@ -56,9 +57,9 @@ export default async function CampaignDetailPage({
               </p>
             </div>
 
-            <section className="border border-neutral-200">
+            <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-xl font-semibold">Quién responde</h2>
+                <h2 className="text-xl font-extrabold">Quién responde</h2>
                 <div className="grid gap-4 md:grid-cols-3">
                   <Info label="Responsable" value={campaign.responsible} />
                   <Info
@@ -67,23 +68,35 @@ export default async function CampaignDetailPage({
                   />
                   <Info label="Zona afectada" value={campaign.affectedArea} />
                 </div>
+                {campaign.instagramHandle ? (
+                  <a
+                    className="inline-flex w-fit items-center gap-2 rounded-full bg-neutral-100 px-4 py-2 text-sm font-extrabold text-[#2D5D5E]"
+                    href={`https://instagram.com/${campaign.instagramHandle}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <Instagram size={16} />
+                    @{campaign.instagramHandle}
+                    <ExternalLink size={14} />
+                  </a>
+                ) : null}
               </div>
             </section>
 
-            <section className="border border-neutral-200">
+            <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-xl font-semibold">Métodos disponibles</h2>
+                <h2 className="text-xl font-extrabold">Métodos disponibles</h2>
                 <div className="grid gap-3">
                   {campaign.paymentMethods.map((method) => (
                     <div
                       key={method.id}
-                      className="border border-neutral-200 p-4"
+                      className="rounded-[1.5rem] border border-neutral-200 p-4"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700">
+                        <span className="tag-pill border border-neutral-300 bg-white text-neutral-700">
                           {categoryLabels[method.receivingCategory]}
                         </span>
-                        <p className="font-medium">{method.label}</p>
+                        <p className="font-bold">{method.label}</p>
                         <p className="text-sm text-neutral-600">
                           {method.currency}
                         </p>
@@ -101,16 +114,16 @@ export default async function CampaignDetailPage({
             </section>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <section className="border border-neutral-200">
+              <section className="surface-card">
                 <div className="flex flex-col gap-4 p-5">
-                  <h2 className="text-xl font-semibold">
+                  <h2 className="text-xl font-extrabold">
                     Donaciones verificadas
                   </h2>
                   {campaign.donations.map((donation) => (
                     <div key={donation.code} className="space-y-1">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium">{donation.amount}</p>
-                        <span className="bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+                        <p className="font-bold">{donation.amount}</p>
+                        <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
                           {donation.code}
                         </span>
                       </div>
@@ -126,21 +139,36 @@ export default async function CampaignDetailPage({
                 </div>
               </section>
 
-              <section className="border border-neutral-200">
+              <section className="surface-card">
                 <div className="flex flex-col gap-4 p-5">
-                  <h2 className="text-xl font-semibold">Compras aprobadas</h2>
+                  <h2 className="text-xl font-extrabold">Compras aprobadas</h2>
                   {campaign.purchases.map((purchase) => (
-                    <div key={purchase.title} className="space-y-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium">{purchase.title}</p>
-                        <p className="text-sm">{purchase.amount}</p>
+                    <div key={purchase.title} className="space-y-3">
+                      {purchase.photoUrl ? (
+                        <div
+                          aria-label={`Foto de ${purchase.title}`}
+                          className="h-40 w-full rounded-[1.5rem] bg-cover bg-center"
+                          role="img"
+                          style={{ backgroundImage: `url(${purchase.photoUrl})` }}
+                        />
+                      ) : null}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-bold">{purchase.title}</p>
+                          <p className="text-sm">{purchase.amount}</p>
+                        </div>
+                        {purchase.description ? (
+                          <p className="text-sm leading-6 text-neutral-700">
+                            {purchase.description}
+                          </p>
+                        ) : null}
+                        <p className="text-sm text-neutral-600">
+                          {purchase.date} ·{" "}
+                          {purchase.invoicePublic
+                            ? "Comprobante publico"
+                            : "Comprobante privado"}
+                        </p>
                       </div>
-                      <p className="text-sm text-neutral-600">
-                        {purchase.date} ·{" "}
-                        {purchase.invoicePublic
-                          ? "Comprobante publico"
-                          : "Comprobante privado"}
-                      </p>
                       <div className="h-px bg-neutral-200" />
                     </div>
                   ))}
@@ -150,9 +178,9 @@ export default async function CampaignDetailPage({
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
-            <section className="border border-neutral-200">
+            <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-xl font-semibold">Transparencia</h2>
+                <h2 className="text-xl font-extrabold">Transparencia</h2>
                 <Metric
                   label="Donado verificado"
                   value={formatUsd(campaign.totals.donated)}
@@ -181,6 +209,7 @@ export default async function CampaignDetailPage({
           </aside>
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }
@@ -189,7 +218,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="font-medium">{value}</p>
+      <p className="font-bold">{value}</p>
     </div>
   );
 }
@@ -198,7 +227,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-neutral-200 pb-3">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="text-2xl font-semibold">{value}</p>
+      <p className="text-2xl font-extrabold">{value}</p>
     </div>
   );
 }
