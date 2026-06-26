@@ -1,10 +1,35 @@
 create extension if not exists "pgcrypto";
 
 create type public.admin_role as enum ('owner', 'admin', 'reviewer');
-create type public.donation_status as enum ('pending', 'validated', 'rejected');
-create type public.need_status as enum ('open', 'partially_funded', 'purchased', 'cancelled');
-create type public.purchase_status as enum ('draft', 'approved', 'rejected');
-create type public.campaign_status as enum ('draft', 'active', 'paused', 'completed', 'archived');
+create type public.campaign_status as enum (
+  'pending_review',
+  'draft',
+  'active',
+  'paused',
+  'completed',
+  'archived'
+);
+create type public.verification_status as enum (
+  'unverified',
+  'pending',
+  'verified',
+  'rejected'
+);
+create type public.receiving_category as enum (
+  'mexico',
+  'united_states',
+  'venezuela',
+  'international',
+  'other'
+);
+create type public.donation_status as enum ('pending', 'verified', 'rejected');
+create type public.purchase_status as enum ('pending', 'approved', 'rejected');
+create type public.need_status as enum (
+  'open',
+  'partially_funded',
+  'purchased',
+  'cancelled'
+);
 
 create table public.admin_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -18,63 +43,83 @@ create table public.admin_profiles (
 
 create table public.campaigns (
   id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
   title text not null,
-  beneficiary_name text not null,
+  slug text not null unique,
+  description text not null,
+  responsible_person_name text not null,
+  responsible_organization text,
+  contact_info text,
   location text,
-  help_focus text not null,
-  story text,
-  goal_amount numeric(14, 2) check (goal_amount is null or goal_amount >= 0),
-  reporting_currency char(3) not null default 'MXN',
-  status public.campaign_status not null default 'draft',
+  affected_area text,
+  cover_image_path text,
+  status public.campaign_status not null default 'pending_review',
+  verification_status public.verification_status not null default 'pending',
   internal_notes text,
   created_by uuid references public.admin_profiles(user_id),
+  reviewed_by uuid references public.admin_profiles(user_id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  published_at timestamptz,
   constraint campaigns_slug_format check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$')
+);
+
+create table public.campaign_payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  receiving_category public.receiving_category not null,
+  method_name text,
+  currency char(3),
+  account_holder text,
+  transfer_instructions text not null,
+  notes text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table public.donations (
   id uuid primary key default gen_random_uuid(),
-  campaign_id uuid references public.campaigns(id) on delete set null,
-  donor_display_name text,
-  donor_email text,
-  donor_phone text,
+  campaign_id uuid not null references public.campaigns(id) on delete restrict,
+  public_code text not null unique default (
+    'DON-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 5))
+  ),
+  donor_name text,
+  donor_contact text,
+  is_anonymous boolean not null default false,
   amount numeric(14, 2) not null check (amount > 0),
   currency char(3) not null,
-  reporting_amount numeric(14, 2) check (reporting_amount is null or reporting_amount >= 0),
-  reporting_currency char(3) not null default 'MXN',
-  transferred_at date not null,
-  reference_last4 text,
-  reference_full text,
-  proof_storage_path text,
+  amount_usd numeric(14, 2) check (amount_usd is null or amount_usd >= 0),
+  payment_method_id uuid references public.campaign_payment_methods(id) on delete set null,
+  transfer_reference text,
+  transfer_date date,
+  proof_file_path text,
   status public.donation_status not null default 'pending',
-  reviewed_by uuid references public.admin_profiles(user_id),
-  reviewed_at timestamptz,
-  rejection_reason text,
-  internal_notes text,
+  public_message text,
+  admin_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint donations_reference_last4_length check (
-    reference_last4 is null or char_length(reference_last4) <= 8
-  ),
-  constraint donations_validated_reporting_amount check (
-    status <> 'validated' or reporting_amount is not null
+  verified_at timestamptz,
+  verified_by uuid references public.admin_profiles(user_id),
+  rejected_at timestamptz,
+  rejected_by uuid references public.admin_profiles(user_id),
+  rejection_reason text,
+  constraint donations_verified_amount_usd check (
+    status <> 'verified' or amount_usd is not null
   )
 );
 
 create table public.needs (
   id uuid primary key default gen_random_uuid(),
-  campaign_id uuid references public.campaigns(id) on delete set null,
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
   title text not null,
   description text,
   category text,
   priority integer not null default 3 check (priority between 1 and 5),
   quantity integer not null default 1 check (quantity > 0),
-  estimated_unit_amount numeric(14, 2) check (
-    estimated_unit_amount is null or estimated_unit_amount >= 0
+  estimated_amount numeric(14, 2) check (
+    estimated_amount is null or estimated_amount >= 0
   ),
-  reporting_currency char(3) not null default 'MXN',
+  currency char(3) default 'USD',
   status public.need_status not null default 'open',
   is_public boolean not null default true,
   internal_notes text,
@@ -85,26 +130,32 @@ create table public.needs (
 
 create table public.purchases (
   id uuid primary key default gen_random_uuid(),
-  campaign_id uuid references public.campaigns(id) on delete set null,
-  purchased_at date not null,
-  vendor text,
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  title text not null,
   description text,
-  total_amount numeric(14, 2) not null check (total_amount >= 0),
-  currency char(3) not null default 'MXN',
-  reporting_amount numeric(14, 2) not null check (reporting_amount >= 0),
-  reporting_currency char(3) not null default 'MXN',
-  status public.purchase_status not null default 'draft',
-  invoice_storage_path text,
-  invoice_is_public boolean not null default false,
-  photo_storage_path text,
-  photo_is_public boolean not null default false,
-  approved_by uuid references public.admin_profiles(user_id),
-  approved_at timestamptz,
-  rejection_reason text,
-  internal_notes text,
+  category text,
+  amount numeric(14, 2) not null check (amount >= 0),
+  currency char(3) not null,
+  amount_usd numeric(14, 2) check (amount_usd is null or amount_usd >= 0),
+  purchase_date date,
+  vendor text,
+  invoice_file_path text,
+  is_invoice_public boolean not null default false,
+  photo_file_path text,
+  is_photo_public boolean not null default false,
+  status public.purchase_status not null default 'pending',
+  admin_notes text,
   created_by uuid references public.admin_profiles(user_id),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  approved_at timestamptz,
+  approved_by uuid references public.admin_profiles(user_id),
+  rejected_at timestamptz,
+  rejected_by uuid references public.admin_profiles(user_id),
+  rejection_reason text,
+  constraint purchases_approved_amount_usd check (
+    status <> 'approved' or amount_usd is not null
+  )
 );
 
 create table public.purchase_items (
@@ -118,13 +169,19 @@ create table public.purchase_items (
   created_at timestamptz not null default now()
 );
 
+create index campaigns_status_slug_idx on public.campaigns(status, slug);
+create index campaigns_verification_status_idx on public.campaigns(verification_status);
+create index campaign_payment_methods_campaign_id_idx
+  on public.campaign_payment_methods(campaign_id);
+create index campaign_payment_methods_receiving_category_idx
+  on public.campaign_payment_methods(receiving_category);
 create index donations_status_created_at_idx on public.donations(status, created_at desc);
 create index donations_campaign_id_idx on public.donations(campaign_id);
-create index donations_reporting_currency_idx on public.donations(reporting_currency);
-create index campaigns_status_slug_idx on public.campaigns(status, slug);
+create index donations_payment_method_id_idx on public.donations(payment_method_id);
 create index needs_status_priority_idx on public.needs(status, priority, created_at desc);
 create index needs_campaign_id_idx on public.needs(campaign_id);
-create index purchases_status_purchased_at_idx on public.purchases(status, purchased_at desc);
+create index purchases_status_purchase_date_idx
+  on public.purchases(status, purchase_date desc);
 create index purchases_campaign_id_idx on public.purchases(campaign_id);
 create index purchase_items_purchase_id_idx on public.purchase_items(purchase_id);
 
@@ -144,6 +201,10 @@ for each row execute function public.set_updated_at();
 
 create trigger set_campaigns_updated_at
 before update on public.campaigns
+for each row execute function public.set_updated_at();
+
+create trigger set_campaign_payment_methods_updated_at
+before update on public.campaign_payment_methods
 for each row execute function public.set_updated_at();
 
 create trigger set_donations_updated_at
@@ -196,17 +257,66 @@ stable
 security definer
 set search_path = public
 as $$
-  select campaign_id is null
-    or exists (
-      select 1
-      from public.campaigns
-      where id = campaign_id
-        and status in ('active', 'completed')
-    );
+  select exists (
+    select 1
+    from public.campaigns
+    where id = campaign_id
+      and status in ('active', 'paused', 'completed')
+      and verification_status = 'verified'
+  );
+$$;
+
+create or replace function public.is_donatable_campaign(campaign_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.campaigns
+    where id = campaign_id
+      and status = 'active'
+      and verification_status = 'verified'
+  );
+$$;
+
+create or replace function public.is_submittable_campaign(campaign_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.campaigns
+    where id = campaign_id
+      and status in ('pending_review', 'draft')
+      and verification_status in ('unverified', 'pending')
+  );
+$$;
+
+create or replace function public.is_public_payment_method(payment_method_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.campaign_payment_methods pm
+    where pm.id = payment_method_id
+      and pm.is_active = true
+      and public.is_donatable_campaign(pm.campaign_id)
+  );
 $$;
 
 alter table public.admin_profiles enable row level security;
 alter table public.campaigns enable row level security;
+alter table public.campaign_payment_methods enable row level security;
 alter table public.donations enable row level security;
 alter table public.needs enable row level security;
 alter table public.purchases enable row level security;
@@ -223,22 +333,51 @@ to authenticated
 using (public.is_admin_with_role(array['owner']::public.admin_role[]))
 with check (public.is_admin_with_role(array['owner']::public.admin_role[]));
 
+create policy "anyone can submit campaign requests"
+on public.campaigns for insert
+to anon, authenticated
+with check (
+  status in ('pending_review', 'draft')
+  and verification_status in ('unverified', 'pending')
+  and created_by is null
+  and published_at is null
+  and reviewed_by is null
+  and internal_notes is null
+);
+
 create policy "admins can manage campaigns"
 on public.campaigns for all
 to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
-create policy "anyone can create pending donations"
+create policy "anyone can submit payment methods with campaign requests"
+on public.campaign_payment_methods for insert
+to anon, authenticated
+with check (public.is_submittable_campaign(campaign_id));
+
+create policy "admins can manage payment methods"
+on public.campaign_payment_methods for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "anyone can submit pending donation reports"
 on public.donations for insert
 to anon, authenticated
 with check (
   status = 'pending'
-  and public.is_public_campaign(campaign_id)
-  and reviewed_by is null
-  and reviewed_at is null
+  and public.is_donatable_campaign(campaign_id)
+  and (
+    payment_method_id is null
+    or public.is_public_payment_method(payment_method_id)
+  )
+  and verified_at is null
+  and verified_by is null
+  and rejected_at is null
+  and rejected_by is null
   and rejection_reason is null
-  and internal_notes is null
+  and admin_notes is null
 );
 
 create policy "admins can manage donations"
@@ -269,42 +408,90 @@ create view public.public_campaigns
 with (security_barrier = true)
 as
 select
-  id,
-  slug,
-  title,
-  beneficiary_name,
-  location,
-  help_focus,
-  story,
-  goal_amount,
-  reporting_currency,
-  status,
-  created_at,
-  updated_at
-from public.campaigns
-where status in ('active', 'completed');
+  c.id,
+  c.slug,
+  c.title,
+  c.description,
+  c.responsible_person_name,
+  c.responsible_organization,
+  c.location,
+  c.affected_area,
+  c.cover_image_path,
+  c.status,
+  c.published_at,
+  c.created_at,
+  c.updated_at,
+  coalesce(d.total_verified_donations, 0)::numeric(14, 2) as total_verified_donations_usd,
+  coalesce(p.total_approved_purchases, 0)::numeric(14, 2) as total_approved_purchases_usd,
+  (
+    coalesce(d.total_verified_donations, 0)
+    - coalesce(p.total_approved_purchases, 0)
+  )::numeric(14, 2) as available_balance_usd
+from public.campaigns c
+left join (
+  select campaign_id, sum(amount_usd) as total_verified_donations
+  from public.donations
+  where status = 'verified'
+  group by campaign_id
+) d on d.campaign_id = c.id
+left join (
+  select campaign_id, sum(amount_usd) as total_approved_purchases
+  from public.purchases
+  where status = 'approved'
+  group by campaign_id
+) p on p.campaign_id = c.id
+where public.is_public_campaign(c.id);
+
+create view public.public_campaign_payment_methods
+with (security_barrier = true)
+as
+select
+  pm.id,
+  pm.campaign_id,
+  pm.receiving_category,
+  pm.method_name,
+  pm.currency,
+  pm.account_holder,
+  pm.transfer_instructions,
+  pm.notes,
+  pm.created_at,
+  pm.updated_at
+from public.campaign_payment_methods pm
+where pm.is_active = true
+  and public.is_donatable_campaign(pm.campaign_id);
+
+create view public.public_campaign_receiving_categories
+with (security_barrier = true)
+as
+select distinct
+  pm.campaign_id,
+  pm.receiving_category
+from public.campaign_payment_methods pm
+where pm.is_active = true
+  and public.is_public_campaign(pm.campaign_id);
 
 create view public.public_donations
 with (security_barrier = true)
 as
 select
   d.id,
-  case when public.is_public_campaign(d.campaign_id) then d.campaign_id end as campaign_id,
+  d.campaign_id,
   c.slug as campaign_slug,
   c.title as campaign_title,
-  coalesce(nullif(d.donor_display_name, ''), 'Donante anonimo') as donor_name,
+  d.public_code,
+  case
+    when d.is_anonymous then 'Donante anonimo'
+    else coalesce(nullif(d.donor_name, ''), 'Donante anonimo')
+  end as donor_name,
   d.amount,
   d.currency,
-  d.reporting_amount,
-  d.reporting_currency,
-  d.transferred_at,
-  d.reference_last4,
-  d.created_at
+  d.amount_usd,
+  d.public_message,
+  d.created_at,
+  d.verified_at
 from public.donations d
-left join public.campaigns c
-  on c.id = d.campaign_id
-  and c.status in ('active', 'completed')
-where d.status = 'validated'
+join public.campaigns c on c.id = d.campaign_id
+where d.status = 'verified'
   and public.is_public_campaign(d.campaign_id);
 
 create view public.public_purchases
@@ -315,20 +502,20 @@ select
   p.campaign_id,
   c.slug as campaign_slug,
   c.title as campaign_title,
-  p.purchased_at,
-  p.vendor,
+  p.title,
   p.description,
-  p.total_amount,
+  p.category,
+  p.amount,
   p.currency,
-  p.reporting_amount,
-  p.reporting_currency,
-  p.invoice_is_public,
-  p.photo_is_public,
-  p.created_at
+  p.amount_usd,
+  p.purchase_date,
+  p.vendor,
+  p.is_invoice_public,
+  p.is_photo_public,
+  p.created_at,
+  p.approved_at
 from public.purchases p
-left join public.campaigns c
-  on c.id = p.campaign_id
-  and c.status in ('active', 'completed')
+join public.campaigns c on c.id = p.campaign_id
 where p.status = 'approved'
   and public.is_public_campaign(p.campaign_id);
 
@@ -361,8 +548,8 @@ select
   category,
   priority,
   quantity,
-  estimated_unit_amount,
-  reporting_currency,
+  estimated_amount,
+  currency,
   status,
   created_at,
   updated_at
@@ -375,36 +562,38 @@ create view public.public_ledger_summary
 with (security_barrier = true)
 as
 with donated as (
-  select campaign_id, reporting_currency, sum(reporting_amount) as total_donated
+  select campaign_id, sum(amount_usd) as total_verified_donations
   from public.donations
-  where status = 'validated'
+  where status = 'verified'
     and public.is_public_campaign(campaign_id)
-  group by campaign_id, reporting_currency
+  group by campaign_id
 ),
 spent as (
-  select campaign_id, reporting_currency, sum(reporting_amount) as total_spent
+  select campaign_id, sum(amount_usd) as total_approved_purchases
   from public.purchases
   where status = 'approved'
     and public.is_public_campaign(campaign_id)
-  group by campaign_id, reporting_currency
+  group by campaign_id
 )
 select
-  coalesce(d.campaign_id, p.campaign_id) as campaign_id,
+  c.id as campaign_id,
   c.slug as campaign_slug,
   c.title as campaign_title,
-  coalesce(d.reporting_currency, p.reporting_currency, 'MXN') as reporting_currency,
-  coalesce(d.total_donated, 0)::numeric(14, 2) as total_donated,
-  coalesce(p.total_spent, 0)::numeric(14, 2) as total_spent,
-  (coalesce(d.total_donated, 0) - coalesce(p.total_spent, 0))::numeric(14, 2) as available_balance
-from donated d
-full join spent p
-  on p.campaign_id is not distinct from d.campaign_id
-  and p.reporting_currency = d.reporting_currency
-left join public.campaigns c
-  on c.id = coalesce(d.campaign_id, p.campaign_id)
-  and c.status in ('active', 'completed');
+  'USD'::char(3) as reporting_currency,
+  coalesce(d.total_verified_donations, 0)::numeric(14, 2) as total_verified_donations,
+  coalesce(s.total_approved_purchases, 0)::numeric(14, 2) as total_approved_purchases,
+  (
+    coalesce(d.total_verified_donations, 0)
+    - coalesce(s.total_approved_purchases, 0)
+  )::numeric(14, 2) as available_balance
+from public.campaigns c
+left join donated d on d.campaign_id = c.id
+left join spent s on s.campaign_id = c.id
+where public.is_public_campaign(c.id);
 
 grant select on public.public_campaigns to anon, authenticated;
+grant select on public.public_campaign_payment_methods to anon, authenticated;
+grant select on public.public_campaign_receiving_categories to anon, authenticated;
 grant select on public.public_donations to anon, authenticated;
 grant select on public.public_purchases to anon, authenticated;
 grant select on public.public_purchase_items to anon, authenticated;
@@ -426,8 +615,31 @@ values
     false,
     10485760,
     array['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
+  ),
+  (
+    'campaign-assets',
+    'campaign-assets',
+    false,
+    10485760,
+    array['image/png', 'image/jpeg', 'image/webp']
   )
 on conflict (id) do nothing;
+
+create or replace function public.storage_campaign_id(object_name text)
+returns uuid
+language plpgsql
+immutable
+as $$
+declare
+  first_segment text;
+begin
+  first_segment := (storage.foldername(object_name))[1];
+  return first_segment::uuid;
+exception
+  when others then
+    return null;
+end;
+$$;
 
 create or replace function public.storage_purchase_id(object_name text)
 returns uuid
@@ -459,11 +671,39 @@ as $$
       and p.status = 'approved'
       and public.is_public_campaign(p.campaign_id)
       and (
-        (object_name like '%/invoice/%' and p.invoice_is_public = true)
-        or (object_name like '%/photo/%' and p.photo_is_public = true)
+        (object_name like '%/invoice/%' and p.is_invoice_public = true)
+        or (object_name like '%/photo/%' and p.is_photo_public = true)
       )
   );
 $$;
+
+create policy "public can upload campaign assets for requests"
+on storage.objects for insert
+to anon, authenticated
+with check (
+  bucket_id = 'campaign-assets'
+  and (auth.role() = 'anon' or owner = auth.uid())
+);
+
+create policy "public can read public campaign assets"
+on storage.objects for select
+to anon, authenticated
+using (
+  bucket_id = 'campaign-assets'
+  and public.is_public_campaign(public.storage_campaign_id(storage.objects.name))
+);
+
+create policy "admins can manage campaign assets"
+on storage.objects for all
+to authenticated
+using (
+  bucket_id = 'campaign-assets'
+  and public.is_admin()
+)
+with check (
+  bucket_id = 'campaign-assets'
+  and public.is_admin()
+);
 
 create policy "admins can read donation proofs"
 on storage.objects for select

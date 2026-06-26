@@ -1,6 +1,6 @@
 # Venayuda Transparencia
 
-Plataforma de transparencia para campañas de ayuda, donativos internacionales y compras realizadas.
+Plataforma de transparencia para campañas de ayuda, donaciones internacionales reportadas y compras realizadas.
 
 Esta primera version crea una base solida: proyecto Next.js, estructura para Supabase, schema de base de datos, migracion inicial, RLS, buckets privados de Storage y vistas publicas seguras. Todavia no incluye todas las pantallas.
 
@@ -18,15 +18,15 @@ Esta primera version crea una base solida: proyecto Next.js, estructura para Sup
 
 Esto no es un sistema bancario ni una reconciliacion automatica. Es un ledger manual de transparencia por campana:
 
-1. Un admin crea una campana de ayuda para una persona concreta en Venezuela.
-2. La campana describe a quien se ayuda, donde esta y que tipo de ayuda directa se esta dando.
-3. Una persona elige una campana, registra un donativo y sube un comprobante.
-4. El donativo entra como `pending`.
-5. Un admin revisa manualmente el comprobante.
-6. El admin marca el donativo como `validated` o `rejected`.
-7. Los totales publicos solo cuentan donativos `validated` y compras `approved`.
+1. Una persona u organizacion solicita crear una campana de ayuda.
+2. La campana describe quien responde, donde ayuda y que metodos externos puede recibir.
+3. Un admin revisa y publica la campana.
+4. Un donante elige una campana, dona por fuera de la plataforma y reporta su aporte.
+5. El reporte de donacion entra como `pending`.
+6. Un admin revisa manualmente el comprobante y marca la donacion como `verified` o `rejected`.
+7. Los totales publicos solo cuentan donaciones `verified` y compras `approved`.
 
-Tambien puede existir un fondo general sin campana asignada, pero el modelo ya esta preparado para que el usuario decida a que campana aplicar su donativo.
+Venayuda no procesa pagos. Cada campana publica sus propios metodos de pago e instrucciones abiertas. La plataforma sirve para descubrir campanas, reportar donaciones, revisarlas manualmente y mostrar seguimiento publico.
 
 ## Campanas
 
@@ -34,30 +34,45 @@ Cada campana representa a una persona que esta recibiendo ayuda directa en Venez
 
 Estados de campana:
 
+- `pending_review`: solicitud recibida, pendiente de revision admin.
 - `draft`: campana en preparacion, no publica.
-- `active`: visible y disponible para recibir donativos.
-- `paused`: temporalmente no visible para donativos publicos.
+- `active`: visible y disponible para recibir reportes de donacion.
+- `paused`: visible como referencia, pero no disponible para nuevos reportes.
 - `completed`: visible como historial, pero ya completada.
 - `archived`: oculta del espacio publico.
 
-Las tablas `donations`, `needs` y `purchases` tienen `campaign_id` opcional para mantener flexibilidad mientras se define el flujo completo.
+Las campanas tambien tienen `verification_status`: `unverified`, `pending`, `verified` o `rejected`.
+
+## Metodos de pago
+
+Cada campana puede publicar varios metodos de pago. Los campos son deliberadamente flexibles porque cada pais y cada persona maneja datos distintos:
+
+- `receiving_category`: `mexico`, `united_states`, `venezuela`, `international` u `other`.
+- `method_name`: SPEI, Zelle, Pago Movil, transferencia, efectivo u otro texto libre.
+- `currency`: moneda sugerida.
+- `account_holder`: titular o destinatario.
+- `transfer_instructions`: campo abierto para CLABE, Zelle, telefono, banco, Wise, PayPal u otra instruccion.
+- `notes`: detalles adicionales.
 
 ## Tablas
 
 - `admin_profiles`: perfiles privados de admins ligados a usuarios de Supabase Auth.
-- `campaigns`: campanas de ayuda para personas concretas.
-- `donations`: donativos con datos sensibles, comprobante privado y estado de revision.
+- `campaigns`: solicitudes y campanas publicas de ayuda.
+- `campaign_payment_methods`: metodos externos por los que una campana puede recibir fondos.
+- `donations`: reportes de donacion con codigo publico, datos sensibles privados, comprobante privado y estado de revision.
 - `needs`: necesidades/items por comprar.
-- `purchases`: compras/gastos con factura o foto privada por defecto.
+- `purchases`: compras/gastos con factura/foto privada por defecto.
 - `purchase_items`: lineas de compra ligadas opcionalmente a necesidades.
 
 ## Vistas publicas
 
 La app publica debe leer desde estas vistas, no desde las tablas privadas:
 
-- `public_ledger_summary`: total donado validado, total gastado aprobado y saldo disponible por moneda de reporte.
-- `public_campaigns`: campanas activas o completadas, sin notas internas.
-- `public_donations`: donativos validados sin emails, telefonos, referencia completa, notas internas ni comprobantes.
+- `public_ledger_summary`: total donado verificado, total gastado aprobado y saldo disponible por moneda de reporte.
+- `public_campaigns`: campanas publicas con resumen de transparencia.
+- `public_campaign_payment_methods`: metodos activos de campanas activas.
+- `public_campaign_receiving_categories`: categorias para filtros publicos.
+- `public_donations`: donaciones verificadas sin contacto, referencia de transferencia, notas internas ni comprobantes.
 - `public_purchases`: compras aprobadas sin notas internas ni rutas privadas.
 - `public_purchase_items`: items de compras aprobadas.
 - `public_needs`: necesidades publicas abiertas o parcialmente financiadas.
@@ -67,23 +82,31 @@ La app publica debe leer desde estas vistas, no desde las tablas privadas:
 Reglas importantes ya incluidas en la migracion:
 
 - RLS esta activo en todas las tablas principales.
-- El publico solo ve campanas `active` o `completed`.
-- El publico puede crear donativos pendientes, pero no leer la tabla `donations`.
-- Solo admins activos pueden ver o gestionar donativos completos.
-- El publico nunca ve emails, telefonos, notas internas, referencia completa ni comprobantes privados.
+- El publico solo lee campanas verificadas en estado `active`, `paused` o `completed`.
+- El publico puede enviar solicitudes de campana.
+- El publico puede crear reportes de donacion pendientes, pero no leer la tabla `donations`.
+- Solo admins activos pueden ver o gestionar donaciones completas.
+- El publico nunca ve contacto del donante, notas internas, referencias de transferencia ni comprobantes privados.
 - Los comprobantes de donacion viven en el bucket privado `donation-proofs`.
 - Las facturas/fotos/tickets viven en el bucket privado `purchase-documents`.
 - Las facturas y fotos de compras son privadas por defecto.
-- Un documento de compra solo puede ser publico si la compra esta `approved` y el admin marco `invoice_is_public` o `photo_is_public`.
+- Un documento de compra solo puede ser publico si la compra esta `approved` y el admin marco `is_invoice_public` o `is_photo_public`.
 
 ## Moneda de reporte
 
-Cada donativo y compra guarda:
+Cada donacion y compra guarda:
 
 - `amount` y `currency`: monto y moneda original.
-- `reporting_amount` y `reporting_currency`: monto normalizado para reportes publicos.
+- `amount_usd`: monto normalizado para totales publicos.
 
 La conversion no es automatica en esta version. El admin debe capturar o confirmar el monto de reporte manualmente al validar/aprobar.
+
+## Fases de construccion
+
+- Fase 1: schema, migraciones, RLS, vistas publicas y README.
+- Fase 2: home publica con hero, filtros por categoria de recepcion y cards de campana.
+- Fase 3: detalle de campana, metodos de pago y flujo "Avisar que done".
+- Fase 4: panel admin para aprobar campanas, verificar donaciones y aprobar compras.
 
 ## Correr localmente
 
@@ -170,9 +193,9 @@ Construir primero el flujo minimo de admins:
 
 1. Login de admin con Supabase Auth.
 2. Guard para rutas `/admin`.
-3. CRUD basico de campanas.
-4. Vista de donativos pendientes por campana.
+3. Revision/aprobacion de solicitudes de campana.
+4. Vista de donaciones pendientes por campana.
 5. Pantalla de revision de comprobante.
-6. Acciones para validar/rechazar donativos.
+6. Acciones para verificar/rechazar donaciones.
 
 Despues conviene construir el dashboard publico usando solamente las vistas `public_*`.
