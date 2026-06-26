@@ -3,7 +3,33 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-white text-black antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex h-11 items-center justify-center gap-2 bg-[#2D5D5E] px-5 text-sm font-medium text-[#FAE880] transition hover:opacity-90;
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 bg-neutral-100 px-5 text-sm font-medium text-black transition hover:bg-neutral-200;
+  }
+
+  .field {
+    @apply h-11 w-full border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-[#2D5D5E];
+  }
+
+  .textarea-field {
+    @apply min-h-28 w-full border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#2D5D5E];
+  }
+
+  .field-label {
+    @apply flex flex-col gap-2 text-sm font-medium;
   }
 }

@@ -1,34 +1,32 @@
-import { Button, Card, CardBody, Chip, Link } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { CreateCampaignForm } from "@/components/create-campaign-form";
 
 export default function CreateCampaignPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-12">
-      <Button
-        as={Link}
-        className="w-fit"
-        href="/"
-        radius="sm"
-        startContent={<ArrowLeft size={18} />}
-        variant="light"
-      >
-        Volver
-      </Button>
-      <Card radius="sm" shadow="sm">
-        <CardBody className="gap-4 p-8">
-          <Chip color="primary" radius="sm" variant="flat">
+    <main className="min-h-screen bg-white text-black">
+      <section className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
+        <Link className="inline-flex w-fit items-center gap-2 text-sm" href="/">
+          <ArrowLeft size={18} />
+          Volver
+        </Link>
+
+        <div className="space-y-3">
+          <span className="inline-flex w-fit bg-neutral-100 px-3 py-1 text-sm font-medium text-black">
             Crear campaña
-          </Chip>
-          <h1 className="text-3xl font-semibold tracking-normal">
-            Estamos preparando este flujo.
+          </span>
+          <h1 className="text-3xl font-semibold tracking-normal md:text-4xl">
+            Cuéntanos quién está respondiendo y cómo puede recibir ayuda.
           </h1>
-          <p className="leading-7 text-foreground-600">
-            La creación de campañas será el siguiente paso del producto. Primero
-            dejaremos listo el flujo público, revisión admin y reglas de
-            transparencia para publicar campañas con seguridad.
+          <p className="max-w-2xl leading-7 text-neutral-700">
+            Las campañas se publican después de una revisión manual. Venayuda no
+            procesa pagos; solo ayuda a publicar instrucciones, reportar aportes
+            y mantener seguimiento transparente.
           </p>
-        </CardBody>
-      </Card>
+        </div>
+
+        <CreateCampaignForm />
+      </section>
     </main>
   );
 }

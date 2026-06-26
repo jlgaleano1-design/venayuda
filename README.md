@@ -14,6 +14,13 @@ Esta primera version crea una base solida: proyecto Next.js, estructura para Sup
 - Supabase Auth para admins
 - Supabase Storage para comprobantes, facturas, fotos y tickets
 
+## Direccion visual
+
+- Fondo blanco, texto negro, sin dark mode.
+- CTA principal: fondo `#2D5D5E` con texto `#FAE880`.
+- CTA secundario: gris claro.
+- Componentes base: HeroUI con Tailwind CSS.
+
 ## Modelo de producto
 
 Esto no es un sistema bancario ni una reconciliacion automatica. Es un ledger manual de transparencia por campana:
@@ -107,6 +114,19 @@ La conversion no es automatica en esta version. El admin debe capturar o confirm
 - Fase 2: home publica con hero, filtros por categoria de recepcion y cards de campana.
 - Fase 3: detalle de campana, metodos de pago y flujo "Avisar que done".
 - Fase 4: panel admin para aprobar campanas, verificar donaciones y aprobar compras.
+
+## MVP actual
+
+El MVP frontend ya deja navegable el flujo principal con datos semilla en codigo:
+
+- `/`: home publica con hero, CTAs, filtros sticky y cards de campana.
+- `/campanas/[slug]`: detalle publico de campana con metodos de pago, resumen, donaciones y compras.
+- `/campanas/[slug]/donar`: formulario visual para reportar una donacion externa.
+- `/campanas/crear`: formulario visual para solicitar una nueva campana.
+- `/admin/login`: entrada visual para admins.
+- `/admin`: panel operativo inicial con colas de revision.
+
+Los datos semilla viven en `lib/demo-data.ts`. El siguiente paso tecnico es reemplazarlos por consultas a Supabase usando las vistas `public_*` y crear inserts reales para solicitudes de campana y reportes de donacion.
 
 ## Correr localmente
 

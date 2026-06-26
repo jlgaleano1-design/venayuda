@@ -1,0 +1,52 @@
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { DonationReportForm } from "@/components/donation-report-form";
+import { campaigns, getCampaign } from "@/lib/demo-data";
+
+export function generateStaticParams() {
+  return campaigns.map((campaign) => ({ slug: campaign.slug }));
+}
+
+export default async function DonationReportPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const campaign = getCampaign(slug);
+
+  if (!campaign) {
+    notFound();
+  }
+
+  return (
+    <main className="min-h-screen bg-white text-black">
+      <section className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
+        <Link
+          className="inline-flex w-fit items-center gap-2 text-sm"
+          href={`/campanas/${campaign.slug}`}
+        >
+          <ArrowLeft size={18} />
+          Volver a la campaña
+        </Link>
+
+        <div className="space-y-3">
+          <span className="inline-flex w-fit bg-neutral-100 px-3 py-1 text-sm font-medium text-black">
+            Avisar que doné
+          </span>
+          <h1 className="text-3xl font-semibold tracking-normal">
+            Reporta tu aporte a {campaign.title}
+          </h1>
+          <p className="leading-7 text-neutral-700">
+            Este formulario no procesa pagos. Solo registra que donaste por un
+            método externo para que el equipo pueda revisar el comprobante y
+            publicar el aporte cuando sea verificado.
+          </p>
+        </div>
+
+        <DonationReportForm campaign={campaign} />
+      </section>
+    </main>
+  );
+}

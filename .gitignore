@@ -1,9 +1,11 @@
 node_modules
 .next
+.pnpm-store
 .env
 .env*.local
 coverage
 dist
 .DS_Store
+tsconfig.tsbuildinfo
 supabase/.branches
 supabase/.temp

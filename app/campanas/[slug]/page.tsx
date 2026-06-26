@@ -1,0 +1,204 @@
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { campaigns, formatUsd, getCampaign } from "@/lib/demo-data";
+
+const categoryLabels: Record<string, string> = {
+  mexico: "Mexico",
+  united_states: "Estados Unidos",
+  venezuela: "Venezuela",
+  international: "Internacional",
+};
+
+export function generateStaticParams() {
+  return campaigns.map((campaign) => ({ slug: campaign.slug }));
+}
+
+export default async function CampaignDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const campaign = getCampaign(slug);
+
+  if (!campaign) {
+    notFound();
+  }
+
+  return (
+    <main className="min-h-screen bg-white text-black">
+      <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
+        <Link
+          className="inline-flex w-fit items-center gap-2 text-sm"
+          href="/#campanas"
+        >
+          <ArrowLeft size={18} />
+          Campañas
+        </Link>
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
+                  {campaign.status === "active" ? "Activa" : "Pausada"}
+                </span>
+                <span className="bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
+                  {campaign.location}
+                </span>
+              </div>
+              <h1 className="text-4xl font-semibold leading-tight tracking-normal md:text-5xl">
+                {campaign.title}
+              </h1>
+              <p className="max-w-3xl text-lg leading-8 text-neutral-700">
+                {campaign.description}
+              </p>
+            </div>
+
+            <section className="border border-neutral-200">
+              <div className="flex flex-col gap-4 p-5">
+                <h2 className="text-xl font-semibold">Quién responde</h2>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Info label="Responsable" value={campaign.responsible} />
+                  <Info
+                    label="Organización"
+                    value={campaign.organization ?? "Independiente"}
+                  />
+                  <Info label="Zona afectada" value={campaign.affectedArea} />
+                </div>
+              </div>
+            </section>
+
+            <section className="border border-neutral-200">
+              <div className="flex flex-col gap-4 p-5">
+                <h2 className="text-xl font-semibold">Métodos disponibles</h2>
+                <div className="grid gap-3">
+                  {campaign.paymentMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      className="border border-neutral-200 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-700">
+                          {categoryLabels[method.receivingCategory]}
+                        </span>
+                        <p className="font-medium">{method.label}</p>
+                        <p className="text-sm text-neutral-600">
+                          {method.currency}
+                        </p>
+                      </div>
+                      <p className="mt-3 text-sm text-neutral-600">
+                        Titular: {method.accountHolder}
+                      </p>
+                      <p className="mt-2 text-sm leading-6">
+                        {method.instructions}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="border border-neutral-200">
+                <div className="flex flex-col gap-4 p-5">
+                  <h2 className="text-xl font-semibold">
+                    Donaciones verificadas
+                  </h2>
+                  {campaign.donations.map((donation) => (
+                    <div key={donation.code} className="space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">{donation.amount}</p>
+                        <span className="bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+                          {donation.code}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-600">
+                        {donation.donor} · {donation.date}
+                      </p>
+                      {donation.message ? (
+                        <p className="text-sm">{donation.message}</p>
+                      ) : null}
+                      <div className="h-px bg-neutral-200" />
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="border border-neutral-200">
+                <div className="flex flex-col gap-4 p-5">
+                  <h2 className="text-xl font-semibold">Compras aprobadas</h2>
+                  {campaign.purchases.map((purchase) => (
+                    <div key={purchase.title} className="space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">{purchase.title}</p>
+                        <p className="text-sm">{purchase.amount}</p>
+                      </div>
+                      <p className="text-sm text-neutral-600">
+                        {purchase.date} ·{" "}
+                        {purchase.invoicePublic
+                          ? "Comprobante publico"
+                          : "Comprobante privado"}
+                      </p>
+                      <div className="h-px bg-neutral-200" />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
+            <section className="border border-neutral-200">
+              <div className="flex flex-col gap-4 p-5">
+                <h2 className="text-xl font-semibold">Transparencia</h2>
+                <Metric
+                  label="Donado verificado"
+                  value={formatUsd(campaign.totals.donated)}
+                />
+                <Metric
+                  label="Gastado aprobado"
+                  value={formatUsd(campaign.totals.spent)}
+                />
+                <Metric
+                  label="Saldo disponible"
+                  value={formatUsd(campaign.totals.balance)}
+                />
+                <Link
+                  className="btn-primary"
+                  href={`/campanas/${campaign.slug}/donar`}
+                >
+                  Avisar que doné
+                  <ExternalLink size={16} />
+                </Link>
+                <p className="text-xs leading-5 text-neutral-600">
+                  Dona por fuera usando uno de los métodos disponibles. Luego
+                  reporta tu aporte para que pueda revisarse manualmente.
+                </p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm text-neutral-500">{label}</p>
+      <p className="font-medium">{value}</p>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-b border-neutral-200 pb-3">
+      <p className="text-sm text-neutral-500">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
