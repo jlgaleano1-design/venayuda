@@ -9,7 +9,7 @@ Esta primera version crea una base solida: proyecto Next.js, estructura para Sup
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- shadcn/ui
+- HeroUI
 - Supabase Postgres
 - Supabase Auth para admins
 - Supabase Storage para comprobantes, facturas, fotos y tickets
@@ -152,11 +152,11 @@ app/
   globals.css
   layout.tsx
   page.tsx
+  providers.tsx
 lib/
   supabase/
     client.ts
     server.ts
-  utils.ts
 supabase/
   config.toml
   migrations/

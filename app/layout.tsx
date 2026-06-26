@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Venayuda Transparencia",
-  description: "Ledger manual de transparencia para donativos y compras.",
+  description: "Campanas de ayuda con transparencia manual.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
