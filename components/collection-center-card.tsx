@@ -86,7 +86,7 @@ export function CollectionCenterCard({
             {center.categories.map((category) => (
               <span
                 key={category}
-                className="tag-pill border border-neutral-300 bg-white text-neutral-700"
+                className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700"
               >
                 {categoryLabels[category]}
               </span>

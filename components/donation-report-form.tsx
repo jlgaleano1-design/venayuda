@@ -3,12 +3,19 @@
 import { Button, Card, Input, TextArea } from "@heroui/react";
 import { useState } from "react";
 import type { Campaign } from "@/lib/demo-data";
+import {
+  buildCampaignDocumentPath,
+  storageBuckets,
+  uploadStorageFile,
+  validateStorageFile,
+} from "@/lib/storage-upload";
 
 export function DonationReportForm({ campaign }: { campaign: Campaign }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [statusMessage, setStatusMessage] = useState("");
+  const [proofFileStatus, setProofFileStatus] = useState("");
 
   async function submitDonationReport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,6 +24,41 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
 
     const formData = new FormData(event.currentTarget);
     const proofFile = formData.get("proof") as File | null;
+    const hasProofFile = Boolean(proofFile?.name);
+    let proofFilePath = "";
+
+    try {
+      if (hasProofFile && proofFile) {
+        const validationError = validateStorageFile(
+          proofFile,
+          storageBuckets.donationProofs,
+        );
+
+        if (validationError) {
+          throw new Error(validationError);
+        }
+
+        setProofFileStatus("Subiendo comprobante...");
+        proofFilePath = await uploadStorageFile({
+          bucket: storageBuckets.donationProofs,
+          file: proofFile,
+          path: buildCampaignDocumentPath({
+            file: proofFile,
+            kind: "proof",
+            slug: campaign.slug,
+          }),
+        });
+        setProofFileStatus("Comprobante subido.");
+      }
+    } catch (error) {
+      setStatus("error");
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo subir el comprobante.",
+      );
+      return;
+    }
 
     const response = await fetch("/api/donation-reports", {
       method: "POST",
@@ -25,19 +67,24 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
         campaignSlug: campaign.slug,
         donorName: formData.get("donorName"),
         donorEmail: formData.get("donorEmail"),
+        isAnonymous: formData.get("isAnonymous") === "on",
         amount: formData.get("amount"),
         currency: formData.get("currency"),
         transferDate: formData.get("transferDate"),
         paymentMethodUsed: formData.get("paymentMethodUsed"),
         transferReference: formData.get("transferReference"),
-        proofFileName: proofFile?.name,
+        proofFilePath,
         publicMessage: formData.get("publicMessage"),
       }),
     });
 
     if (!response.ok) {
+      const errorMessage = await readResponseError(
+        response,
+        "No se pudo enviar el aviso. Inténtalo de nuevo.",
+      );
       setStatus("error");
-      setStatusMessage("No se pudo enviar el aviso. Inténtalo de nuevo.");
+      setStatusMessage(errorMessage);
       return;
     }
 
@@ -46,9 +93,10 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
     setStatusMessage(
       result.confirmationEmailSent
         ? "Reporte enviado. Te mandamos un correo de confirmación."
-        : "Reporte registrado. Falta configurar SMTP para enviar los correos reales.",
+        : "Reporte recibido. Tu aporte quedó registrado para revisión; no pudimos enviar el correo de confirmación.",
     );
     event.currentTarget.reset();
+    setProofFileStatus("");
   }
 
   return (
@@ -65,7 +113,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             />
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" />
+            <input name="isAnonymous" type="checkbox" />
             Donar anónimamente en la vista pública
           </label>
           <div className="grid gap-4 md:grid-cols-3">
@@ -82,7 +130,20 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             label="Referencia / tracking number (opcional)"
             name="transferReference"
           />
-          <TextField label="Comprobante o screenshot" name="proof" type="file" />
+          <TextField
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            label="Comprobante o screenshot"
+            name="proof"
+            statusMessage={proofFileStatus}
+            type="file"
+            onChange={(file) => {
+              const validationError = file
+                ? validateStorageFile(file, storageBuckets.donationProofs)
+                : "";
+
+              setProofFileStatus(validationError);
+            }}
+          />
           <TextAreaField
             label="Mensaje público (opcional)"
             name="publicMessage"
@@ -108,8 +169,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
           ) : null}
           <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
             Al enviar, el aporte quedará pendiente. En el flujo conectado se
-            generará un código como{" "}
-            <span className="font-bold">DON-8F42K</span> y aparecerá
+            generará un código de seguimiento y aparecerá
             públicamente solo después de revisión manual.
           </div>
         </Card.Content>
@@ -118,19 +178,60 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
   );
 }
 
+async function readResponseError(response: Response, fallback: string) {
+  try {
+    const result = await response.json();
+    return typeof result.error === "string" ? result.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function TextField({
+  accept,
   label,
   name,
   placeholder,
   required = false,
+  statusMessage,
   type = "text",
+  onChange,
 }: {
+  accept?: string;
   label: string;
   name: string;
   placeholder?: string;
   required?: boolean;
+  statusMessage?: string;
   type?: string;
+  onChange?: (file: File | null) => void;
 }) {
+  if (type === "file") {
+    return (
+      <label className="field-label">
+        {label}
+        <input
+          accept={accept}
+          className="field"
+          name={name}
+          type="file"
+          onChange={(event) => onChange?.(event.target.files?.[0] ?? null)}
+        />
+        {statusMessage ? (
+          <span
+            className={`text-xs font-bold ${
+              statusMessage.includes("no permitido")
+                ? "text-red-700"
+                : "text-[#2D5D5E]"
+            }`}
+          >
+            {statusMessage}
+          </span>
+        ) : null}
+      </label>
+    );
+  }
+
   return (
     <label className="field-label">
       {label}

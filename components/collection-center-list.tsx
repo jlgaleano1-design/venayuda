@@ -45,7 +45,7 @@ export function CollectionCenterList({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-20 -mx-6 border-y border-neutral-200 bg-white/95 px-6 py-3 backdrop-blur">
+      <div className="sticky top-0 z-20 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
         <div className="mx-auto grid max-w-6xl gap-3">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {collectionCenterFilters.map((item) => (
@@ -55,7 +55,7 @@ export function CollectionCenterList({
                 className={
                   filter === item.key
                     ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-black"
+                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515]"
                 }
                 type="button"
                 onClick={() => setFilter(item.key)}

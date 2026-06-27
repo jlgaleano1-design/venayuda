@@ -4,12 +4,26 @@ import { Button, Card, Input, TextArea } from "@heroui/react";
 import { Camera, CheckCircle2, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Campaign } from "@/lib/demo-data";
+import {
+  buildPurchaseDocumentPath,
+  storageBuckets,
+  uploadStorageFile,
+  validateStorageFile,
+} from "@/lib/storage-upload";
 
-export function CreatorUpdateForm({ campaign }: { campaign: Campaign }) {
+type CreatorUpdateCampaign = Pick<Campaign, "creatorAccessCode" | "slug" | "title">;
+
+export function CreatorUpdateForm({
+  campaign,
+}: {
+  campaign: CreatorUpdateCampaign;
+}) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [photoName, setPhotoName] = useState("");
+  const [photoStatus, setPhotoStatus] = useState("");
+  const [invoiceStatus, setInvoiceStatus] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
 
   async function submitUpdate(event: React.FormEvent<HTMLFormElement>) {
@@ -20,6 +34,65 @@ export function CreatorUpdateForm({ campaign }: { campaign: Campaign }) {
     const formData = new FormData(event.currentTarget);
     const photo = formData.get("photo") as File | null;
     const invoice = formData.get("invoice") as File | null;
+    const hasInvoice = Boolean(invoice?.name);
+    const purchaseId = crypto.randomUUID();
+    const uploadTimestamp = Date.now();
+    let photoFilePath = "";
+    let invoiceFilePath = "";
+
+    try {
+      const photoValidationError = validateStorageFile(
+        photo,
+        storageBuckets.purchaseDocuments,
+      );
+
+      if (photoValidationError) {
+        throw new Error(photoValidationError);
+      }
+
+      setPhotoStatus("Subiendo foto...");
+      photoFilePath = await uploadStorageFile({
+        bucket: storageBuckets.purchaseDocuments,
+        file: photo as File,
+        path: buildPurchaseDocumentPath({
+          file: photo as File,
+          kind: "photo",
+          purchaseId,
+          timestamp: uploadTimestamp,
+        }),
+      });
+      setPhotoStatus("Foto subida.");
+
+      if (hasInvoice && invoice) {
+        const invoiceValidationError = validateStorageFile(
+          invoice,
+          storageBuckets.purchaseDocuments,
+        );
+
+        if (invoiceValidationError) {
+          throw new Error(invoiceValidationError);
+        }
+
+        setInvoiceStatus("Subiendo factura...");
+        invoiceFilePath = await uploadStorageFile({
+          bucket: storageBuckets.purchaseDocuments,
+          file: invoice,
+          path: buildPurchaseDocumentPath({
+            file: invoice,
+            kind: "invoice",
+            purchaseId,
+            timestamp: uploadTimestamp,
+          }),
+        });
+        setInvoiceStatus("Factura subida.");
+      }
+    } catch (error) {
+      setStatus("error");
+      setStatusMessage(
+        error instanceof Error ? error.message : "No se pudo subir el archivo.",
+      );
+      return;
+    }
 
     const response = await fetch("/api/creator-updates", {
       method: "POST",
@@ -33,19 +106,26 @@ export function CreatorUpdateForm({ campaign }: { campaign: Campaign }) {
         currency: formData.get("currency"),
         purchaseDate: formData.get("purchaseDate"),
         vendor: formData.get("vendor"),
-        photoFileName: photo?.name,
-        invoiceFileName: invoice?.name,
+        purchaseId,
+        photoFilePath,
+        invoiceFilePath,
       }),
     });
 
     if (!response.ok) {
+      const errorMessage = await readResponseError(
+        response,
+        "No se pudo enviar la novedad. Inténtalo de nuevo.",
+      );
       setStatus("error");
-      setStatusMessage("No se pudo enviar la novedad. Inténtalo de nuevo.");
+      setStatusMessage(errorMessage);
       return;
     }
 
     setStatus("sent");
     setPhotoName("");
+    setPhotoStatus("");
+    setInvoiceStatus("");
     setStatusMessage(
       "Novedad recibida. Quedará pendiente hasta que el equipo la revise y apruebe.",
     );
@@ -85,34 +165,59 @@ export function CreatorUpdateForm({ campaign }: { campaign: Campaign }) {
 
           <label className="field-label">
             Foto de la compra
-            <span className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-white">
-              <span className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#2D5D5E]">
+            <span className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
+              <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
                 <Camera size={20} />
               </span>
-              <span className="text-sm font-black text-black">
+              <span className="text-sm font-black text-[#121515]">
                 {photoName || "Subir foto clara de lo comprado"}
               </span>
               <span className="text-xs leading-5 text-neutral-500">
                 La foto ayuda a que donantes vean en qué se convirtió el aporte.
               </span>
             </span>
-            <Input
+            <input
               accept="image/png,image/jpeg,image/webp"
               className="sr-only"
               name="photo"
               required
               type="file"
-              variant="secondary"
-              onChange={(event) =>
-                setPhotoName(event.target.files?.[0]?.name ?? "")
-              }
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                const validationError = file
+                  ? validateStorageFile(file, storageBuckets.purchaseDocuments)
+                  : "";
+
+                setPhotoName(validationError ? "" : (file?.name ?? ""));
+                setPhotoStatus(validationError);
+              }}
             />
+            {photoStatus ? (
+              <span
+                className={`text-xs font-bold ${
+                  photoStatus.includes("no permitido")
+                    ? "text-red-700"
+                    : "text-[#2D5D5E]"
+                }`}
+              >
+                {photoStatus}
+              </span>
+            ) : null}
           </label>
 
           <TextField
+            accept="image/png,image/jpeg,image/webp,application/pdf"
             label="Factura, ticket o captura adicional"
             name="invoice"
+            statusMessage={invoiceStatus}
             type="file"
+            onChange={(file) => {
+              const validationError = file
+                ? validateStorageFile(file, storageBuckets.purchaseDocuments)
+                : "";
+
+              setInvoiceStatus(validationError);
+            }}
           />
           <TextAreaField label="Descripción breve" name="description" />
 
@@ -149,17 +254,58 @@ export function CreatorUpdateForm({ campaign }: { campaign: Campaign }) {
   );
 }
 
+async function readResponseError(response: Response, fallback: string) {
+  try {
+    const result = await response.json();
+    return typeof result.error === "string" ? result.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function TextField({
+  accept,
   label,
   name,
   required = false,
+  statusMessage,
   type = "text",
+  onChange,
 }: {
+  accept?: string;
   label: string;
   name: string;
   required?: boolean;
+  statusMessage?: string;
   type?: string;
+  onChange?: (file: File | null) => void;
 }) {
+  if (type === "file") {
+    return (
+      <label className="field-label">
+        {label}
+        <input
+          accept={accept}
+          className="field"
+          name={name}
+          type="file"
+          onChange={(event) => onChange?.(event.target.files?.[0] ?? null)}
+        />
+        {statusMessage ? (
+          <span
+            className={`text-xs font-bold ${
+              statusMessage.includes("no permitido")
+                ? "text-red-700"
+                : "text-[#2D5D5E]"
+            }`}
+          >
+            {statusMessage}
+          </span>
+        ) : null}
+      </label>
+    );
+  }
+
   return (
     <label className="field-label">
       {label}

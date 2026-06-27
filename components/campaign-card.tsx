@@ -4,10 +4,15 @@ import Link from "next/link";
 import { Campaign, formatUsd } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
-  mexico: "Dona desde México",
-  united_states: "Dona desde Estados Unidos",
-  venezuela: "Dona desde Venezuela",
-  international: "Dona desde otro país",
+  mexico: "México",
+  united_states: "Estados Unidos",
+  venezuela: "Venezuela",
+  spain: "España",
+  panama: "Panamá",
+  colombia: "Colombia",
+  chile: "Chile",
+  argentina: "Argentina",
+  international: "Otros países",
 };
 
 const statusLabels: Record<Campaign["status"], string> = {
@@ -67,7 +72,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
           {campaign.receivingCategories.map((category) => (
             <span
               key={category}
-              className="tag-pill border border-neutral-300 bg-white text-neutral-700"
+              className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700"
             >
               {categoryLabels[category]}
             </span>

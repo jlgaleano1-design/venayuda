@@ -10,6 +10,8 @@ type CookieToSet = {
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const { pathname, search } = request.nextUrl;
+  const isLoginRoute = pathname === "/admin/login";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -38,10 +40,49 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    if (isLoginRoute) {
+      return response;
+    }
+
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/admin/login";
+    redirectUrl.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  const { data: profile } = await supabase
+    .from("admin_profiles")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!profile) {
+    if (isLoginRoute) {
+      return response;
+    }
+
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/admin/login";
+    redirectUrl.search = "?error=inactive";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (isLoginRoute) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/admin";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/admin/:path*"],
 };

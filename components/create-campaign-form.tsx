@@ -1,22 +1,43 @@
 "use client";
 
-import { Button, Card, Input, TextArea } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import {
+  AlertCircle,
   CheckCircle2,
   ChevronDown,
-  ExternalLink,
   ImageIcon,
   Plus,
+  Trash2,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { campaigns } from "@/lib/demo-data";
+import {
+  buildCampaignAssetPath,
+  storageBuckets,
+  uploadStorageFile,
+  validateStorageFile,
+} from "@/lib/storage-upload";
 
 const categories = [
   ["mexico", "México"],
   ["united_states", "Estados Unidos"],
   ["venezuela", "Venezuela"],
-  ["international", "Internacional / otro"],
+  ["spain", "España"],
+  ["panama", "Panamá"],
+  ["colombia", "Colombia"],
+  ["chile", "Chile"],
+  ["argentina", "Argentina"],
+  ["international", "Otros países"],
+];
+
+const affectedZones = [
+  "La Guaira / Litoral",
+  "Caracas",
+  "Yumare / Moron",
+  "Puerto Cabello y alrededores",
+  "Costa de Aragua",
+  "Otros",
 ];
 
 type PaymentMethodDraft = {
@@ -48,11 +69,20 @@ export function CreateCampaignForm() {
     createEmptyPaymentMethod(1),
   ]);
   const [nextPaymentMethodId, setNextPaymentMethodId] = useState(2);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverImageName, setCoverImageName] = useState("");
+  const [coverImageStatus, setCoverImageStatus] = useState("");
   const [shareField, setShareField] = useState("");
+  const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submissionResult, setSubmissionResult] = useState<{
+    approvalEmailSent: boolean;
+    reason?: string;
+    publicCampaignUrl: string;
+  } | null>(null);
 
-  const demoCreatorLink = "/creador/creador-med-valencia";
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   );
@@ -61,11 +91,30 @@ export function CreateCampaignForm() {
   const isShareFieldTaken = campaigns.some(
     (campaign) => campaign.slug === shareSlug,
   );
-  const canSubmit = shareSlug.length > 0 && !isShareFieldTaken;
+  const hasEmail = email.trim().length > 0;
+  const isEmailValid = isValidEmail(email);
+  const paymentMethodsToSubmit = paymentMethods.filter(isPaymentMethodStarted);
+  const incompletePaymentMethodIndex = paymentMethods.findIndex(
+    (method) => isPaymentMethodStarted(method) && !isPaymentMethodComplete(method),
+  );
+  const arePaymentMethodsComplete =
+    paymentMethodsToSubmit.length > 0 && incompletePaymentMethodIndex === -1;
+  const canSubmit =
+    shareSlug.length > 0 &&
+    !isShareFieldTaken &&
+    isEmailValid &&
+    arePaymentMethodsComplete;
+  const submitBlockReason = getSubmitBlockReason({
+    hasEmail,
+    hasPaymentMethod: paymentMethodsToSubmit.length > 0,
+    incompletePaymentMethodIndex,
+    isEmailValid,
+    isShareFieldTaken,
+    shareSlug,
+  });
   const lastPaymentMethod = paymentMethods[paymentMethods.length - 1];
   const canAddPaymentMethod =
     Boolean(lastPaymentMethod) && isPaymentMethodComplete(lastPaymentMethod);
-  const arePaymentMethodsComplete = paymentMethods.every(isPaymentMethodComplete);
   const publicCampaignLink = `${siteUrl}/${shareSlug || "tu-campana"}`;
 
   function addPaymentMethod() {
@@ -100,12 +149,82 @@ export function CreateCampaignForm() {
     );
   }
 
-  function submitCampaignRequest() {
+  function deletePaymentMethod(id: number) {
+    setPaymentMethods((currentMethods) => {
+      if (currentMethods.length === 1) {
+        return currentMethods;
+      }
+
+      return currentMethods.filter((method) => method.id !== id);
+    });
+  }
+
+  async function submitCampaignRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (!canSubmit || !arePaymentMethodsComplete) {
       return;
     }
 
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      let coverImagePath = "";
+
+      if (coverImageFile) {
+        setCoverImageStatus("Subiendo imagen de portada...");
+        coverImagePath = await uploadStorageFile({
+          bucket: storageBuckets.campaignAssets,
+          file: coverImageFile,
+          path: buildCampaignAssetPath(shareSlug, coverImageFile),
+        });
+        setCoverImageStatus("Imagen de portada subida.");
+      }
+
+      const response = await fetch("/api/campaign-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: String(formData.get("title") ?? ""),
+          responsibleName: String(formData.get("responsiblePersonName") ?? ""),
+          organization: String(formData.get("responsibleOrganization") ?? ""),
+          instagramHandle: String(formData.get("instagramHandle") ?? ""),
+          email,
+          affectedArea: String(formData.get("affectedArea") ?? ""),
+          slug: shareSlug,
+          description: String(formData.get("description") ?? ""),
+          coverImageName: coverImagePath,
+          paymentMethods: paymentMethodsToSubmit.map(toPaymentMethodPayload),
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "No pudimos enviar la solicitud.");
+      }
+
+      setSubmissionResult({
+        approvalEmailSent: Boolean(result.approvalEmailSent),
+        reason:
+          typeof result.reason === "string"
+            ? normalizeOperationalReason(result.reason)
+            : undefined,
+        publicCampaignUrl: result.publicCampaignUrl ?? publicCampaignLink,
+      });
+      setIsSubmitted(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "No pudimos enviar la solicitud.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (isSubmitted) {
@@ -117,52 +236,71 @@ export function CreateCampaignForm() {
             <div>
               <h2 className="text-xl font-extrabold">Solicitud recibida</h2>
               <p className="mt-2 leading-7 text-neutral-700">
-                Después de la revisión, el equipo envía a la persona responsable
-                un enlace privado para subir novedades de compras con foto. En
-                esta demo puedes abrirlo de una vez.
+                Guardamos la solicitud como pendiente de revisión. Cuando se
+                apruebe, la campaña se publica y la persona responsable recibe
+                su enlace privado para subir novedades.
               </p>
             </div>
           </div>
 
+          {submissionResult?.approvalEmailSent ? (
+            <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#FFFCF8] p-4">
+              <p className="font-extrabold text-[#2D5D5E]">
+                Correo de revisión enviado
+              </p>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                La solicitud llegó al correo configurado para aprobar o rechazar
+                campañas.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-start gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
+              <AlertCircle className="mt-0.5 shrink-0 text-amber-700" size={20} />
+              <div>
+                <p className="font-extrabold text-amber-900">
+                  Solicitud guardada, correo pendiente
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-900/80">
+                  Recibimos tu solicitud. El correo automático de revisión no
+                  pudo enviarse, pero tu información no se perdió
+                  {submissionResult?.reason ? ` (${submissionResult.reason})` : ""}.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-[1.5rem] border border-neutral-200 p-4">
-            <p className="text-sm font-bold text-neutral-500">
-              Link público para compartir
-            </p>
-            <p className="mt-2 break-all font-extrabold">
-              {publicCampaignLink}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-neutral-500">
+                  Link solicitado
+                </p>
+                <p className="mt-2 break-all font-extrabold text-[#2D5D5E]">
+                  {submissionResult?.publicCampaignUrl ?? publicCampaignLink}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
+                <CheckCircle2 size={15} />
+                Coincide con tu link personalizado
+              </span>
+            </div>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Este es el campo personalizado de la campaña. Es público, corto y
-              fácil de mandar por WhatsApp, Instagram o correo.
+              Este enlace se activa cuando confirmas desde el correo. Antes de
+              aprobar no aparece en el listado público ni se puede compartir
+              como campaña activa.
             </p>
           </div>
 
           <div className="rounded-[1.5rem] border border-neutral-200 p-4">
             <p className="text-sm font-bold text-neutral-500">
-              Enlace privado del creador
+              Acceso privado del organizador
             </p>
-            <p className="mt-2 break-all font-extrabold">
-              {demoCreatorLink}
-            </p>
+            <p className="mt-2 font-extrabold">Pendiente de aprobación</p>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Este enlace no aparece públicamente. Permite reportar compras y
-              adjuntar fotos; todo queda pendiente de aprobación.
+              Este enlace no se muestra públicamente. Se genera con un token
+              privado cuando el equipo aprueba la campaña y permite reportar
+              compras con foto.
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <a className="btn-primary" href={demoCreatorLink}>
-              Abrir portal del creador
-              <ExternalLink size={16} />
-            </a>
-            <Button
-              className="btn-secondary"
-              type="button"
-              variant="secondary"
-              onPress={() => setIsSubmitted(false)}
-            >
-              Crear otra solicitud
-            </Button>
           </div>
         </Card.Content>
       </Card>
@@ -171,20 +309,28 @@ export function CreateCampaignForm() {
 
   return (
     <Card className="surface-card shadow-none">
-      <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
+      <form onSubmit={submitCampaignRequest}>
+        <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Título de la campaña" />
-          <TextField label="Persona responsable" />
-          <TextField label="Organización (opcional)" />
-          <TextField label="@ de Instagram (opcional)" />
-          <TextField label="Correo electrónico" type="email" />
-          <TextField label="Número de WhatsApp" type="tel" />
-          <TextField label="Zona afectada" />
+          <TextField label="Título de la campaña" name="title" required />
+          <TextField
+            label="Persona responsable"
+            name="responsiblePersonName"
+            required
+          />
+          <TextField label="Organización (opcional)" name="responsibleOrganization" />
+          <TextField label="@ de Instagram (opcional)" name="instagramHandle" />
+          <EmailField
+            isInvalid={hasEmail && !isEmailValid}
+            value={email}
+            onChange={setEmail}
+          />
+          <SelectField label="Zona afectada" name="affectedArea" options={affectedZones} />
         </div>
         <label className="field-label">
           Link personalizado para compartir
           <div
-            className={`flex min-h-11 items-center rounded-full border bg-white px-4 text-sm ${
+            className={`flex min-h-11 items-center rounded-full border bg-[#FFFCF8] px-4 text-sm ${
               isShareFieldTaken
                 ? "border-red-300"
                 : shareSlug
@@ -196,7 +342,7 @@ export function CreateCampaignForm() {
             <input
               aria-invalid={isShareFieldTaken}
               className="min-w-0 flex-1 bg-transparent font-bold outline-none"
-              placeholder="medicinas-valencia"
+              placeholder="ayuda-la-guaira"
               value={shareField}
               onChange={(event) =>
                 setShareField(normalizeShareField(event.target.value))
@@ -215,18 +361,23 @@ export function CreateCampaignForm() {
             </span>
           ) : (
             <span className="text-xs leading-5 text-neutral-500">
-              Usa letras, números y guiones. Por ejemplo: alimentos-maracay.
+              Usa letras, números y guiones. Por ejemplo: ayuda-la-guaira.
             </span>
           )}
         </label>
-        <TextAreaField label="Descripción / historia" />
+        <TextAreaField
+          helperText="Explica para qué necesitas las donaciones, qué se comprará o cubrirá y por qué es urgente. Si no queda claro el uso del dinero, la campaña podría no ser aprobada."
+          label="Descripción / historia"
+          name="description"
+          required
+        />
         <label className="field-label">
           Imagen de portada
-          <span className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-white">
-            <span className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#2D5D5E]">
+          <span className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
+            <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
               <ImageIcon size={20} />
             </span>
-            <span className="text-sm font-black text-black">
+            <span className="text-sm font-black text-[#121515]">
               {coverImageName || "Subir imagen de la campaña"}
             </span>
             <span className="text-xs leading-5 text-neutral-500">
@@ -237,15 +388,32 @@ export function CreateCampaignForm() {
               Elegir archivo
             </span>
           </span>
-          <Input
+          <input
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
             type="file"
-            variant="secondary"
-            onChange={(event) =>
-              setCoverImageName(event.target.files?.[0]?.name ?? "")
-            }
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              const validationError = file
+                ? validateStorageFile(file, storageBuckets.campaignAssets)
+                : "";
+
+              setCoverImageFile(validationError ? null : file);
+              setCoverImageName(validationError ? "" : (file?.name ?? ""));
+              setCoverImageStatus(validationError);
+            }}
           />
+          {coverImageStatus ? (
+            <span
+              className={`text-xs font-bold ${
+                coverImageStatus.includes("no permitido")
+                  ? "text-red-700"
+                  : "text-[#2D5D5E]"
+              }`}
+            >
+              {coverImageStatus}
+            </span>
+          ) : null}
         </label>
         <div className="border-t border-neutral-200 pt-5">
           <h2 className="font-extrabold">Métodos de recepción de pago</h2>
@@ -263,6 +431,13 @@ export function CreateCampaignForm() {
               isOpen={method.isOpen}
               isComplete={isPaymentMethodComplete(method)}
               method={method}
+              showRequiredErrors={
+                isPaymentMethodStarted(method) && !isPaymentMethodComplete(method)
+              }
+              canDelete={
+                paymentMethods.length > 1 && isPaymentMethodComplete(method)
+              }
+              onDelete={() => deletePaymentMethod(method.id)}
               onToggle={() => togglePaymentMethod(method.id)}
               onUpdate={(field, value) =>
                 updatePaymentMethod(method.id, field, value)
@@ -272,7 +447,7 @@ export function CreateCampaignForm() {
         </div>
 
         <Button
-          className="min-h-14 w-full !justify-center !rounded-full bg-neutral-100 px-6 py-3 font-black text-black"
+          className="min-h-14 w-full !justify-center !rounded-full bg-neutral-100 px-6 py-3 font-black text-[#121515]"
           isDisabled={!canAddPaymentMethod}
           type="button"
           variant="secondary"
@@ -289,17 +464,26 @@ export function CreateCampaignForm() {
           </p>
         ) : null}
 
+        {submitError ? (
+          <p className="rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            {submitError}
+          </p>
+        ) : null}
+
         <Button
           className="inline-flex min-h-14 w-fit items-center gap-2 whitespace-nowrap !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
-          isDisabled={!canSubmit || !arePaymentMethodsComplete}
-          type="button"
+          isDisabled={!canSubmit || isSubmitting}
+          type="submit"
           variant="primary"
-          onPress={submitCampaignRequest}
         >
           <Plus className="shrink-0" size={18} />
-          <span>Enviar solicitud</span>
+          <span>{isSubmitting ? "Enviando..." : "Enviar solicitud"}</span>
         </Button>
-      </Card.Content>
+        {!canSubmit && submitBlockReason ? (
+          <p className="text-sm font-bold text-red-700">{submitBlockReason}</p>
+        ) : null}
+        </Card.Content>
+      </form>
     </Card>
   );
 }
@@ -318,6 +502,22 @@ function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
 }
 
+function normalizeOperationalReason(reason: string) {
+  if (
+    /smtp|approval_recipient_email|campaign_review_secret|configur|correo/i.test(
+      reason,
+    )
+  ) {
+    return "el servicio de correo no está disponible";
+  }
+
+  return reason;
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 function isPaymentMethodComplete(method: PaymentMethodDraft) {
   return [
     method.receivingCategory,
@@ -325,8 +525,70 @@ function isPaymentMethodComplete(method: PaymentMethodDraft) {
     method.accountHolder,
     method.bank,
     method.accountReference,
-    method.transferInstructions,
   ].every((value) => value.trim().length > 0);
+}
+
+function isPaymentMethodStarted(method: PaymentMethodDraft) {
+  return [
+    method.methodName,
+    method.accountHolder,
+    method.bank,
+    method.accountReference,
+    method.transferInstructions,
+  ].some((value) => value.trim().length > 0);
+}
+
+function getSubmitBlockReason({
+  hasEmail,
+  hasPaymentMethod,
+  incompletePaymentMethodIndex,
+  isEmailValid,
+  isShareFieldTaken,
+  shareSlug,
+}: {
+  hasEmail: boolean;
+  hasPaymentMethod: boolean;
+  incompletePaymentMethodIndex: number;
+  isEmailValid: boolean;
+  isShareFieldTaken: boolean;
+  shareSlug: string;
+}) {
+  if (!shareSlug) {
+    return "Agrega un link personalizado para poder enviar la solicitud.";
+  }
+
+  if (isShareFieldTaken) {
+    return "El link personalizado ya está usado. Prueba con otro nombre.";
+  }
+
+  if (!hasEmail) {
+    return "Agrega un correo electrónico para recibir el seguimiento de la solicitud.";
+  }
+
+  if (!isEmailValid) {
+    return "Corrige el correo electrónico para poder enviar la solicitud.";
+  }
+
+  if (!hasPaymentMethod) {
+    return "Agrega al menos un método de pago completo. Los métodos adicionales vacíos no bloquean el envío.";
+  }
+
+  if (incompletePaymentMethodIndex >= 0) {
+    return `Completa los campos obligatorios del método ${incompletePaymentMethodIndex + 1} o déjalo totalmente vacío.`;
+  }
+
+  return "";
+}
+
+function toPaymentMethodPayload(method: PaymentMethodDraft) {
+  return {
+    receivingCategory: method.receivingCategory,
+    methodName: method.methodName,
+    accountHolder: method.accountHolder,
+    bank: method.bank,
+    accountReference: method.accountReference,
+    transferInstructions: method.transferInstructions,
+  };
 }
 
 function PaymentMethodPanel({
@@ -334,6 +596,9 @@ function PaymentMethodPanel({
   isOpen,
   isComplete,
   method,
+  showRequiredErrors,
+  canDelete,
+  onDelete,
   onToggle,
   onUpdate,
 }: {
@@ -341,6 +606,9 @@ function PaymentMethodPanel({
   isOpen: boolean;
   isComplete: boolean;
   method: PaymentMethodDraft;
+  showRequiredErrors: boolean;
+  canDelete: boolean;
+  onDelete: () => void;
   onToggle: () => void;
   onUpdate: (
     field: keyof Omit<PaymentMethodDraft, "id" | "isOpen">,
@@ -349,31 +617,44 @@ function PaymentMethodPanel({
 }) {
   return (
     <section className="rounded-[1.5rem] border border-neutral-200">
-      <Button
-        aria-expanded={isOpen}
-        className="flex h-auto w-full items-center justify-between gap-3 !rounded-[1.5rem] bg-neutral-50 px-4 py-3 text-left font-black text-black"
-        type="button"
-        variant="secondary"
-        onPress={onToggle}
-      >
-        <span className="inline-flex items-center gap-2">
-          <span>Método {index + 1}</span>
-          <span
-            className={`inline-flex size-6 items-center justify-center rounded-full ${
-              isComplete
-                ? "bg-[#2D5D5E] text-[#FAE880]"
-                : "bg-neutral-200 text-neutral-500"
-            }`}
-            title={isComplete ? "Método listo" : "Método incompleto"}
-          >
-            <CheckCircle2 size={15} />
+      <div className="flex items-center gap-2 rounded-[1.5rem] bg-neutral-50 px-3 py-2">
+        <Button
+          aria-expanded={isOpen}
+          className="flex h-auto min-h-11 flex-1 items-center justify-between gap-3 !rounded-full bg-transparent px-2 py-2 text-left font-black text-[#121515]"
+          type="button"
+          variant="secondary"
+          onPress={onToggle}
+        >
+          <span className="inline-flex items-center gap-2">
+            <span>Método {index + 1}</span>
+            <span
+              className={`inline-flex size-6 items-center justify-center rounded-full ${
+                isComplete
+                  ? "bg-[#2D5D5E] text-[#FAE880]"
+                  : "bg-neutral-200 text-neutral-500"
+              }`}
+              title={isComplete ? "Método listo" : "Método incompleto"}
+            >
+              <CheckCircle2 size={15} />
+            </span>
           </span>
-        </span>
-        <ChevronDown
-          className={`shrink-0 transition ${isOpen ? "rotate-180" : ""}`}
-          size={18}
-        />
-      </Button>
+          <ChevronDown
+            className={`shrink-0 transition ${isOpen ? "rotate-180" : ""}`}
+            size={18}
+          />
+        </Button>
+        {canDelete ? (
+          <button
+            aria-label={`Borrar método ${index + 1}`}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
+            title="Borrar método"
+            type="button"
+            onClick={onDelete}
+          >
+            <Trash2 size={18} />
+          </button>
+        ) : null}
+      </div>
 
       {isOpen ? (
         <div className="grid gap-4 p-4 md:grid-cols-2">
@@ -396,27 +677,35 @@ function PaymentMethodPanel({
           </label>
           <PaymentTextField
             label="Método (SPEI, Zelle, Pago móvil...)"
+            showError={showRequiredErrors && method.methodName.trim().length === 0}
             value={method.methodName}
             onChange={(value) => onUpdate("methodName", value)}
           />
           <PaymentTextField
             label="Titular / destinatario"
+            showError={
+              showRequiredErrors && method.accountHolder.trim().length === 0
+            }
             value={method.accountHolder}
             onChange={(value) => onUpdate("accountHolder", value)}
           />
           <PaymentTextField
             label="Banco"
+            showError={showRequiredErrors && method.bank.trim().length === 0}
             value={method.bank}
             onChange={(value) => onUpdate("bank", value)}
           />
           <PaymentTextField
             label="Número de cuenta / correo"
+            showError={
+              showRequiredErrors && method.accountReference.trim().length === 0
+            }
             value={method.accountReference}
             onChange={(value) => onUpdate("accountReference", value)}
           />
           <div className="md:col-span-2">
             <PaymentTextAreaField
-              label="Instrucciones de transferencia"
+              label="Instrucciones de transferencia (opcional)"
               value={method.transferInstructions}
               onChange={(value) => onUpdate("transferInstructions", value)}
             />
@@ -429,10 +718,12 @@ function PaymentMethodPanel({
 
 function PaymentTextField({
   label,
+  showError,
   value,
   onChange,
 }: {
   label: string;
+  showError: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -440,12 +731,18 @@ function PaymentTextField({
     <label className="field-label">
       {label}
       <input
-        className="field"
+        aria-invalid={showError}
+        className={`field ${showError ? "border-red-300 focus:border-red-600" : ""}`}
         required
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
+      {showError ? (
+        <span className="text-xs font-bold text-red-700">
+          Este campo es obligatorio si usas este método.
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -464,7 +761,6 @@ function PaymentTextAreaField({
       {label}
       <textarea
         className="textarea-field"
-        required
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -472,20 +768,97 @@ function PaymentTextAreaField({
   );
 }
 
-function TextField({ label, type = "text" }: { label: string; type?: string }) {
+function TextField({
+  label,
+  name,
+  required = false,
+  type = "text",
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  type?: string;
+}) {
   return (
     <label className="field-label">
       {label}
-      <Input className="field" type={type} variant="secondary" />
+      <input className="field" name={name} required={required} type={type} />
     </label>
   );
 }
 
-function TextAreaField({ label }: { label: string }) {
+function EmailField({
+  isInvalid,
+  value,
+  onChange,
+}: {
+  isInvalid: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field-label">
+      Correo electrónico
+      <input
+        aria-invalid={isInvalid}
+        className={`field ${isInvalid ? "border-red-300 focus:border-red-600" : ""}`}
+        inputMode="email"
+        placeholder="nombre@correo.com"
+        required
+        type="email"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {isInvalid ? (
+        <span className="text-xs font-bold text-red-700">
+          Escribe un correo válido, por ejemplo nombre@correo.com.
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  name,
+  options,
+}: {
+  label: string;
+  name: string;
+  options: string[];
+}) {
   return (
     <label className="field-label">
       {label}
-      <TextArea className="textarea-field" variant="secondary" />
+      <select className="field" defaultValue={options[0]} name={name}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function TextAreaField({
+  helperText,
+  label,
+  name,
+  required = false,
+}: {
+  helperText?: string;
+  label: string;
+  name: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="field-label">
+      {label}
+      {helperText ? (
+        <span className="text-xs leading-5 text-neutral-500">{helperText}</span>
+      ) : null}
+      <textarea className="textarea-field" name={name} required={required} />
     </label>
   );
 }

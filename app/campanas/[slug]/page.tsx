@@ -1,18 +1,64 @@
+import type { Metadata } from "next";
 import { ArrowLeft, ExternalLink, Instagram } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
-import { campaigns, formatUsd, getCampaign } from "@/lib/demo-data";
+import { getPublicCampaign } from "@/lib/campaign-data";
+import { formatUsd } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
-  mexico: "Dona desde México",
-  united_states: "Dona desde Estados Unidos",
-  venezuela: "Dona desde Venezuela",
-  international: "Dona desde otro país",
+  mexico: "México",
+  united_states: "Estados Unidos",
+  venezuela: "Venezuela",
+  spain: "España",
+  panama: "Panamá",
+  colombia: "Colombia",
+  chile: "Chile",
+  argentina: "Argentina",
+  international: "Otros países",
 };
 
 export function generateStaticParams() {
-  return campaigns.map((campaign) => ({ slug: campaign.slug }));
+  return [];
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const campaign = await getPublicCampaign(slug);
+
+  if (!campaign) {
+    return {
+      title: "Campaña no encontrada",
+    };
+  }
+
+  return {
+    title: campaign.title,
+    description: campaign.description,
+    openGraph: {
+      title: campaign.title,
+      description: campaign.description,
+      url: `/campanas/${campaign.slug}`,
+      images: [
+        {
+          url: "/opengraph-image.png",
+          width: 1200,
+          height: 630,
+          alt: campaign.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: campaign.title,
+      description: campaign.description,
+      images: ["/opengraph-image.png"],
+    },
+  };
 }
 
 export default async function CampaignDetailPage({
@@ -21,14 +67,14 @@ export default async function CampaignDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const campaign = getCampaign(slug);
+  const campaign = await getPublicCampaign(slug);
 
   if (!campaign) {
     notFound();
   }
 
   return (
-    <main className="min-h-screen bg-white text-black">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <Link
           className="inline-flex w-fit items-center gap-2 text-sm"
@@ -93,7 +139,7 @@ export default async function CampaignDetailPage({
                       className="rounded-[1.5rem] border border-neutral-200 p-4"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="tag-pill border border-neutral-300 bg-white text-neutral-700">
+                        <span className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700">
                           {categoryLabels[method.receivingCategory]}
                         </span>
                         <p className="font-bold">{method.label}</p>

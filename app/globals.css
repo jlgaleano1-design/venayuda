@@ -3,30 +3,79 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --motion-fast: 140ms;
+    --motion-base: 220ms;
+    --motion-slow: 360ms;
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-white text-black antialiased;
+    font-family:
+      "Manrope",
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    @apply bg-[#FFFCF8] text-[#121515] antialiased;
+  }
+
+  ::selection {
+    background: rgb(250 232 128 / 75%);
+  }
+
+  :where(a, button, input, textarea, select, [role="button"]) {
+    transition-duration: var(--motion-base);
+    transition-property:
+      background-color,
+      border-color,
+      box-shadow,
+      color,
+      opacity,
+      transform;
+    transition-timing-function: var(--motion-ease);
+  }
+
+  :where(button, [role="button"], a):where(:active) {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  :where(button, [role="button"]):disabled,
+  :where(button, [role="button"])[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
+  :where(input, textarea, select):focus-visible {
+    box-shadow: 0 0 0 4px rgb(45 93 94 / 14%);
+  }
+
+  :where(input, textarea, select)[aria-invalid="true"] {
+    animation: field-attention var(--motion-slow) var(--motion-ease);
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880] transition hover:opacity-90;
+    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880] shadow-sm transition hover:-translate-y-0.5 hover:opacity-95 hover:shadow-md;
   }
 
   .btn-secondary {
-    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-neutral-100 px-5 text-sm font-black text-black transition hover:bg-neutral-200;
+    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515] transition hover:-translate-y-0.5 hover:bg-neutral-200 hover:shadow-sm;
   }
 
   .field {
-    @apply h-11 w-full rounded-full border border-neutral-300 bg-white px-4 text-sm outline-none focus:border-[#2D5D5E];
+    @apply h-11 w-full rounded-full border border-neutral-300 bg-[#FFFCF8] px-4 text-sm outline-none transition focus:border-[#2D5D5E];
   }
 
   .textarea-field {
-    @apply min-h-28 w-full rounded-[1.5rem] border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2D5D5E];
+    @apply min-h-28 w-full rounded-[1.5rem] border border-neutral-300 bg-[#FFFCF8] px-4 py-3 text-sm outline-none transition focus:border-[#2D5D5E];
   }
 
   .field-label {
@@ -34,18 +83,135 @@
   }
 
   .surface-card {
-    @apply rounded-[2rem] border border-neutral-200;
+    @apply rounded-[2rem] border border-neutral-200 transition;
   }
 
   .soft-pill {
-    @apply inline-flex w-fit rounded-full bg-neutral-100 px-3 py-1 text-sm font-bold text-black;
+    @apply inline-flex w-fit rounded-full bg-neutral-100 px-3 py-1 text-sm font-bold text-[#121515] transition;
   }
 
   .status-pill {
-    @apply inline-flex min-h-7 w-fit items-center rounded-full px-4 py-1.5 text-xs font-bold leading-none;
+    @apply inline-flex min-h-7 w-fit items-center rounded-full px-4 py-1.5 text-xs font-bold leading-none transition;
   }
 
   .tag-pill {
-    @apply inline-flex min-h-9 w-fit items-center whitespace-nowrap rounded-full px-5 py-2 text-sm font-bold leading-none;
+    @apply inline-flex min-h-9 w-fit items-center whitespace-nowrap rounded-full px-5 py-2 text-sm font-bold leading-none transition;
+  }
+
+  .page-transition {
+    min-height: 100vh;
+  }
+
+  .surface-card:hover {
+    border-color: rgb(45 93 94 / 28%);
+    box-shadow: 0 18px 45px -34px rgb(18 21 21 / 0.45);
+    transform: translateY(-1px);
+  }
+
+  .surface-card:has(:focus-visible) {
+    border-color: rgb(45 93 94 / 35%);
+    box-shadow: 0 0 0 4px rgb(45 93 94 / 10%);
+  }
+
+  .field-label > span:not(:first-child),
+  form > p,
+  form [class*="text-red-700"],
+  form [class*="text-[#2D5D5E]"] {
+    animation: content-rise var(--motion-base) var(--motion-ease);
+  }
+
+  main > section,
+  .surface-card,
+  .tag-pill,
+  .status-pill,
+  .soft-pill {
+    animation: content-rise var(--motion-slow) var(--motion-ease) both;
+  }
+
+  main > section:nth-of-type(2) {
+    animation-delay: 70ms;
+  }
+
+  main > section:nth-of-type(3) {
+    animation-delay: 110ms;
+  }
+
+  [role="dialog"] {
+    animation: modal-backdrop-in var(--motion-base) var(--motion-ease) both;
+  }
+
+  [role="dialog"] > * {
+    animation: modal-panel-in var(--motion-slow) var(--motion-ease) both;
+  }
+
+  button:has(span:first-child:last-child),
+  button:has(svg) {
+    will-change: transform;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"] {
+    transform: none;
+  }
+}
+
+@keyframes content-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    background-color: rgb(18 21 21 / 0%);
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes field-attention {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  35% {
+    transform: translateX(-2px);
+  }
+
+  70% {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }

@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DonationReportForm } from "@/components/donation-report-form";
 import { SiteFooter } from "@/components/site-footer";
-import { campaigns, getCampaign } from "@/lib/demo-data";
+import { getPublicCampaign } from "@/lib/campaign-data";
 
 export function generateStaticParams() {
-  return campaigns.map((campaign) => ({ slug: campaign.slug }));
+  return [];
 }
 
 export default async function DonationReportPage({
@@ -15,14 +15,14 @@ export default async function DonationReportPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const campaign = getCampaign(slug);
+  const campaign = await getPublicCampaign(slug);
 
   if (!campaign) {
     notFound();
   }
 
   return (
-    <main className="min-h-screen bg-white text-black">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
       <section className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
         <Link
           className="inline-flex w-fit items-center gap-2 text-sm"

@@ -3,16 +3,31 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CreatorUpdateForm } from "@/components/creator-update-form";
 import { SiteFooter } from "@/components/site-footer";
-import {
-  campaigns,
-  formatUsd,
-  getCampaignByCreatorAccessCode,
-} from "@/lib/demo-data";
+import { getCreatorAccessRecord } from "@/lib/creator-access";
+import { formatUsd } from "@/lib/demo-data";
+
+type CreatorPortalActivity = {
+  donated: number | null;
+  spent: number | null;
+  balance: number | null;
+  purchases: {
+    title: string;
+    amount: string;
+    date: string;
+  }[];
+};
+
+function getCreatorPortalActivity(): CreatorPortalActivity {
+  return {
+    donated: null,
+    spent: null,
+    balance: null,
+    purchases: [],
+  };
+}
 
 export function generateStaticParams() {
-  return campaigns.map((campaign) => ({
-    accessCode: campaign.creatorAccessCode,
-  }));
+  return [];
 }
 
 export default async function CreatorPortalPage({
@@ -21,14 +36,17 @@ export default async function CreatorPortalPage({
   params: Promise<{ accessCode: string }>;
 }) {
   const { accessCode } = await params;
-  const campaign = getCampaignByCreatorAccessCode(accessCode);
+  const accessRecord = await getCreatorAccessRecord(accessCode);
 
-  if (!campaign) {
+  if (!accessRecord) {
     notFound();
   }
 
+  const campaign = accessRecord.campaign;
+  const activity = getCreatorPortalActivity();
+
   return (
-    <main className="min-h-screen bg-white text-black">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <Link className="inline-flex w-fit items-center gap-2 text-sm" href="/">
           <ArrowLeft size={18} />
@@ -49,7 +67,13 @@ export default async function CreatorPortalPage({
               </p>
             </div>
 
-            <CreatorUpdateForm campaign={campaign} />
+            <CreatorUpdateForm
+              campaign={{
+                creatorAccessCode: accessCode,
+                slug: campaign.slug,
+                title: campaign.title,
+              }}
+            />
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
@@ -61,16 +85,33 @@ export default async function CreatorPortalPage({
                 </div>
                 <Metric
                   label="Donado verificado"
-                  value={formatUsd(campaign.totals.donated)}
+                  emptyText="Sin donaciones verificadas"
+                  value={
+                    activity.donated === null
+                      ? undefined
+                      : formatUsd(activity.donated)
+                  }
                 />
                 <Metric
                   label="Gastado aprobado"
-                  value={formatUsd(campaign.totals.spent)}
+                  emptyText="Sin gastos aprobados"
+                  value={
+                    activity.spent === null ? undefined : formatUsd(activity.spent)
+                  }
                 />
                 <Metric
                   label="Saldo disponible"
-                  value={formatUsd(campaign.totals.balance)}
+                  emptyText="Pendiente por calcular"
+                  value={
+                    activity.balance === null
+                      ? undefined
+                      : formatUsd(activity.balance)
+                  }
                 />
+                <p className="text-xs leading-5 text-neutral-600">
+                  Estos datos se llenan solo con donaciones verificadas y compras
+                  aprobadas.
+                </p>
                 <Link
                   className="btn-secondary"
                   href={`/campanas/${campaign.slug}`}
@@ -83,19 +124,28 @@ export default async function CreatorPortalPage({
 
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-xl font-extrabold">Últimas compras</h2>
-                {campaign.purchases.map((purchase) => (
-                  <div key={purchase.title} className="space-y-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="font-bold">{purchase.title}</p>
-                      <p className="whitespace-nowrap text-sm">
-                        {purchase.amount}
-                      </p>
+                <h2 className="text-xl font-extrabold">
+                  Últimas compras aprobadas
+                </h2>
+                {activity.purchases.length > 0 ? (
+                  activity.purchases.map((purchase) => (
+                    <div key={purchase.title} className="space-y-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-bold">{purchase.title}</p>
+                        <p className="whitespace-nowrap text-sm">
+                          {purchase.amount}
+                        </p>
+                      </div>
+                      <p className="text-sm text-neutral-600">{purchase.date}</p>
+                      <div className="h-px bg-neutral-200" />
                     </div>
-                    <p className="text-sm text-neutral-600">{purchase.date}</p>
-                    <div className="h-px bg-neutral-200" />
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyState
+                    title="Todavía no hay compras aprobadas"
+                    body="Cuando subas una compra y pase revisión, aparecerá aquí con su monto y fecha."
+                  />
+                )}
               </div>
             </section>
           </aside>
@@ -106,11 +156,32 @@ export default async function CreatorPortalPage({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  emptyText,
+  label,
+  value,
+}: {
+  emptyText: string;
+  label: string;
+  value?: string;
+}) {
   return (
     <div className="border-b border-neutral-200 pb-3">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="text-2xl font-extrabold">{value}</p>
+      {value ? (
+        <p className="text-2xl font-extrabold">{value}</p>
+      ) : (
+        <p className="mt-1 text-sm font-bold text-neutral-500">{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ body, title }: { body: string; title: string }) {
+  return (
+    <div className="rounded-[1.5rem] bg-neutral-50 p-4">
+      <p className="font-extrabold">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-neutral-600">{body}</p>
     </div>
   );
 }

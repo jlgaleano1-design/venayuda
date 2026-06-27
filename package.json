@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "check:release": "tsc --noEmit && eslint . && next build",
+    "ops:e2e:staging": "node scripts/staging-e2e.mjs",
+    "ops:stress:staging": "node scripts/staging-stress.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

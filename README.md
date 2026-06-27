@@ -46,11 +46,11 @@ El campo personalizado para compartir es el `slug` de la campana. Es la opcion m
 
 La campana tambien puede guardar un `instagram_handle` opcional. Este dato es publico y sirve como senal rapida de confianza para donantes; no reemplaza la revision manual ni la verificacion admin.
 
-Ejemplo:
+Ejemplo de formato:
 
-- Campo personalizado: `medicinas-valencia`
-- Link corto para compartir: `/medicinas-valencia`
-- Pagina real: `/campanas/medicinas-valencia`
+- Campo personalizado: `ayuda-la-guaira`
+- Link corto para compartir: `/ayuda-la-guaira`
+- Pagina real: `/campanas/ayuda-la-guaira`
 
 Estados de campana:
 
@@ -67,7 +67,7 @@ Las campanas tambien tienen `verification_status`: `unverified`, `pending`, `ver
 
 Cada campana puede publicar varios metodos de pago. Los campos son deliberadamente flexibles porque cada pais y cada persona maneja datos distintos:
 
-- `receiving_category`: `mexico`, `united_states`, `venezuela`, `international` u `other`.
+- `receiving_category`: `mexico`, `united_states`, `venezuela`, `spain`, `panama`, `colombia`, `chile`, `argentina`, `international` u `other`.
 - `method_name`: SPEI, Zelle, Pago Movil, transferencia, efectivo u otro texto libre.
 - `currency`: moneda sugerida.
 - `account_holder`: titular o destinatario.
@@ -151,18 +151,18 @@ La conversion no es automatica en esta version. El admin debe capturar o confirm
 
 ## MVP actual
 
-El MVP frontend ya deja navegable el flujo principal con datos semilla en codigo:
+El MVP frontend deja lista la estructura principal sin campañas placeholder:
 
-- `/`: home publica con hero, CTAs, filtros sticky y cards de campana.
+- `/`: home publica con hero, CTAs, filtros sticky y estado vacio de campanas publicadas.
 - `/[slug]`: link corto para compartir una campana; redirige al detalle publico.
 - `/campanas/[slug]`: detalle publico de campana con metodos de pago, resumen, donaciones y compras.
 - `/campanas/[slug]/donar`: formulario visual para reportar una donacion externa.
 - `/campanas/crear`: formulario visual para solicitar una nueva campana.
-- `/creador/[accessCode]`: portal privado demo para subir novedades de compra con foto.
+- `/creador/[accessCode]`: portal privado para subir novedades de compra con foto cuando exista un acceso real.
 - `/admin/login`: entrada visual para admins.
-- `/admin`: panel operativo inicial con colas de revision.
+- `/admin`: panel operativo inicial con metricas en cero y estados vacios para colas de revision.
 
-Los datos semilla viven en `lib/demo-data.ts`. El siguiente paso tecnico es reemplazarlos por consultas a Supabase usando las vistas `public_*` y crear inserts reales para solicitudes de campana y reportes de donacion.
+`lib/demo-data.ts` conserva tipos, filtros y helpers, pero no contiene campanas publicadas. El siguiente paso tecnico es conectar estas pantallas a Supabase usando las vistas `public_*` y crear inserts reales para solicitudes de campana y reportes de donacion.
 
 ## Correr localmente
 
@@ -194,7 +194,7 @@ Para usar un dominio propio, define:
 NEXT_PUBLIC_SITE_URL=https://tu-dominio.com
 ```
 
-La app usa este valor para construir links publicos de campana como `https://tu-dominio.com/medicinas-valencia`.
+La app usa este valor para construir links publicos de campana como `https://tu-dominio.com/ayuda-la-guaira`.
 
 ### 3. Iniciar Supabase local
 
@@ -245,7 +245,7 @@ El dominio de GoDaddy solo reserva el nombre. Para usarlo con esta app:
 Para el producto, ese dominio sera la forma corta de compartir campanas:
 
 ```text
-https://tu-dominio.com/medicinas-valencia
+https://tu-dominio.com/ayuda-la-guaira
 ```
 
 El acceso de organizador debe seguir siendo un enlace privado separado:
@@ -253,6 +253,22 @@ El acceso de organizador debe seguir siendo un enlace privado separado:
 ```text
 https://tu-dominio.com/creador/token-largo-no-adivinable
 ```
+
+## Checks de publicacion
+
+Antes de publicar, corre el gate operativo de staging documentado en
+`ops/publication-checks.md`.
+
+Resumen de comandos:
+
+```bash
+pnpm check:release
+pnpm ops:e2e:staging
+pnpm ops:stress:staging
+```
+
+El E2E y el stress test requieren variables de staging reales, incluyendo
+`TARGET_SITE_URL`, Supabase, service role y secretos de revision/correo.
 
 ## Estructura creada
 

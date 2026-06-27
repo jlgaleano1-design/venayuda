@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCampaign, getCampaignByCreatorAccessCode } from "@/lib/demo-data";
+import { getCreatorAccessRecord } from "@/lib/creator-access";
+import { enqueueEmailEvent } from "@/lib/email-queue";
+import { createPurchaseReviewToken } from "@/lib/review-token";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const creatorUpdateSchema = z.object({
   campaignSlug: z.string().min(1),
   accessCode: z.string().min(1),
+  purchaseId: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
   amount: z.string().min(1),
   currency: z.string().min(1),
   purchaseDate: z.string().min(1),
   vendor: z.string().optional(),
-  photoFileName: z.string().min(1),
+  photoFileName: z.string().optional(),
+  photoFilePath: z.string().optional(),
   invoiceFileName: z.string().optional(),
+  invoiceFilePath: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -26,20 +32,116 @@ export async function POST(request: Request) {
   }
 
   const update = payload.data;
-  const campaign = getCampaign(update.campaignSlug);
-  const campaignFromAccess = getCampaignByCreatorAccessCode(update.accessCode);
+  let accessRecord: Awaited<ReturnType<typeof getCreatorAccessRecord>>;
 
-  if (!campaign || campaignFromAccess?.slug !== campaign.slug) {
+  try {
+    accessRecord = await getCreatorAccessRecord(update.accessCode);
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "No pudimos recibir la novedad en este momento. Inténtalo de nuevo en unos minutos.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (!accessRecord || accessRecord.campaign.slug !== update.campaignSlug) {
     return NextResponse.json(
       { error: "Este enlace no tiene acceso a la campaña." },
       { status: 403 },
     );
   }
 
+  const supabase = createAdminClient();
+  const photoFilePath = update.photoFilePath ?? update.photoFileName ?? "";
+  const invoiceFilePath = update.invoiceFilePath ?? update.invoiceFileName ?? "";
+
+  if (!photoFilePath) {
+    return NextResponse.json(
+      { error: "La foto de la compra es obligatoria." },
+      { status: 400 },
+    );
+  }
+
+  const { data: purchase, error } = await supabase
+    .from("purchases")
+    .insert({
+      ...(update.purchaseId ? { id: update.purchaseId } : {}),
+      campaign_id: accessRecord.campaign.id,
+      title: update.title,
+      description: update.description || null,
+      amount: Number(update.amount),
+      currency: update.currency.toUpperCase().slice(0, 3),
+      purchase_date: update.purchaseDate,
+      vendor: update.vendor || null,
+      photo_file_path: photoFilePath,
+      invoice_file_path: invoiceFilePath || null,
+      submitted_by_creator_access_id: accessRecord.id,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (error || !purchase) {
+    return NextResponse.json(
+      { error: "No pudimos guardar la novedad." },
+      { status: 500 },
+    );
+  }
+
+  const recipientEmail = process.env.APPROVAL_RECIPIENT_EMAIL;
+  let reviewEmailQueued = false;
+
+  if (recipientEmail) {
+    const siteUrl = normalizeSiteUrl(
+      process.env.NEXT_PUBLIC_SITE_URL ??
+        request.headers.get("origin") ??
+        "https://vendonar.com",
+    );
+    const reviewToken = createPurchaseReviewToken(purchase.id);
+    const approvalUrl = new URL(
+      `/api/creator-updates/${purchase.id}/review`,
+      siteUrl,
+    );
+    approvalUrl.searchParams.set("token", reviewToken);
+    approvalUrl.searchParams.set("decision", "approve");
+    const rejectionUrl = new URL(
+      `/api/creator-updates/${purchase.id}/review`,
+      siteUrl,
+    );
+    rejectionUrl.searchParams.set("token", reviewToken);
+    rejectionUrl.searchParams.set("decision", "reject");
+
+    try {
+      const result = await enqueueEmailEvent(supabase, "purchase_review", {
+        amount: update.amount,
+        approvalUrl: approvalUrl.toString(),
+        campaignTitle: accessRecord.campaign.title,
+        currency: update.currency,
+        description: update.description,
+        purchaseDate: update.purchaseDate,
+        recipientEmail,
+        rejectionUrl: rejectionUrl.toString(),
+        title: update.title,
+        vendor: update.vendor,
+      });
+      reviewEmailQueued = result.queued;
+    } catch {
+      reviewEmailQueued = false;
+    }
+  }
+
   return NextResponse.json({
     ok: true,
+    purchaseId: purchase.id,
+    reviewEmailQueued,
+    reviewEmailSent: reviewEmailQueued,
     status: "pending_review",
-    message:
-      "Novedad recibida. En Supabase se guardará como compra pendiente con foto privada.",
+    message: "Novedad recibida y pendiente de revisión.",
   });
+}
+
+function normalizeSiteUrl(value: string) {
+  return value.replace(/\/+$/g, "");
 }

@@ -3,10 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { CampaignList } from "@/components/campaign-list";
 import { SiteFooter } from "@/components/site-footer";
+import { getPublicCampaigns } from "@/lib/campaign-data";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const campaigns = await getPublicCampaigns();
+
   return (
-    <main className="min-h-screen bg-white text-black">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
       <section className="mx-auto flex min-h-[82vh] max-w-6xl flex-col justify-center gap-8 px-6 py-12">
         <div className="max-w-4xl space-y-6">
           <Image
@@ -17,12 +20,14 @@ export default function HomePage() {
             width={282}
           />
           <h1 className="text-4xl font-black leading-tight tracking-normal md:text-6xl">
-            Ayuda directa, sin intermediarios.
+            Ayuda directa a venezolanos,
+            <br />
+            sin intermediarios.
           </h1>
           <p className="max-w-3xl text-lg leading-8 text-neutral-700 md:text-xl">
-            Campañas creadas por personas y organizaciones que están apoyando en
-            las zonas afectadas de Venezuela. Dona por el método disponible y
-            sigue públicamente cómo se registra y utiliza cada aporte.
+            Campañas creadas por personas que están ayudando directamente en las
+            zonas más afectadas por el terremoto en Venezuela. Dona desde donde
+            puedas y sigue públicamente cómo se registra y utiliza cada aporte.
           </p>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <a className="btn-primary" href="#campanas">
@@ -48,17 +53,17 @@ export default function HomePage() {
           <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
             <div>
               <h2 className="text-2xl font-extrabold tracking-normal">
-                Todas las campañas creadas
+                Campañas publicadas
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Aquí puedes ver lo verificado, lo gastado y el saldo disponible
-                de cada campaña; ninguna donación pasa por nosotros, el apoyo es
-                directo.
+                Cuando existan campañas aprobadas, aquí podrás ver lo
+                verificado, lo gastado y el saldo disponible. Ninguna donación
+                pasa por nosotros; el apoyo es directo.
               </p>
             </div>
           </div>
         </div>
-        <CampaignList />
+        <CampaignList campaigns={campaigns} />
       </section>
       <SiteFooter />
     </main>

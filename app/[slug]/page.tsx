@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
-import { campaigns, getCampaign } from "@/lib/demo-data";
+import { getPublicCampaign } from "@/lib/campaign-data";
 
 export function generateStaticParams() {
-  return campaigns.map((campaign) => ({ slug: campaign.slug }));
+  return [];
 }
 
 export default async function SharedCampaignPage({
@@ -11,7 +11,7 @@ export default async function SharedCampaignPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const campaign = getCampaign(slug);
+  const campaign = await getPublicCampaign(slug);
 
   if (!campaign) {
     notFound();
