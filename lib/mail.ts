@@ -95,22 +95,13 @@ function createMailer() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.EMAIL_FROM;
-  const resendApiKey = process.env.RESEND_API_KEY;
 
-  if ((provider === "resend" || resendApiKey) && resendApiKey && from) {
-    return {
-      from,
-      kind: "resend" as const,
-      resendApiKey,
-    };
-  }
-
-  if (provider === "smtp" && host && from) {
+  if (provider === "smtp" && host && from && user && pass) {
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure: port === 465,
-      auth: user && pass ? { user, pass } : undefined,
+      auth: { user, pass },
     });
 
     return { from, kind: "smtp" as const, transporter };
@@ -123,32 +114,7 @@ async function sendMail(
   mailer: NonNullable<ReturnType<typeof createMailer>>,
   options: SendMailOptions,
 ) {
-  if (mailer.kind === "smtp") {
-    await mailer.transporter.sendMail(options);
-    return;
-  }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    body: JSON.stringify({
-      from: mailer.from,
-      html: options.html,
-      subject: options.subject,
-      text: options.text,
-      to: options.to,
-    }),
-    headers: {
-      Authorization: `Bearer ${mailer.resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(
-      `Resend no envió el correo (${response.status}): ${errorBody}`,
-    );
-  }
+  await mailer.transporter.sendMail(options);
 }
 
 export async function sendDonationReportEmail(report: DonationReportEmail) {

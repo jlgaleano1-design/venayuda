@@ -5,6 +5,8 @@ import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
+const duplicateCampaignLimitMessage =
+  "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.";
 
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
@@ -72,13 +74,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: existingCampaign, error: existingCampaignError } = await supabase
-    .from("campaigns")
-    .select("id")
-    .eq("contact_email", contactEmail)
-    .maybeSingle();
+  const existingCampaignResult = await findExistingCampaignByEmail(
+    supabase,
+    contactEmail,
+  );
 
-  if (existingCampaignError) {
+  if (existingCampaignResult.error) {
     return NextResponse.json(
       {
         error:
@@ -88,19 +89,16 @@ export async function POST(request: Request) {
     );
   }
 
-  if (existingCampaign) {
+  if (existingCampaignResult.exists) {
     return NextResponse.json(
       {
-        error:
-          "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.",
+        error: duplicateCampaignLimitMessage,
       },
       { status: 409 },
     );
   }
 
-  const { data: campaign, error: campaignError } = await supabase
-    .from("campaigns")
-    .insert({
+  const campaignInsert = {
       affected_area: requestData.affectedArea,
       contact_email: contactEmail,
       contact_info: `Correo: ${contactEmail}`,
@@ -111,12 +109,14 @@ export async function POST(request: Request) {
       responsible_organization: requestData.organization || null,
       responsible_person_name: requestData.responsibleName,
       slug: requestData.slug,
-      status: "pending_review",
+      status: "pending_review" as const,
       title: requestData.title,
-      verification_status: "pending",
-    })
-    .select("id, title")
-    .single();
+      verification_status: "pending" as const,
+    };
+  const { data: campaign, error: campaignError } = await insertCampaign(
+    supabase,
+    campaignInsert,
+  );
 
   if (campaignError || !campaign) {
     const duplicateSlug =
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: duplicateEmail
-          ? "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo."
+          ? duplicateCampaignLimitMessage
           : duplicateSlug
             ? "Ese link personalizado ya está usado. Prueba con otro."
             : "No se pudo guardar la solicitud.",
@@ -246,6 +246,96 @@ function shouldRetryWithCryptoFallback(
         error.message ?? "",
       ))
   );
+}
+
+async function findExistingCampaignByEmail(
+  supabase: ReturnType<typeof createAdminClient>,
+  contactEmail: string,
+) {
+  const byEmailColumn = await supabase
+    .from("campaigns")
+    .select("id")
+    .eq("contact_email", contactEmail)
+    .maybeSingle();
+
+  if (!byEmailColumn.error) {
+    return { exists: Boolean(byEmailColumn.data) };
+  }
+
+  if (!isMissingContactEmailSchema(byEmailColumn.error)) {
+    return { error: byEmailColumn.error, exists: false };
+  }
+
+  const byContactInfo = await supabase
+    .from("campaigns")
+    .select("id")
+    .ilike("contact_info", `%${escapeLikePattern(contactEmail)}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (byContactInfo.error) {
+    return { error: byContactInfo.error, exists: false };
+  }
+
+  return { exists: Boolean(byContactInfo.data) };
+}
+
+async function insertCampaign(
+  supabase: ReturnType<typeof createAdminClient>,
+  campaignInsert: {
+    affected_area: string;
+    contact_email: string;
+    contact_info: string;
+    cover_image_path: string | null;
+    description: string;
+    instagram_handle: string | null;
+    location: string;
+    responsible_organization: string | null;
+    responsible_person_name: string;
+    slug: string;
+    status: "pending_review";
+    title: string;
+    verification_status: "pending";
+  },
+) {
+  const insertResult = await supabase
+    .from("campaigns")
+    .insert(campaignInsert)
+    .select("id, title")
+    .single();
+
+  if (!isMissingContactEmailSchema(insertResult.error)) {
+    return insertResult;
+  }
+
+  const legacyCampaignInsert: Omit<typeof campaignInsert, "contact_email"> = {
+    affected_area: campaignInsert.affected_area,
+    contact_info: campaignInsert.contact_info,
+    cover_image_path: campaignInsert.cover_image_path,
+    description: campaignInsert.description,
+    instagram_handle: campaignInsert.instagram_handle,
+    location: campaignInsert.location,
+    responsible_organization: campaignInsert.responsible_organization,
+    responsible_person_name: campaignInsert.responsible_person_name,
+    slug: campaignInsert.slug,
+    status: campaignInsert.status,
+    title: campaignInsert.title,
+    verification_status: campaignInsert.verification_status,
+  };
+
+  return supabase
+    .from("campaigns")
+    .insert(legacyCampaignInsert)
+    .select("id, title")
+    .single();
+}
+
+function isMissingContactEmailSchema(error?: { message?: string } | null) {
+  return /contact_email|schema cache/i.test(error?.message ?? "");
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
 async function finalizeCampaignRequest({

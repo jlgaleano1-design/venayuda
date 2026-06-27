@@ -160,6 +160,10 @@ await step("Reportar y aprobar donación con comprobante", async () => {
   });
   const body = await response.json();
   assert(response.ok, `reportar donación falló: ${JSON.stringify(body)}`);
+  assert(
+    body.confirmationEmailQueued === true,
+    "correo de agradecimiento al donante no quedó en cola",
+  );
 
   const { data: donation } = await adminSupabase
     .from("donations")
@@ -186,6 +190,17 @@ await step("Reportar y aprobar donación con comprobante", async () => {
   assert(
     Number(verifiedDonation?.amount_usd_estimated) === 25,
     "donación USD no actualizó amount_usd_estimated",
+  );
+
+  const confirmationEvent = await findEmailEvent(
+    "donation_confirmation",
+    (payload) =>
+      payload.recipientEmail === donorEmail &&
+      payload.campaignUrl?.includes(`/campanas/${slug}`),
+  );
+  assert(
+    confirmationEvent,
+    "no se encontró correo de agradecimiento en cola para el donante de esta prueba",
   );
 });
 
@@ -242,6 +257,10 @@ await step("Subir compra y validar publicación directa", async () => {
   });
   const body = await response.json();
   assert(response.ok, `subir compra falló: ${JSON.stringify(body)}`);
+  assert(
+    body.impactEmailsQueued >= 1,
+    "la actualización no encoló notificación para donantes verificados",
+  );
 
   const { data: purchase } = await adminSupabase
     .from("purchases")
@@ -268,6 +287,18 @@ await step("Subir compra y validar publicación directa", async () => {
     .limit(1)
     .maybeSingle();
   assert(impactEvent?.id, "no se encoló correo de impacto al donante");
+
+  const donorImpactEvent = await findEmailEvent(
+    "purchase_impact",
+    (payload) =>
+      payload.recipientEmail === donorEmail &&
+      payload.purchaseTitle === `Compra E2E ${runId}` &&
+      payload.campaignUrl?.includes(`/campanas/${slug}`),
+  );
+  assert(
+    donorImpactEvent,
+    "no se encontró notificación de update en cola para el donante de esta prueba",
+  );
 });
 
 await step("Validar privacidad básica", async () => {
@@ -360,6 +391,19 @@ async function uploadAnonFile(bucket, path, file) {
   });
 
   assert(!error, `Storage upload ${bucket}/${path} falló: ${error?.message}`);
+}
+
+async function findEmailEvent(eventType, predicate) {
+  const { data, error } = await adminSupabase
+    .from("email_events")
+    .select("id, payload, status")
+    .eq("event_type", eventType)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  assert(!error, `no se pudo leer email_events ${eventType}: ${error?.message}`);
+
+  return (data ?? []).find((event) => predicate(event.payload));
 }
 
 async function expectOk(responsePromise, label) {

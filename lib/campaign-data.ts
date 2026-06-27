@@ -118,7 +118,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       supabase.from("public_purchases").select("*").in("campaign_id", campaignIds),
     ]);
 
-  return Promise.all(campaignRows.map(async (campaign): Promise<Campaign> => {
+  const hydratedCampaigns = await Promise.allSettled(campaignRows.map(async (campaign): Promise<Campaign> => {
     const paymentMethods = ((paymentRows ?? []) as PublicPaymentMethodRow[])
       .filter((method) => method.campaign_id === campaign.id)
       .map((method) => ({
@@ -192,6 +192,12 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
           }))),
     };
   }));
+
+  return hydratedCampaigns.map((result, index) =>
+    result.status === "fulfilled"
+      ? result.value
+      : toFallbackCampaign(campaignRows[index]),
+  );
 }
 
 function normalizeReceivingCategory(method: PublicPaymentMethodRow) {
@@ -214,11 +220,15 @@ async function createStorageSignedUrl(
     return undefined;
   }
 
-  const { data } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, 60 * 60);
+  try {
+    const { data } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, 60 * 60);
 
-  return data?.signedUrl ?? undefined;
+    return data?.signedUrl ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function createServerSupabaseClient() {
@@ -232,9 +242,41 @@ function toNumber(value: number | string | null) {
 }
 
 function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Sin fecha";
+  }
+
   return new Intl.DateTimeFormat("es-MX", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function toFallbackCampaign(campaign: PublicCampaignRow): Campaign {
+  return {
+    slug: campaign.slug,
+    creatorAccessCode: "",
+    title: campaign.title,
+    description: campaign.description,
+    responsible: campaign.responsible_person_name,
+    responsibleEmail: "",
+    instagramHandle: campaign.instagram_handle ?? undefined,
+    organization: campaign.responsible_organization ?? undefined,
+    coverImageUrl: undefined,
+    location: campaign.location ?? campaign.affected_area ?? "Sin zona",
+    affectedArea: campaign.affected_area ?? "Sin zona",
+    status: campaign.status,
+    receivingCategories: [],
+    totals: {
+      donated: toNumber(campaign.total_verified_donations_usd),
+      spent: toNumber(campaign.total_approved_purchases_usd),
+      balance: toNumber(campaign.available_balance_usd),
+    },
+    paymentMethods: [],
+    donations: [],
+    purchases: [],
+  };
 }

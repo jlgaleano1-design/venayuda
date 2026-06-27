@@ -5,6 +5,8 @@ import { CampaignList } from "@/components/campaign-list";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaigns } from "@/lib/campaign-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const campaigns = await getPublicCampaigns();
 
