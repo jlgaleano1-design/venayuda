@@ -10,3 +10,4 @@ dist
 tsconfig.tsbuildinfo
 supabase/.branches
 supabase/.temp
+.vercel
