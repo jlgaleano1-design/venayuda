@@ -25,9 +25,10 @@ export default async function HomePage() {
             sin intermediarios.
           </h1>
           <p className="max-w-3xl text-lg leading-8 text-neutral-700 md:text-xl">
-            Campañas creadas por personas que están apoyando directamente en las
-            zonas más afectadas de Venezuela por el terremoto. Dona directo y
-            sigue públicamente cómo se registra y utiliza tu aporte.
+            Campañas creadas por quienes están apoyando en las zonas afectadas
+            de Venezuela. Cada una muestra métodos de pago directos,
+            comprobantes y actualizaciones de gastos para que puedas seguir cómo
+            se utiliza tu aporte. Ayuda persona a persona.
           </p>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <a className="btn-primary" href="#campanas">
@@ -55,12 +56,6 @@ export default async function HomePage() {
               <h2 className="text-2xl font-extrabold tracking-normal">
                 Campañas publicadas
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Elige una campaña y dona directamente por uno de los métodos o
-                métodos disponibles. Ninguna donación pasa por nosotros; la
-                plataforma solo ayuda a registrar aportes y mostrar el
-                seguimiento público.
-              </p>
             </div>
           </div>
         </div>
