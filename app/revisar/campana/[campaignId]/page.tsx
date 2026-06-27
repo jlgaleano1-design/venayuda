@@ -190,7 +190,7 @@ export default async function CampaignReviewPage({
                 value={campaign.responsible_organization || "Independiente"}
               />
               <Info label="Zona afectada" value={campaign.affected_area || "-"} />
-              <Info label="Link solicitado" value={`/${campaign.slug}`} />
+              <Info label="Link solicitado" value={`/campanas/${campaign.slug}`} />
               <Info
                 label="Instagram"
                 value={

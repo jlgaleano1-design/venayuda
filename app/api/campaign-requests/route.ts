@@ -51,6 +51,7 @@ export async function POST(request: Request) {
   }
 
   const requestData = payload.data;
+  const contactEmail = normalizeEmail(requestData.email);
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ??
       request.headers.get("origin") ??
@@ -71,11 +72,38 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: existingCampaign, error: existingCampaignError } = await supabase
+    .from("campaigns")
+    .select("id")
+    .eq("contact_email", contactEmail)
+    .maybeSingle();
+
+  if (existingCampaignError) {
+    return NextResponse.json(
+      {
+        error:
+          "No pudimos validar este correo en este momento. Inténtalo de nuevo en unos minutos.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (existingCampaign) {
+    return NextResponse.json(
+      {
+        error:
+          "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.",
+      },
+      { status: 409 },
+    );
+  }
+
   const { data: campaign, error: campaignError } = await supabase
     .from("campaigns")
     .insert({
       affected_area: requestData.affectedArea,
-      contact_info: `Correo: ${requestData.email}`,
+      contact_email: contactEmail,
+      contact_info: `Correo: ${contactEmail}`,
       cover_image_path: requestData.coverImageName || null,
       description: requestData.description,
       instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
@@ -92,15 +120,23 @@ export async function POST(request: Request) {
 
   if (campaignError || !campaign) {
     const duplicateSlug =
-      campaignError?.code === "23505" || campaignError?.message.includes("slug");
+      campaignError?.code === "23505" &&
+      /slug|campaigns_slug_key/i.test(campaignError?.message ?? "");
+    const duplicateEmail =
+      campaignError?.code === "23505" &&
+      /contact_email|campaigns_contact_email_unique/i.test(
+        campaignError?.message ?? "",
+      );
 
     return NextResponse.json(
       {
-        error: duplicateSlug
-          ? "Ese link personalizado ya está usado. Prueba con otro."
-          : "No se pudo guardar la solicitud.",
+        error: duplicateEmail
+          ? "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo."
+          : duplicateSlug
+            ? "Ese link personalizado ya está usado. Prueba con otro."
+            : "No se pudo guardar la solicitud.",
       },
-      { status: duplicateSlug ? 409 : 500 },
+      { status: duplicateSlug || duplicateEmail ? 409 : 500 },
     );
   }
 
@@ -296,6 +332,10 @@ async function finalizeCampaignRequest({
 
 function normalizeInstagramHandle(value?: string) {
   return value?.replace(/^@/, "").trim() || null;
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function normalizeSiteUrl(value: string) {

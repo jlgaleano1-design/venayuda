@@ -121,7 +121,7 @@ export function CreateCampaignForm() {
   const lastPaymentMethod = paymentMethods[paymentMethods.length - 1];
   const canAddPaymentMethod =
     Boolean(lastPaymentMethod) && isPaymentMethodComplete(lastPaymentMethod);
-  const publicCampaignLink = `${siteUrl}/${shareSlug || "tu-campana"}`;
+  const publicCampaignLink = `${siteUrl}/campanas/${shareSlug || "tu-campana"}`;
   const formHelpText = shareFieldError || (!canSubmit ? submitBlockReason : "");
   const shouldFocusShareField =
     Boolean(shareFieldError) || (!shareSlug && Boolean(formHelpText));
@@ -351,7 +351,9 @@ export function CreateCampaignForm() {
                   : "border-neutral-300"
             }`}
           >
-            <span className="shrink-0 text-neutral-500">{siteHost}/</span>
+            <span className="shrink-0 text-neutral-500">
+              {siteHost}/campanas/
+            </span>
             <input
               ref={shareInputRef}
               aria-invalid={isShareFieldTaken || Boolean(shareFieldError)}

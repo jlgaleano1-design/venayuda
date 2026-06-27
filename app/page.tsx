@@ -19,12 +19,12 @@ export default async function HomePage() {
             src="/vendonar_logo.svg"
             width={188}
           />
-          <h1 className="text-4xl font-black leading-tight tracking-normal md:text-6xl">
+          <h1 className="text-4xl font-black leading-[1.28] tracking-normal md:text-6xl">
             Ayuda directa,
             <br />
             sin intermediarios.
           </h1>
-          <p className="max-w-3xl text-lg leading-8 text-neutral-700 md:text-xl">
+          <p className="max-w-3xl text-lg leading-[1.84] text-neutral-700 md:text-xl md:leading-[1.66]">
             Campañas creadas por quienes están apoyando en las zonas afectadas
             de Venezuela. Cada una muestra métodos de pago directos,
             comprobantes y actualizaciones de gastos para que puedas seguir cómo

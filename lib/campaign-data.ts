@@ -79,9 +79,26 @@ export async function getPublicCampaigns() {
 }
 
 export async function getPublicCampaign(slug: string) {
-  const publicCampaigns = await getPublicCampaigns();
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: campaignRow, error } = await supabase
+      .from("public_campaigns")
+      .select("*")
+      .eq("slug", slug)
+      .single();
 
-  return publicCampaigns.find((campaign) => campaign.slug === slug);
+    if (error || !campaignRow) {
+      return campaigns.find((campaign) => campaign.slug === slug);
+    }
+
+    const [campaign] = await hydrateCampaignRows([
+      campaignRow as PublicCampaignRow,
+    ]);
+
+    return campaign;
+  } catch {
+    return campaigns.find((campaign) => campaign.slug === slug);
+  }
 }
 
 async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
