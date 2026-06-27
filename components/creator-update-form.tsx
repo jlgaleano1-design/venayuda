@@ -182,7 +182,7 @@ export function CreatorUpdateForm({
               <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
                 <Camera size={20} />
               </span>
-              <span className="text-sm font-black text-[#161d21]">
+              <span className="text-sm font-black text-[#2A3534]">
                 {photoName || "Subir foto clara de lo comprado"}
               </span>
               <span className="text-xs leading-5 text-neutral-500">

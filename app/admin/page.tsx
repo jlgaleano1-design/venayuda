@@ -147,7 +147,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="space-y-2">

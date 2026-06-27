@@ -99,7 +99,7 @@ export function ErrorState({
             <span className="text-xs font-extrabold uppercase tracking-wide text-neutral-500">
               {eyebrow ?? style.label}
             </span>
-            <h1 className="text-2xl font-black tracking-normal text-[#161d21]">
+            <h1 className="text-2xl font-black tracking-normal text-[#2A3534]">
               {title}
             </h1>
             <p className="leading-7 text-neutral-700">{message}</p>

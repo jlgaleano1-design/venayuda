@@ -355,7 +355,7 @@ export function CreateCampaignForm() {
                 <ImageIcon size={16} />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-black text-[#161d21]">
+                <span className="block truncate text-sm font-black text-[#2A3534]">
                   {coverImageName || "Subir imagen"}
                 </span>
                 <span className="block truncate text-xs text-neutral-500">
@@ -427,7 +427,7 @@ export function CreateCampaignForm() {
         </div>
 
         <Button
-          className="min-h-10 w-full !justify-center !rounded-full bg-neutral-100 px-4 py-2 text-sm font-black text-[#161d21]"
+          className="min-h-10 w-full !justify-center !rounded-full bg-neutral-100 px-4 py-2 text-sm font-black text-[#2A3534]"
           isDisabled={!canAddPaymentMethod}
           type="button"
           variant="secondary"
@@ -609,7 +609,7 @@ function PaymentMethodPanel({
       <div className="flex items-center gap-2 rounded-[1.5rem] bg-neutral-50 px-3 py-2">
         <Button
           aria-expanded={isOpen}
-          className="flex h-auto min-h-11 flex-1 items-center justify-between gap-3 !rounded-full bg-transparent px-2 py-2 text-left font-black text-[#161d21]"
+          className="flex h-auto min-h-11 flex-1 items-center justify-between gap-3 !rounded-full bg-transparent px-2 py-2 text-left font-black text-[#2A3534]"
           type="button"
           variant="secondary"
           onPress={onToggle}

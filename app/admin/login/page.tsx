@@ -3,7 +3,7 @@ import { AdminLoginCard } from "@/components/admin-login-card";
 
 export default function AdminLoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#161d21]">
+    <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#2A3534]">
       <Suspense fallback={<LoginFallback />}>
         <AdminLoginCard />
       </Suspense>

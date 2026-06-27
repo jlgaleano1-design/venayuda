@@ -15,7 +15,7 @@ export default async function DonateGoodsPage() {
   const centers = await getCollectionCenters();
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
       <section className="mx-auto flex min-h-[56vh] max-w-6xl flex-col justify-center gap-8 px-6 py-12">
         <div className="flex items-center justify-between gap-4">
           <Link className="btn-secondary" href="/">

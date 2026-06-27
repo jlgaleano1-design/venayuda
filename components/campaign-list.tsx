@@ -31,7 +31,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                 className={
                   filter === item.key
                     ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#161d21]"
+                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#2A3534]"
                 }
                 type="button"
                 variant={filter === item.key ? "primary" : "secondary"}

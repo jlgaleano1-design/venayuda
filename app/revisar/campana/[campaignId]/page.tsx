@@ -29,7 +29,7 @@ export default async function CampaignReviewPage({
 
   if (!isValidToken) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#161d21]">
+      <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#2A3534]">
         <ErrorState
           actions={[errorStateActions.backHome]}
           message="Puede haber vencido, haber sido reemplazado o estar incompleto. Vuelve al correo original o pide al equipo un enlace nuevo."
@@ -59,7 +59,7 @@ export default async function CampaignReviewPage({
 
   if (!campaign) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#161d21]">
+      <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 text-[#2A3534]">
         <ErrorState
           actions={[errorStateActions.backHome]}
           message="Puede que la solicitud ya no exista, que el enlace no corresponda a esta campaña o que la revisión haya sido cerrada."
@@ -75,7 +75,7 @@ export default async function CampaignReviewPage({
   )}`;
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] px-6 py-10 text-[#161d21]">
+    <main className="min-h-screen bg-[#FFFCF8] px-6 py-10 text-[#2A3534]">
       <section className="mx-auto flex max-w-5xl flex-col gap-6">
         <div className="space-y-3">
           <span className="soft-pill">Revisión de campaña</span>

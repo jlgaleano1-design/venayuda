@@ -66,7 +66,7 @@ export function AdminLoginCard() {
           </Link>
           <div className="space-y-2">
             <Chip
-              className="!rounded-full bg-neutral-100 text-[#161d21]"
+              className="!rounded-full bg-neutral-100 text-[#2A3534]"
               variant="soft"
             >
               Admin
