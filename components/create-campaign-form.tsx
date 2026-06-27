@@ -10,7 +10,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { campaigns } from "@/lib/demo-data";
 import {
   buildCampaignAssetPath,
@@ -66,6 +66,7 @@ function createEmptyPaymentMethod(id: number): PaymentMethodDraft {
 }
 
 export function CreateCampaignForm() {
+  const shareInputRef = useRef<HTMLInputElement>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDraft[]>([
     createEmptyPaymentMethod(1),
   ]);
@@ -74,6 +75,7 @@ export function CreateCampaignForm() {
   const [coverImageName, setCoverImageName] = useState("");
   const [coverImageStatus, setCoverImageStatus] = useState("");
   const [shareField, setShareField] = useState("");
+  const [shareFieldError, setShareFieldError] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,9 +106,11 @@ export function CreateCampaignForm() {
   const canSubmit =
     shareSlug.length > 0 &&
     !isShareFieldTaken &&
+    !shareFieldError &&
     isEmailValid &&
     arePaymentMethodsComplete;
   const submitBlockReason = getSubmitBlockReason({
+    hasLinkError: Boolean(shareFieldError),
     hasEmail,
     hasPaymentMethod: paymentMethodsToSubmit.length > 0,
     incompletePaymentMethodIndex,
@@ -118,6 +122,9 @@ export function CreateCampaignForm() {
   const canAddPaymentMethod =
     Boolean(lastPaymentMethod) && isPaymentMethodComplete(lastPaymentMethod);
   const publicCampaignLink = `${siteUrl}/${shareSlug || "tu-campana"}`;
+  const formHelpText = shareFieldError || (!canSubmit ? submitBlockReason : "");
+  const shouldFocusShareField =
+    Boolean(shareFieldError) || (!shareSlug && Boolean(formHelpText));
 
   function addPaymentMethod() {
     if (!canAddPaymentMethod) {
@@ -170,6 +177,7 @@ export function CreateCampaignForm() {
 
     setIsSubmitting(true);
     setSubmitError("");
+    setShareFieldError("");
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -223,10 +231,25 @@ export function CreateCampaignForm() {
       });
       setIsSubmitted(true);
     } catch (error) {
-      setSubmitError(normalizeSubmissionError(error));
+      const normalizedError = normalizeSubmissionError(error);
+
+      if (isDuplicateLinkError(normalizedError)) {
+        setShareFieldError(normalizedError);
+        focusShareField();
+      } else {
+        setSubmitError(normalizedError);
+      }
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function focusShareField() {
+    shareInputRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    shareInputRef.current?.focus({ preventScroll: true });
   }
 
   if (isSubmitted) {
@@ -321,7 +344,7 @@ export function CreateCampaignForm() {
           Link personalizado para compartir
           <div
             className={`flex min-h-11 items-center rounded-full border bg-[#FFFCF8] px-4 text-sm ${
-              isShareFieldTaken
+              isShareFieldTaken || shareFieldError
                 ? "border-red-300"
                 : shareSlug
                   ? "border-[#2D5D5E]"
@@ -330,24 +353,29 @@ export function CreateCampaignForm() {
           >
             <span className="shrink-0 text-neutral-500">{siteHost}/</span>
             <input
-              aria-invalid={isShareFieldTaken}
+              ref={shareInputRef}
+              aria-invalid={isShareFieldTaken || Boolean(shareFieldError)}
               className="min-w-0 flex-1 bg-transparent font-bold outline-none"
               placeholder="ayuda-la-guaira"
               value={shareField}
-              onChange={(event) =>
-                setShareField(normalizeShareField(event.target.value))
-              }
+              onChange={(event) => {
+                setShareFieldError("");
+                setShareField(normalizeShareField(event.target.value));
+              }}
             />
           </div>
-          {shareSlug ? (
+          {shareSlug || shareFieldError ? (
             <span
               className={`text-xs font-bold ${
-                isShareFieldTaken ? "text-red-700" : "text-[#2D5D5E]"
+                isShareFieldTaken || shareFieldError
+                  ? "text-red-700"
+                  : "text-[#2D5D5E]"
               }`}
             >
-              {isShareFieldTaken
+              {shareFieldError ||
+                (isShareFieldTaken
                 ? "Ese link ya está usado. Prueba con otro nombre."
-                : "Disponible. Este será el link público de la campaña."}
+                  : "Disponible. Este será el link público de la campaña.")}
             </span>
           ) : null}
         </label>
@@ -460,6 +488,19 @@ export function CreateCampaignForm() {
           </p>
         ) : null}
 
+        {formHelpText ? (
+          shouldFocusShareField ? (
+            <button
+              className="w-fit text-left text-sm font-bold text-red-700 underline decoration-red-300 underline-offset-4"
+              type="button"
+              onClick={focusShareField}
+            >
+              {formHelpText}
+            </button>
+          ) : (
+            <p className="text-sm font-bold text-red-700">{formHelpText}</p>
+          )
+        ) : null}
         <Button
           className="inline-flex min-h-14 w-fit items-center gap-2 whitespace-nowrap !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
           isDisabled={!canSubmit || isSubmitting}
@@ -469,9 +510,6 @@ export function CreateCampaignForm() {
           <Plus className="shrink-0" size={18} />
           <span>{isSubmitting ? "Enviando..." : "Enviar solicitud"}</span>
         </Button>
-        {!canSubmit && submitBlockReason ? (
-          <p className="text-sm font-bold text-red-700">{submitBlockReason}</p>
-        ) : null}
         </Card.Content>
       </form>
     </Card>
@@ -515,6 +553,10 @@ function normalizeSubmissionError(error: unknown) {
   return message;
 }
 
+function isDuplicateLinkError(message: string) {
+  return /link personalizado.*usado|slug|duplicate/i.test(message);
+}
+
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
@@ -538,6 +580,7 @@ function isPaymentMethodStarted(method: PaymentMethodDraft) {
 }
 
 function getSubmitBlockReason({
+  hasLinkError,
   hasEmail,
   hasPaymentMethod,
   incompletePaymentMethodIndex,
@@ -545,6 +588,7 @@ function getSubmitBlockReason({
   isShareFieldTaken,
   shareSlug,
 }: {
+  hasLinkError: boolean;
   hasEmail: boolean;
   hasPaymentMethod: boolean;
   incompletePaymentMethodIndex: number;
@@ -552,6 +596,10 @@ function getSubmitBlockReason({
   isShareFieldTaken: boolean;
   shareSlug: string;
 }) {
+  if (hasLinkError) {
+    return "El link personalizado ya está usado. Prueba con otro nombre.";
+  }
+
   if (!shareSlug) {
     return "Completa el link personalizado para poder enviar la solicitud.";
   }
