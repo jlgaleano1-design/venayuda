@@ -2,7 +2,6 @@
 
 import { Button, Card } from "@heroui/react";
 import {
-  AlertCircle,
   CheckCircle2,
   ChevronDown,
   ImageIcon,
@@ -81,9 +80,7 @@ export function CreateCampaignForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submissionResult, setSubmissionResult] = useState<{
-    approvalEmailSent: boolean;
     confirmationRecipientEmail: string;
-    reason?: string;
     publicCampaignUrl: string;
   } | null>(null);
 
@@ -218,15 +215,10 @@ export function CreateCampaignForm() {
       }
 
       setSubmissionResult({
-        approvalEmailSent: Boolean(result.approvalEmailSent),
         confirmationRecipientEmail:
           typeof result.confirmationRecipientEmail === "string"
             ? result.confirmationRecipientEmail
             : email,
-        reason:
-          typeof result.reason === "string"
-            ? normalizeOperationalReason(result.reason)
-            : undefined,
         publicCampaignUrl: result.publicCampaignUrl ?? publicCampaignLink,
       });
       setIsSubmitted(true);
@@ -259,42 +251,16 @@ export function CreateCampaignForm() {
           <div className="flex items-start gap-4 rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-5">
             <CheckCircle2 className="mt-1 shrink-0 text-[#2D5D5E]" size={26} />
             <div>
-              <h2 className="text-xl font-extrabold">Campaña creada</h2>
+              <h2 className="text-xl font-extrabold">Revisa tu correo</h2>
               <p className="mt-2 leading-7 text-neutral-700">
-                Para publicarla, ve a tu correo y confirma el enlace que te
-                enviamos. Después de confirmar, podrás compartir tu campaña.
-              </p>
-            </div>
-          </div>
-
-          {submissionResult?.approvalEmailSent ? (
-            <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#FFFCF8] p-4">
-              <p className="font-extrabold text-[#2D5D5E]">
-                Revisa tu correo
-              </p>
-              <p className="mt-2 text-sm leading-6 text-neutral-600">
                 Te enviamos un enlace al correo{" "}
                 <span className="font-extrabold text-[#2A3534]">
-                  {submissionResult.confirmationRecipientEmail}
+                  {submissionResult?.confirmationRecipientEmail ?? email}
                 </span>{" "}
                 para confirmar y publicar esta campaña.
               </p>
             </div>
-          ) : (
-            <div className="flex items-start gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
-              <AlertCircle className="mt-0.5 shrink-0 text-amber-700" size={20} />
-              <div>
-                <p className="font-extrabold text-amber-900">
-                  Campaña guardada, correo pendiente
-                </p>
-                <p className="mt-2 text-sm leading-6 text-amber-900/80">
-                  Recibimos tu información, pero el correo automático de
-                  confirmación no pudo enviarse
-                  {submissionResult?.reason ? ` (${submissionResult.reason})` : ""}.
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
 
           <div className="rounded-[1.5rem] border border-neutral-200 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -531,18 +497,6 @@ function normalizeShareField(value: string) {
 
 function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
-}
-
-function normalizeOperationalReason(reason: string) {
-  if (
-    /smtp|approval_recipient_email|campaign_review_secret|configur|correo/i.test(
-      reason,
-    )
-  ) {
-    return "el servicio de correo no está disponible";
-  }
-
-  return reason;
 }
 
 function normalizeSubmissionError(error: unknown) {

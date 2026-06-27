@@ -24,7 +24,11 @@ En Vercel staging configura:
 
 Usa el mismo valor para `EMAIL_WORKER_SECRET` y `CRON_SECRET` en Vercel. El
 cron definido en `vercel.json` llama `GET /api/internal/email-worker` cada
-minuto; Vercel adjunta `Authorization: Bearer $CRON_SECRET`.
+dia para mantenerse compatible con Vercel Hobby; Vercel adjunta
+`Authorization: Bearer $CRON_SECRET`. Para correo transaccional en produccion,
+usa un cron externo con el mismo bearer token o ejecuta el worker manualmente
+despues de pruebas criticas. No dependas solo del worker diario para campañas
+reales.
 
 Sender es el unico proveedor de correo transaccional de Vendonar. Copia
 `SMTP_HOST`, `SMTP_USER` y `SMTP_PASS` desde Sender, usa `SMTP_PORT=587` y

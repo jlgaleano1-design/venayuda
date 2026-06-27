@@ -63,7 +63,11 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                       : "h-9 shrink-0 rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm"
                   }
                   type="button"
-                  onClick={() => setFilter(item.key)}
+                  onClick={() =>
+                    setFilter((currentFilter) =>
+                      currentFilter === item.key ? "" : item.key,
+                    )
+                  }
                 >
                   {item.label}
                 </button>

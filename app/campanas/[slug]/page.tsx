@@ -83,25 +83,25 @@ export default async function CampaignDetailPage({
           Campañas
         </Link>
 
+        <div className="space-y-4 lg:max-w-[calc(100%-384px)]">
+          <div className="flex flex-wrap gap-2">
+            <span className="status-pill bg-emerald-50 text-emerald-800">
+              {campaign.status === "active" ? "Activa" : "Pausada"}
+            </span>
+            <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
+              {campaign.location}
+            </span>
+          </div>
+          <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
+            {campaign.title}
+          </h1>
+          <p className="max-w-3xl text-lg leading-8 text-neutral-700">
+            {campaign.description}
+          </p>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <span className="status-pill bg-emerald-50 text-emerald-800">
-                  {campaign.status === "active" ? "Activa" : "Pausada"}
-                </span>
-                <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
-                  {campaign.location}
-                </span>
-              </div>
-              <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
-                {campaign.title}
-              </h1>
-              <p className="max-w-3xl text-lg leading-8 text-neutral-700">
-                {campaign.description}
-              </p>
-            </div>
-
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">Quién responde</h2>
@@ -127,6 +127,12 @@ export default async function CampaignDetailPage({
                 ) : null}
               </div>
             </section>
+
+            <TransparencyCard campaign={campaign} />
+
+            <div className="lg:hidden">
+              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+            </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="surface-card">
@@ -156,7 +162,9 @@ export default async function CampaignDetailPage({
 
               <section className="surface-card">
                 <div className="flex flex-col gap-4 p-5">
-                  <h2 className="text-xl font-extrabold">Compras aprobadas</h2>
+                  <h2 className="text-xl font-extrabold">
+                    Uso de fondos confirmado
+                  </h2>
                   {campaign.purchases.map((purchase) => (
                     <div key={purchase.title} className="space-y-3">
                       {purchase.photoUrl ? (
@@ -193,77 +201,99 @@ export default async function CampaignDetailPage({
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
-            <section className="surface-card border-[#2D5D5E]/30 bg-[#F3FBF8] shadow-sm">
-              <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-2xl font-black leading-tight">
-                  Métodos disponibles para recibir donaciones
-                </h2>
-                <div className="grid gap-3">
-                  {campaign.paymentMethods.map((method) => (
-                    <div
-                      key={method.id}
-                      className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#FFFCF8] p-4"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700">
-                          {categoryLabels[method.receivingCategory]}
-                        </span>
-                        <p className="font-bold">{method.label}</p>
-                        <p className="text-sm text-neutral-600">
-                          {method.currency}
-                        </p>
-                      </div>
-                      <p className="mt-3 text-sm text-neutral-600">
-                        Titular: {method.accountHolder}
-                      </p>
-                      <p className="mt-2 text-sm leading-6">
-                        {method.instructions}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="surface-card">
-              <div className="flex flex-col gap-4 p-5">
-                <h2 className="text-xl font-extrabold">Transparencia</h2>
-                <Metric
-                  label="Recaudados"
-                  value={formatUsdAprox(campaign.totals.donated)}
-                />
-                <Metric
-                  label="Utilizados"
-                  value={formatUsdAprox(campaign.totals.spent)}
-                />
-                <Metric
-                  label="Disponibles"
-                  value={formatUsdAprox(campaign.totals.balance)}
-                />
-                <Link
-                  className="btn-primary"
-                  href={`/campanas/${campaign.slug}/donar`}
-                >
-                  Avisar que doné
-                  <ExternalLink size={16} />
-                </Link>
-                <p className="text-xs leading-5 text-neutral-600">
-                  Dona por fuera usando uno de los métodos disponibles. Luego
-                  reporta tu aporte para que pueda revisarse manualmente.
-                </p>
-                <p className="text-xs leading-5 text-neutral-600">
-                  Los montos en USD son aproximados y se usan solo para
-                  facilitar el seguimiento público. Las donaciones no se
-                  procesan dentro de la plataforma y pueden realizarse en
-                  distintas monedas.
-                </p>
-              </div>
-            </section>
+            <div className="hidden lg:block">
+              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+            </div>
           </aside>
         </div>
       </section>
       <SiteFooter />
     </main>
+  );
+}
+
+function PaymentMethodsCard({
+  paymentMethods,
+}: {
+  paymentMethods: NonNullable<
+    Awaited<ReturnType<typeof getPublicCampaign>>
+  >["paymentMethods"];
+}) {
+  return (
+    <section className="surface-card">
+      <div className="flex flex-col gap-4 p-5">
+        <h2 className="text-2xl font-black leading-tight">
+          Métodos disponibles para recibir donaciones
+        </h2>
+        <div className="divide-y divide-neutral-200">
+          {paymentMethods.map((method) => (
+            <div key={method.id} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700">
+                  {categoryLabels[method.receivingCategory]}
+                </span>
+                <p className="font-bold">{method.label}</p>
+                <p className="text-sm text-neutral-600">{method.currency}</p>
+              </div>
+              <p className="mt-3 text-sm text-neutral-600">
+                Titular: {method.accountHolder}
+              </p>
+              <p className="mt-2 text-sm leading-6">{method.instructions}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TransparencyCard({
+  campaign,
+}: {
+  campaign: NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
+}) {
+  return (
+    <section className="surface-card">
+      <div className="flex flex-col gap-5 p-5 lg:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1 space-y-4">
+            <h2 className="text-xl font-extrabold">Transparencia</h2>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Metric
+                label="Recaudados"
+                value={formatUsdAprox(campaign.totals.donated)}
+              />
+              <Metric
+                label="Utilizados"
+                value={formatUsdAprox(campaign.totals.spent)}
+              />
+              <Metric
+                label="Disponibles"
+                value={formatUsdAprox(campaign.totals.balance)}
+              />
+            </div>
+          </div>
+          <Link
+            className="btn-primary w-full sm:w-fit lg:mt-9 lg:min-w-48"
+            href={`/campanas/${campaign.slug}/donar`}
+          >
+            Avisar que doné
+            <ExternalLink size={16} />
+          </Link>
+        </div>
+        <div className="grid gap-3 text-xs leading-5 text-neutral-600 lg:grid-cols-2">
+          <p>
+            Dona por fuera usando uno de los métodos disponibles. Luego reporta
+            tu aporte para que pueda revisarse manualmente.
+          </p>
+          <p>
+            Los montos en USD son aproximados y se usan solo para facilitar el
+            seguimiento público. Las donaciones no se procesan dentro de la
+            plataforma y pueden realizarse en distintas monedas.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -278,9 +308,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-neutral-200 pb-3">
+    <div className="border-b border-neutral-200 pb-3 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="text-2xl font-extrabold">{value}</p>
+      <p className="text-xl font-extrabold leading-tight lg:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }

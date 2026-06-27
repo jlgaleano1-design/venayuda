@@ -100,6 +100,16 @@ export async function queueOrSendEmailEvent<T extends EmailEventType>(
     return { queued: false, sent: true };
   }
 
+  if (queued.eventId && delivery.reason) {
+    await supabase
+      .from("email_events")
+      .update({
+        last_error: delivery.reason,
+        locked_at: null,
+      })
+      .eq("id", queued.eventId);
+  }
+
   return {
     queued: queued.queued,
     reason:
