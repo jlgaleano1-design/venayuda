@@ -15,7 +15,7 @@
   "dependencies": {
     "@heroui/react": "latest",
     "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.46.1",
+    "@supabase/supabase-js": "^2.108.2",
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
