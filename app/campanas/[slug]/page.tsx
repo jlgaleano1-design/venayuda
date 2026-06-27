@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ArrowLeft, ExternalLink, Instagram } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
 import { formatUsdAprox } from "@/lib/demo-data";
@@ -83,25 +84,31 @@ export default async function CampaignDetailPage({
           Campañas
         </Link>
 
-        <div className="space-y-4 lg:max-w-[calc(100%-384px)]">
-          <div className="flex flex-wrap gap-2">
-            <span className="status-pill bg-emerald-50 text-emerald-800">
-              {campaign.status === "active" ? "Activa" : "Pausada"}
-            </span>
-            <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
-              {campaign.location}
-            </span>
-          </div>
-          <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
-            {campaign.title}
-          </h1>
-          <p className="max-w-3xl text-lg leading-8 text-neutral-700">
-            {campaign.description}
-          </p>
-        </div>
-
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-6">
+          <div className="space-y-6 lg:order-1">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <span className="status-pill bg-emerald-50 text-emerald-800">
+                  {campaign.status === "active" ? "Activa" : "Pausada"}
+                </span>
+                <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
+                  {campaign.location}
+                </span>
+              </div>
+              <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
+                {campaign.title}
+              </h1>
+              <p className="max-w-3xl text-base leading-7 text-neutral-700">
+                {campaign.description}
+              </p>
+            </div>
+          </div>
+
+          <aside className="space-y-4 lg:order-2 lg:sticky lg:top-6 lg:h-fit lg:self-start">
+            <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+          </aside>
+
+          <div className="space-y-6 lg:order-1">
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">Quién responde</h2>
@@ -129,10 +136,6 @@ export default async function CampaignDetailPage({
             </section>
 
             <TransparencyCard campaign={campaign} />
-
-            <div className="lg:hidden">
-              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
-            </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="surface-card">
@@ -199,12 +202,6 @@ export default async function CampaignDetailPage({
               </section>
             </div>
           </div>
-
-          <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
-            <div className="hidden lg:block">
-              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
-            </div>
-          </aside>
         </div>
       </section>
       <SiteFooter />
@@ -226,25 +223,129 @@ function PaymentMethodsCard({
           Métodos disponibles para recibir donaciones
         </h2>
         <div className="divide-y divide-neutral-200">
-          {paymentMethods.map((method) => (
-            <div key={method.id} className="py-4 first:pt-0 last:pb-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700">
-                  {categoryLabels[method.receivingCategory]}
-                </span>
-                <p className="font-bold">{method.label}</p>
-                <p className="text-sm text-neutral-600">{method.currency}</p>
+          {paymentMethods.map((method) => {
+            const details = parsePaymentDetails({
+              instructions: method.instructions,
+              notes: method.notes,
+            });
+
+            return (
+              <div key={method.id} className="py-4 first:pt-0 last:pb-0">
+                <p className="text-base font-extrabold leading-6">
+                  <span>{categoryLabels[method.receivingCategory]}:</span>{" "}
+                  <span>{method.label}</span>
+                </p>
+                <div className="mt-4 grid gap-3">
+                  <PaymentField label="Titular" value={method.accountHolder} />
+                  <PaymentField
+                    label="Banco, plataforma o método"
+                    value={details.platform}
+                  />
+                  <PaymentField
+                    copyValue={details.accountReference}
+                    label="Cuenta, correo, wallet o ID"
+                    value={details.accountReference}
+                  />
+                  <PaymentField label="Moneda" value={method.currency} />
+                  <PaymentField
+                    multiline
+                    label="Instrucciones"
+                    value={details.instructions}
+                  />
+                </div>
               </div>
-              <p className="mt-3 text-sm text-neutral-600">
-                Titular: {method.accountHolder}
-              </p>
-              <p className="mt-2 text-sm leading-6">{method.instructions}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
+}
+
+function PaymentField({
+  copyValue,
+  label,
+  multiline = false,
+  value,
+}: {
+  copyValue?: string;
+  label: string;
+  multiline?: boolean;
+  value: string;
+}) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-2xl bg-neutral-50 px-4 py-3">
+      <p className="text-xs font-extrabold uppercase tracking-normal text-neutral-500">
+        {label}
+      </p>
+      <div className="mt-1 flex items-start gap-2">
+        <p
+          className={
+            multiline
+              ? "min-w-0 flex-1 whitespace-pre-line text-sm leading-6 text-neutral-700"
+              : "min-w-0 flex-1 break-words text-sm font-bold leading-6 text-[#2A3534]"
+          }
+        >
+          {value}
+        </p>
+        {copyValue ? <CopyPaymentValueButton value={copyValue} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function parsePaymentDetails({
+  instructions,
+  notes,
+}: {
+  instructions: string;
+  notes?: string;
+}) {
+  const detailLines = splitPaymentLines([notes, instructions]);
+  const visibleInstructionLines = splitPaymentLines([instructions]).filter(
+    (line) =>
+      !isBankLine(line) &&
+      !isAccountReferenceLine(line) &&
+      !isCryptoMarkerLine(line),
+  );
+
+  return {
+    accountReference: getPaymentLineValue(detailLines, isAccountReferenceLine),
+    instructions: visibleInstructionLines.join("\n"),
+    platform: getPaymentLineValue(detailLines, isBankLine),
+  };
+}
+
+function splitPaymentLines(values: Array<string | undefined>) {
+  return values
+    .flatMap((value) => value?.split("\n") ?? [])
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function getPaymentLineValue(
+  lines: string[],
+  matcher: (line: string) => boolean,
+) {
+  const line = lines.find(matcher);
+
+  return line?.replace(/^[^:]+:\s*/, "").trim() ?? "";
+}
+
+function isBankLine(line: string) {
+  return /^Banco, plataforma o método:/i.test(line);
+}
+
+function isAccountReferenceLine(line: string) {
+  return /^Cuenta, correo, wallet o ID:/i.test(line);
+}
+
+function isCryptoMarkerLine(line: string) {
+  return /^Categoría de recepción: Cripto$/i.test(line);
 }
 
 function TransparencyCard({
@@ -255,7 +356,7 @@ function TransparencyCard({
   return (
     <section className="surface-card">
       <div className="flex flex-col gap-5 p-5 lg:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-4">
             <h2 className="text-xl font-extrabold">Transparencia</h2>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -274,24 +375,18 @@ function TransparencyCard({
             </div>
           </div>
           <Link
-            className="btn-primary w-full sm:w-fit lg:mt-9 lg:min-w-48"
+            className="btn-primary w-full sm:w-fit lg:min-w-48"
             href={`/campanas/${campaign.slug}/donar`}
           >
             Avisar que doné
             <ExternalLink size={16} />
           </Link>
         </div>
-        <div className="grid gap-3 text-xs leading-5 text-neutral-600 lg:grid-cols-2">
-          <p>
-            Dona por fuera usando uno de los métodos disponibles. Luego reporta
-            tu aporte para que pueda revisarse manualmente.
-          </p>
-          <p>
-            Los montos en USD son aproximados y se usan solo para facilitar el
-            seguimiento público. Las donaciones no se procesan dentro de la
-            plataforma y pueden realizarse en distintas monedas.
-          </p>
-        </div>
+        <p className="text-xs leading-5 text-neutral-600">
+          Las donaciones se hacen directamente por los métodos publicados.
+          Repórtanos tu aporte para revisarlo manualmente y actualizar el
+          seguimiento público en USD referencial.
+        </p>
       </div>
     </section>
   );

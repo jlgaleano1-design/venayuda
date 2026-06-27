@@ -257,7 +257,8 @@ export function CreateCampaignForm() {
                 <span className="font-extrabold text-[#2A3534]">
                   {submissionResult?.confirmationRecipientEmail ?? email}
                 </span>{" "}
-                para confirmar y publicar esta campaña.
+                para confirmar y publicar esta campaña. Puede tardar unos
+                minutos; si no lo ves, puedes buscar en Spam.
               </p>
             </div>
           </div>
