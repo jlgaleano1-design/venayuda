@@ -24,8 +24,8 @@ export function CollectionCenterCard({
   const contactIsUrl = center.contact?.startsWith("http");
 
   return (
-    <Card className="surface-card shadow-none">
-      <Card.Content className="flex h-full flex-col gap-5 p-5">
+    <Card className="surface-card min-w-0 overflow-hidden shadow-none">
+      <Card.Content className="flex h-full min-w-0 flex-col gap-5 p-5">
         <div className="flex items-start justify-between gap-3">
           <span className="status-pill bg-emerald-50 text-emerald-800">
             Centro de acopio

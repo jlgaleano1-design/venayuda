@@ -465,7 +465,7 @@ export function CreateCampaignForm() {
         </div>
 
         <Button
-          className="min-h-10 w-full !justify-center !rounded-full bg-neutral-100 px-4 py-2 text-sm font-black text-[#2A3534]"
+          className="min-h-10 w-full !justify-center !rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-black text-[#2A3534] shadow-sm"
           isDisabled={!canAddPaymentMethod}
           type="button"
           variant="secondary"

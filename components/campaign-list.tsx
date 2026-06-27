@@ -60,7 +60,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                   className={
                     isSelected
                       ? "h-9 shrink-0 rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                      : "h-9 shrink-0 rounded-full bg-neutral-100 px-5 text-sm font-black text-[#2A3534]"
+                      : "h-9 shrink-0 rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm"
                   }
                   type="button"
                   onClick={() => setFilter(item.key)}

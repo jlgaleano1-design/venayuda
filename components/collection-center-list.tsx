@@ -45,9 +45,9 @@ export function CollectionCenterList({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-20 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
+      <div className="sticky top-0 z-20 -mx-6 border-t border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
         <div className="mx-auto grid max-w-6xl gap-3">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto">
             {collectionCenterFilters.map((item) => (
               <button
                 key={item.key}
@@ -55,7 +55,7 @@ export function CollectionCenterList({
                 className={
                   filter === item.key
                     ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#2A3534]"
+                    : "h-9 shrink-0 !rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm"
                 }
                 type="button"
                 onClick={() => setFilter(item.key)}
@@ -65,7 +65,7 @@ export function CollectionCenterList({
             ))}
           </div>
 
-          <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+          <div className="grid grid-cols-2 gap-2">
             <label className="sr-only" htmlFor="country-filter">
               Filtrar por país
             </label>
@@ -103,12 +103,13 @@ export function CollectionCenterList({
               ))}
             </select>
 
-            <div className="flex h-11 items-center text-sm font-bold text-neutral-600">
-              {filteredCenters.length} centros
-            </div>
           </div>
         </div>
       </div>
+
+      <p className="border-t border-neutral-200 pt-5 text-sm font-bold text-neutral-600">
+        {filteredCenters.length} centros:
+      </p>
 
       {filteredCenters.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-3">

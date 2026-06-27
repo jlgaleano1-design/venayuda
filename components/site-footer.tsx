@@ -40,7 +40,7 @@ export function SiteFooter() {
           >
             <button
               aria-label="Cerrar"
-              className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-full bg-neutral-100 text-[#2A3534] transition hover:bg-neutral-200"
+              className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-[#2A3534] shadow-sm transition hover:border-[#2D5D5E]/30 hover:bg-white"
               type="button"
               onClick={() => setIsProjectModalOpen(false)}
             >
