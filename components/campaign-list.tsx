@@ -20,8 +20,8 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-10 -mx-[50vw] w-screen translate-x-1/2 border-y border-neutral-200 bg-[#FFFCF8]/95 py-3 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-6">
+      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
+        <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-2 md:hidden">
             <label
               className="shrink-0 text-sm font-black text-neutral-600"
