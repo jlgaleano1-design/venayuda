@@ -380,6 +380,7 @@ export function CreateCampaignForm() {
           ) : null}
         </label>
         <TextAreaField
+          className="min-h-28"
           helperText="Cuenta qué se necesita, para qué y por qué urge."
           label="Descripción / historia"
           name="description"
@@ -889,11 +890,13 @@ function SelectField({
 }
 
 function TextAreaField({
+  className = "",
   helperText,
   label,
   name,
   required = false,
 }: {
+  className?: string;
   helperText?: string;
   label: string;
   name: string;
@@ -906,7 +909,7 @@ function TextAreaField({
         <span className="text-xs leading-5 text-neutral-500">{helperText}</span>
       ) : null}
       <textarea
-        className="textarea-field-compact"
+        className={`textarea-field-compact ${className}`}
         name={name}
         required={required}
       />
