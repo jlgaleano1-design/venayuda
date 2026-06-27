@@ -1,9 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getPublicCampaign } from "@/lib/campaign-data";
 
-export function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 export default async function SharedCampaignPage({
   params,

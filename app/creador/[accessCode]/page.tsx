@@ -26,9 +26,7 @@ function getCreatorPortalActivity(): CreatorPortalActivity {
   };
 }
 
-export function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 export default async function CreatorPortalPage({
   params,
