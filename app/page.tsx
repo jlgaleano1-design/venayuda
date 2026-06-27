@@ -56,9 +56,10 @@ export default async function HomePage() {
                 Campañas publicadas
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Cuando existan campañas aprobadas, aquí podrás ver lo
-                verificado, lo gastado y el saldo disponible. Ninguna donación
-                pasa por nosotros; el apoyo es directo.
+                Elige una campaña y dona directamente a una de las cuentas o
+                métodos disponibles. Ninguna donación pasa por nosotros; la
+                plataforma solo ayuda a registrar aportes y mostrar el
+                seguimiento público.
               </p>
             </div>
           </div>

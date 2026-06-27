@@ -20,25 +20,27 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-2 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 overflow-visible py-2">
-          <span className="shrink-0 text-sm font-black text-neutral-600">
-            Desde:
-          </span>
-          {receivingFilters.map((item) => (
-            <Button
-              key={item.key}
-              className={
-                filter === item.key
-                  ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                  : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515]"
-              }
-              type="button"
-              variant={filter === item.key ? "primary" : "secondary"}
-              onPress={() => setFilter(item.key)}
-            >
-              {item.label}
-            </Button>
-          ))}
+        <div className="mx-auto max-w-6xl overflow-visible">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto overflow-y-visible py-2">
+            <span className="shrink-0 text-sm font-black text-neutral-600">
+              Puedo donar a una cuenta en:
+            </span>
+            {receivingFilters.map((item) => (
+              <Button
+                key={item.key}
+                className={
+                  filter === item.key
+                    ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
+                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515]"
+                }
+                type="button"
+                variant={filter === item.key ? "primary" : "secondary"}
+                onPress={() => setFilter(item.key)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
