@@ -196,7 +196,26 @@ NEXT_PUBLIC_SITE_URL=https://tu-dominio.com
 
 La app usa este valor para construir links publicos de campana como `https://tu-dominio.com/ayuda-la-guaira`.
 
-### 3. Iniciar Supabase local
+### 3. Configurar correo transaccional
+
+Vendonar encola correos en Supabase y los envia desde el worker
+`/api/internal/email-worker`. Para produccion, usa un proveedor SMTP con cuota
+gratuita suficiente y define:
+
+```bash
+EMAIL_PROVIDER=smtp
+EMAIL_FROM="Vendonar <notificaciones@tu-dominio.com>"
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=tu-usuario-smtp
+SMTP_PASS=tu-password-smtp
+```
+
+Con `EMAIL_PROVIDER=auto`, la app usa SMTP si `SMTP_HOST` existe y deja Resend
+solo como respaldo si no hay SMTP configurado. Para forzar Resend, define
+`EMAIL_PROVIDER=resend` y `RESEND_API_KEY`.
+
+### 4. Iniciar Supabase local
 
 Con Supabase CLI instalado:
 
@@ -207,7 +226,7 @@ supabase db reset
 
 `db reset` aplica la migracion `supabase/migrations/0001_initial_transparency_ledger.sql`.
 
-### 4. Crear el primer admin
+### 5. Crear el primer admin
 
 1. Crea un usuario en Supabase Auth.
 2. Copia su `user_id`.
@@ -220,7 +239,7 @@ values ('USER_ID_AQUI', 'admin@example.com', 'Admin', 'owner');
 
 Para el primer admin, ejecuta ese SQL desde Supabase Studio o con la service role, porque todavia no existe ningun owner que pueda invitar a otros admins.
 
-### 5. Iniciar Next.js
+### 6. Iniciar Next.js
 
 ```bash
 pnpm dev

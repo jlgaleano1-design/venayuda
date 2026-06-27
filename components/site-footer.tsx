@@ -66,7 +66,7 @@ export function SiteFooter() {
                 procesa donaciones. Mantenerlo funcionando implica cubrir costos
                 como hosting, dominio, base de datos, almacenamiento,
                 autenticación y envío de correos transaccionales, usando
-                herramientas como Supabase y Resend.
+                herramientas como Supabase y proveedores de correo.
               </p>
               <p>
                 También ha requerido costos de desarrollo y mantenimiento,

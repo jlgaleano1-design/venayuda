@@ -20,7 +20,7 @@ export async function GET(
 
   if (!verifyCampaignReviewToken(token, campaignId)) {
     return NextResponse.json(
-      { error: "Este enlace de revisión no es válido o venció." },
+      { error: "Este enlace de confirmación no es válido o venció." },
       { status: 403 },
     );
   }
@@ -42,7 +42,7 @@ export async function POST(
 
   if (!verifyCampaignReviewToken(token, campaignId)) {
     return NextResponse.json(
-      { error: "Este enlace de revisión no es válido o venció." },
+      { error: "Este enlace de confirmación no es válido o venció." },
       { status: 403 },
     );
   }
@@ -82,7 +82,7 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
   }
 
   if (campaign.status === "active") {
-    return redirectBack(requestUrl, campaignId, "approved");
+    return redirectToCampaign(requestUrl, campaign.slug, "published");
   }
 
   const creatorAccessToken = randomBytes(32).toString("base64url");
@@ -109,7 +109,7 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
 
   if (updateError || accessError) {
     return NextResponse.json(
-      { error: "No se pudo aprobar la campaña." },
+      { error: "No se pudo publicar la campaña." },
       { status: 500 },
     );
   }
@@ -136,11 +136,11 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
         recipientEmail: responsibleEmail,
       });
     } catch {
-      // Approval should remain valid even if email delivery needs retrying.
+      // Publishing should remain valid even if email delivery needs retrying.
     }
   }
 
-  return redirectBack(requestUrl, campaignId, "approved");
+  return redirectToCampaign(requestUrl, campaign.slug, "published");
 }
 
 async function rejectCampaign(requestUrl: URL, campaignId: string) {
@@ -172,6 +172,13 @@ function redirectBack(requestUrl: URL, campaignId: string, status: string) {
   if (token) {
     redirectUrl.searchParams.set("token", token);
   }
+
+  return NextResponse.redirect(redirectUrl, { status: 303 });
+}
+
+function redirectToCampaign(requestUrl: URL, slug: string, status: string) {
+  const redirectUrl = new URL(`/campanas/${slug}`, requestUrl);
+  redirectUrl.searchParams.set("status", status);
 
   return NextResponse.redirect(redirectUrl, { status: 303 });
 }

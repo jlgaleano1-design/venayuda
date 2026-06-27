@@ -20,9 +20,9 @@ export default function CreateCampaignPage() {
             Cuéntanos quién está respondiendo y cómo puede recibir ayuda.
           </h1>
           <p className="max-w-2xl leading-7 text-neutral-700">
-            Las campañas se publican después de una revisión manual. Vendonar no
-            procesa pagos; solo ayuda a publicar instrucciones, reportar aportes
-            y mantener seguimiento transparente.
+            Completa los datos de la campaña y confirma tu correo para
+            publicarla. Vendonar no procesa pagos; solo ayuda a publicar
+            instrucciones, reportar aportes y mantener seguimiento transparente.
           </p>
         </div>
 

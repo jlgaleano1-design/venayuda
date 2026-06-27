@@ -135,66 +135,64 @@ export async function POST(request: Request) {
     `/campanas/${requestData.slug}`,
     siteUrl,
   ).toString();
-  const recipientEmail = process.env.APPROVAL_RECIPIENT_EMAIL;
-
-  let approvalEmailResult: { queued: boolean; reason?: string } = {
+  let confirmationEmailResult: { queued: boolean; reason?: string } = {
     queued: false,
     reason: "el servicio de correo no está disponible",
   };
 
-  if (recipientEmail) {
-    if (!process.env.CAMPAIGN_REVIEW_SECRET) {
-      approvalEmailResult = {
-        queued: false,
-        reason: "el enlace de revisión necesita configuración interna",
-      };
-    } else {
-      const reviewToken = createCampaignReviewToken(campaign.id);
-      const approvalUrl = new URL(
-        `/api/campaign-requests/${campaign.id}/review`,
-        siteUrl,
-      );
-      approvalUrl.searchParams.set("token", reviewToken);
-      approvalUrl.searchParams.set("decision", "approve");
-      const reviewUrl = new URL(`/revisar/campana/${campaign.id}`, siteUrl);
-      reviewUrl.searchParams.set("token", reviewToken);
+  if (!process.env.CAMPAIGN_REVIEW_SECRET) {
+    confirmationEmailResult = {
+      queued: false,
+      reason: "el enlace de confirmación necesita configuración interna",
+    };
+  } else {
+    const reviewToken = createCampaignReviewToken(campaign.id);
+    const confirmationUrl = new URL(
+      `/api/campaign-requests/${campaign.id}/review`,
+      siteUrl,
+    );
+    confirmationUrl.searchParams.set("token", reviewToken);
+    confirmationUrl.searchParams.set("decision", "approve");
+    const reviewUrl = new URL(`/revisar/campana/${campaign.id}`, siteUrl);
+    reviewUrl.searchParams.set("token", reviewToken);
 
-      try {
-        approvalEmailResult = await enqueueEmailEvent(
-          supabase,
-          "campaign_review",
-          {
-            affectedArea: requestData.affectedArea,
-            approvalUrl: approvalUrl.toString(),
-            contactEmail: requestData.email,
-            description: requestData.description,
-            instagramHandle: requestData.instagramHandle,
-            organization: requestData.organization,
-            paymentMethods: requestData.paymentMethods,
-            publicCampaignUrl,
-            recipientEmail,
-            reviewUrl: reviewUrl.toString(),
-            responsibleName: requestData.responsibleName,
-            slug: requestData.slug,
-            title: requestData.title,
-          },
-        );
-      } catch {
-        approvalEmailResult = {
-          queued: false,
-          reason: "No se pudo poner en cola el correo de revisión",
-        };
-      }
+    try {
+      confirmationEmailResult = await enqueueEmailEvent(
+        supabase,
+        "campaign_review",
+        {
+          affectedArea: requestData.affectedArea,
+          approvalUrl: confirmationUrl.toString(),
+          contactEmail: requestData.email,
+          description: requestData.description,
+          instagramHandle: requestData.instagramHandle,
+          organization: requestData.organization,
+          paymentMethods: requestData.paymentMethods,
+          publicCampaignUrl,
+          recipientEmail: requestData.email,
+          reviewUrl: reviewUrl.toString(),
+          responsibleName: requestData.responsibleName,
+          slug: requestData.slug,
+          title: requestData.title,
+        },
+      );
+    } catch {
+      confirmationEmailResult = {
+        queued: false,
+        reason: "No se pudo poner en cola el correo de confirmación",
+      };
     }
   }
 
   return NextResponse.json({
     ok: true,
-    approvalEmailQueued: approvalEmailResult.queued,
-    approvalEmailSent: approvalEmailResult.queued,
+    approvalEmailQueued: confirmationEmailResult.queued,
+    approvalEmailSent: confirmationEmailResult.queued,
+    confirmationEmailQueued: confirmationEmailResult.queued,
+    confirmationEmailSent: confirmationEmailResult.queued,
     creatorAccessLink: null,
     publicCampaignUrl,
-    reason: approvalEmailResult.reason,
+    reason: confirmationEmailResult.reason,
   });
 }
 

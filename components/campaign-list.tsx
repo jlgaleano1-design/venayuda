@@ -19,8 +19,8 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto">
+      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-2 backdrop-blur">
+        <div className="no-scrollbar -my-2 mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto py-2">
           <span className="shrink-0 text-sm font-black text-neutral-600">
             Desde:
           </span>
