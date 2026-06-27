@@ -75,7 +75,8 @@ export default async function DonateGoodsPage() {
                 >
                   @nathaliesayago
                 </a>
-                .
+                . La copia pública se actualiza cada 24 horas desde la Sheet
+                original.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

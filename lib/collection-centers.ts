@@ -20,30 +20,45 @@ type CollectionCenterRow = {
 
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1OTNQGMsK3nU2wqy00rtPPcwsSzAlorWeP-uIotWpkxM/gviz/tq?tqx=out:csv&gid=115303742";
+const COLLECTION_CENTERS_REVALIDATE_SECONDS = 60 * 60 * 24;
 
 const collectionCenterColumns =
   "id, name, address, city, country, coordinates, receives, contact, categories";
 
 export async function getCollectionCenters() {
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("collection_centers")
-    .select(collectionCenterColumns)
-    .order("country", { ascending: true })
-    .order("city", { ascending: true })
-    .order("name", { ascending: true });
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("collection_centers")
+      .select(collectionCenterColumns)
+      .order("country", { ascending: true })
+      .order("city", { ascending: true })
+      .order("name", { ascending: true });
 
-  if (error || !data) {
-    return [];
+    if (!error && data && data.length > 0) {
+      return (data as CollectionCenterRow[]).map(rowToPublicCollectionCenter);
+    }
+  } catch {
+    // The public list should still render from the linked Sheet if Supabase is unavailable.
   }
 
-  return (data as CollectionCenterRow[]).map(rowToPublicCollectionCenter);
+  try {
+    return await fetchCollectionCentersFromSheet({
+      revalidate: COLLECTION_CENTERS_REVALIDATE_SECONDS,
+    });
+  } catch {
+    return [];
+  }
 }
 
-export async function fetchCollectionCentersFromSheet() {
+export async function fetchCollectionCentersFromSheet({
+  revalidate,
+}: {
+  revalidate?: number;
+} = {}) {
   const response = await fetch(SHEET_CSV_URL, {
-    cache: "no-store",
+    ...(revalidate ? { next: { revalidate } } : { cache: "no-store" }),
   });
 
   if (!response.ok) {

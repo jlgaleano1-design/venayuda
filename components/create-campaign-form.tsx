@@ -20,6 +20,7 @@ import {
 } from "@/lib/storage-upload";
 
 const categories = [
+  ["crypto", "Cripto"],
   ["mexico", "México"],
   ["united_states", "Estados Unidos"],
   ["venezuela", "Venezuela"],
@@ -55,7 +56,7 @@ function createEmptyPaymentMethod(id: number): PaymentMethodDraft {
   return {
     id,
     isOpen: true,
-    receivingCategory: "mexico",
+    receivingCategory: "crypto",
     methodName: "",
     accountHolder: "",
     bank: "",
@@ -396,7 +397,7 @@ export function CreateCampaignForm() {
           ) : null}
         </label>
         <div className="border-t border-neutral-200 pt-5">
-          <h2 className="font-extrabold">Cuentas para recibir ayuda</h2>
+          <h2 className="font-extrabold">Métodos para recibir ayuda</h2>
           <p className="mt-1 text-sm text-neutral-600">
             Usa instrucciones abiertas. No forzamos campos bancarios por país
             porque cada caso es distinto.
@@ -435,12 +436,12 @@ export function CreateCampaignForm() {
         >
           <span className="inline-flex items-center justify-center gap-1.5">
             <Plus className="shrink-0" size={15} />
-            <span>Agregar otra cuenta</span>
+            <span>Agregar otro método</span>
           </span>
         </Button>
         {!canAddPaymentMethod ? (
           <p className="text-sm font-bold text-neutral-500">
-            Completa todos los campos de la cuenta actual para agregar otra.
+            Completa todos los campos del método actual para agregar otro.
           </p>
         ) : null}
 
@@ -559,11 +560,11 @@ function getSubmitBlockReason({
   }
 
   if (!hasPaymentMethod) {
-    return "Agrega al menos una cuenta completa. Las cuentas adicionales vacías no bloquean el envío.";
+    return "Agrega al menos un método completo. Los métodos adicionales vacíos no bloquean el envío.";
   }
 
   if (incompletePaymentMethodIndex >= 0) {
-    return `Completa los campos obligatorios de la cuenta ${incompletePaymentMethodIndex + 1} o déjala totalmente vacía.`;
+    return `Completa los campos obligatorios del método ${incompletePaymentMethodIndex + 1} o déjalo totalmente vacío.`;
   }
 
   return "";
@@ -615,14 +616,14 @@ function PaymentMethodPanel({
           onPress={onToggle}
         >
           <span className="inline-flex items-center gap-2">
-            <span>Cuenta {index + 1}</span>
+            <span>Método {index + 1}</span>
             <span
               className={`inline-flex size-6 items-center justify-center rounded-full ${
                 isComplete
                   ? "bg-[#2D5D5E] text-[#FAE880]"
                   : "bg-neutral-200 text-neutral-500"
               }`}
-              title={isComplete ? "Cuenta lista" : "Cuenta incompleta"}
+              title={isComplete ? "Método listo" : "Método incompleto"}
             >
               <CheckCircle2 size={15} />
             </span>
@@ -634,9 +635,9 @@ function PaymentMethodPanel({
         </Button>
         {canDelete ? (
           <button
-            aria-label={`Borrar cuenta ${index + 1}`}
+            aria-label={`Borrar método ${index + 1}`}
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
-            title="Borrar cuenta"
+            title="Borrar método"
             type="button"
             onClick={onDelete}
           >
@@ -648,7 +649,7 @@ function PaymentMethodPanel({
       {isOpen ? (
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <label className="field-label">
-            Cuenta en
+            Recibe donaciones por
             <select
               className="field"
               required
@@ -673,13 +674,13 @@ function PaymentMethodPanel({
             onChange={(value) => onUpdate("accountHolder", value)}
           />
           <PaymentTextField
-            label="Banco o método"
+            label="Banco, plataforma o método"
             showError={showRequiredErrors && method.bank.trim().length === 0}
             value={method.bank}
             onChange={(value) => onUpdate("bank", value)}
           />
           <PaymentTextField
-            label="Número de cuenta / correo"
+            label="Cuenta, correo, wallet o ID"
             showError={
               showRequiredErrors && method.accountReference.trim().length === 0
             }

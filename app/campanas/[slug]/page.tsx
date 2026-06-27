@@ -7,6 +7,7 @@ import { getPublicCampaign } from "@/lib/campaign-data";
 import { formatUsdAprox } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
+  crypto: "Cripto",
   mexico: "México",
   united_states: "Estados Unidos",
   venezuela: "Venezuela",

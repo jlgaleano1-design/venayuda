@@ -16,6 +16,7 @@ create type public.verification_status as enum (
   'rejected'
 );
 create type public.receiving_category as enum (
+  'crypto',
   'mexico',
   'united_states',
   'venezuela',

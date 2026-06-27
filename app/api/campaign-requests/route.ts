@@ -10,6 +10,7 @@ const paymentMethodSchema = z.object({
   bank: z.string().min(1),
   methodName: z.string().min(1),
   receivingCategory: z.enum([
+    "crypto",
     "mexico",
     "united_states",
     "venezuela",
@@ -108,14 +109,15 @@ export async function POST(request: Request) {
         account_holder: method.accountHolder,
         campaign_id: campaign.id,
         method_name: method.methodName,
-        notes: [`Banco: ${method.bank}`, `Cuenta / correo: ${method.accountReference}`].join(
-          "\n",
-        ),
+        notes: [
+          `Banco, plataforma o método: ${method.bank}`,
+          `Cuenta, correo, wallet o ID: ${method.accountReference}`,
+        ].join("\n"),
         receiving_category: method.receivingCategory,
         transfer_instructions: [
           method.transferInstructions,
-          `Banco: ${method.bank}`,
-          `Cuenta / correo: ${method.accountReference}`,
+          `Banco, plataforma o método: ${method.bank}`,
+          `Cuenta, correo, wallet o ID: ${method.accountReference}`,
         ]
           .filter(Boolean)
           .join("\n"),

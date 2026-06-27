@@ -1,5 +1,5 @@
 export type ReceivingCategory =
-  | "all"
+  | "crypto"
   | "mexico"
   | "united_states"
   | "venezuela"
@@ -12,7 +12,7 @@ export type ReceivingCategory =
 
 export type PaymentMethod = {
   id: string;
-  receivingCategory: Exclude<ReceivingCategory, "all">;
+  receivingCategory: ReceivingCategory;
   label: string;
   currency: string;
   accountHolder: string;
@@ -33,7 +33,7 @@ export type Campaign = {
   location: string;
   affectedArea: string;
   status: "active" | "paused" | "completed";
-  receivingCategories: Exclude<ReceivingCategory, "all">[];
+  receivingCategories: ReceivingCategory[];
   totals: {
     donated: number;
     spent: number;
@@ -58,7 +58,7 @@ export type Campaign = {
 };
 
 export const receivingFilters: { key: ReceivingCategory; label: string }[] = [
-  { key: "all", label: "Todos" },
+  { key: "crypto", label: "Cripto" },
   { key: "mexico", label: "México" },
   { key: "united_states", label: "Estados Unidos" },
   { key: "venezuela", label: "Venezuela" },

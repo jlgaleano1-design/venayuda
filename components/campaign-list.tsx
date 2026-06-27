@@ -8,14 +8,14 @@ import { Campaign, receivingFilters, ReceivingCategory } from "@/lib/demo-data";
 import { CampaignCard } from "./campaign-card";
 
 export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
-  const [filter, setFilter] = useState<ReceivingCategory>("all");
+  const [filter, setFilter] = useState<ReceivingCategory>("crypto");
 
-  const filteredCampaigns =
-    filter === "all"
-      ? campaigns
-      : campaigns.filter((campaign) =>
-          campaign.receivingCategories.includes(filter),
-        );
+  const filteredCampaigns = campaigns.filter((campaign) =>
+    campaign.receivingCategories.includes(filter),
+  );
+  const selectedFilterLabel =
+    receivingFilters.find((item) => item.key === filter)?.label ?? "esta opción";
+  const hasPublishedCampaigns = campaigns.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -23,7 +23,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
         <div className="no-scrollbar overflow-x-auto">
           <div className="mx-auto flex w-max min-w-full max-w-6xl items-center gap-2 px-6 py-3">
             <span className="shrink-0 text-sm font-black text-neutral-600">
-              Puedo donar a una cuenta en:
+              Puedo donar desde / con:
             </span>
             {receivingFilters.map((item) => (
               <Button
@@ -58,18 +58,22 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
             </span>
             <div className="space-y-2">
               <h3 className="text-xl font-extrabold">
-                Todavía no hay campañas publicadas
+                {hasPublishedCampaigns
+                  ? `Todavía no hay campañas para ${selectedFilterLabel}`
+                  : "Todavía no hay campañas publicadas"}
               </h3>
               <p className="max-w-2xl text-sm leading-6 text-neutral-600">
-                Las campañas aparecerán aquí cuando el equipo revise y publique
-                las primeras solicitudes. Puedes crear la primera campaña para
-                iniciar el flujo.
+                {hasPublishedCampaigns
+                  ? "Prueba con otro origen de donación o vuelve más tarde."
+                  : "Las campañas aparecerán aquí cuando el equipo revise y publique las primeras solicitudes. Puedes crear la primera campaña para iniciar el flujo."}
               </p>
             </div>
-            <Link className="btn-primary" href="/campanas/crear">
-              <Plus size={18} />
-              Crear primera campaña
-            </Link>
+            {!hasPublishedCampaigns ? (
+              <Link className="btn-primary" href="/campanas/crear">
+                <Plus size={18} />
+                Crear primera campaña
+              </Link>
+            ) : null}
           </div>
         </section>
       )}

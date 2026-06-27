@@ -7,6 +7,7 @@ const categoryLabels: Record<string, string> = {
   argentina: "Argentina",
   chile: "Chile",
   colombia: "Colombia",
+  crypto: "Cripto",
   international: "Internacional / otro",
   mexico: "México",
   other: "Otro",
