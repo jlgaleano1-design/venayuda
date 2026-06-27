@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
-import { Camera, CheckCircle2, Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import type { Campaign } from "@/lib/demo-data";
 import {
@@ -11,7 +11,7 @@ import {
   validateStorageFile,
 } from "@/lib/storage-upload";
 
-type CreatorUpdateCampaign = Pick<Campaign, "creatorAccessCode" | "slug" | "title">;
+type CreatorUpdateCampaign = Pick<Campaign, "creatorAccessCode" | "slug">;
 
 export function CreatorUpdateForm({
   campaign,
@@ -103,9 +103,7 @@ export function CreatorUpdateForm({
         title: formData.get("title"),
         description: formData.get("description"),
         amount: formData.get("amount"),
-        amountUsdEstimated: formData.get("amountUsdEstimated"),
-        currency: formData.get("currency"),
-        purchaseDate: formData.get("purchaseDate"),
+        currency: "USD",
         vendor: formData.get("vendor"),
         purchaseId,
         photoFilePath,
@@ -127,9 +125,7 @@ export function CreatorUpdateForm({
     setPhotoName("");
     setPhotoStatus("");
     setInvoiceStatus("");
-    setStatusMessage(
-      "Novedad recibida. Quedará pendiente hasta que el equipo la revise y apruebe.",
-    );
+    setStatusMessage("Novedad publicada en tu campaña.");
     event.currentTarget.reset();
   }
 
@@ -137,93 +133,40 @@ export function CreatorUpdateForm({
     <Card className="surface-card shadow-none">
       <form onSubmit={submitUpdate}>
         <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
-          <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-4">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 shrink-0 text-[#2D5D5E]" size={20} />
-              <div>
-                <p className="font-black">Acceso de creador activo</p>
-                <p className="mt-1 text-sm leading-6 text-neutral-700">
-                  Este enlace permite subir compras y fotos para{" "}
-                  <span className="font-bold">{campaign.title}</span>. Las
-                  novedades no se publican hasta pasar por revisión.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="grid gap-4 md:grid-cols-2">
             <TextField label="Qué compraste" name="title" required />
             <TextField label="Proveedor / tienda" name="vendor" />
             <TextField
-              label="Monto original"
+              label="Monto gastado en dólares"
               name="amount"
+              prefix="USD"
               required
               step="any"
               type="number"
-            />
-            <TextField label="Moneda original" name="currency" required />
-            <TextField
-              label="Equivalente aproximado en USD"
-              name="amountUsdEstimated"
-              step="any"
-              type="number"
-            />
-            <TextField
-              label="Fecha de compra"
-              name="purchaseDate"
-              required
-              type="date"
             />
           </div>
 
-          <label className="field-label">
-            Foto de la compra
-            <span className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
-              <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
-                <Camera size={20} />
-              </span>
-              <span className="text-sm font-black text-[#2A3534]">
-                {photoName || "Subir foto clara de lo comprado"}
-              </span>
-              <span className="text-xs leading-5 text-neutral-500">
-                La foto ayuda a que donantes vean en qué se convirtió el aporte.
-              </span>
-            </span>
-            <input
-              accept="image/png,image/jpeg,image/webp"
-              className="sr-only"
-              name="photo"
-              required
-              type="file"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                const validationError = file
-                  ? validateStorageFile(file, storageBuckets.purchaseDocuments)
-                  : "";
+          <FileField
+            accept="image/png,image/jpeg,image/webp"
+            label="Foto"
+            name="photo"
+            required
+            statusMessage={photoStatus || photoName}
+            onChange={(file) => {
+              const validationError = file
+                ? validateStorageFile(file, storageBuckets.purchaseDocuments)
+                : "";
 
-                setPhotoName(validationError ? "" : (file?.name ?? ""));
-                setPhotoStatus(validationError);
-              }}
-            />
-            {photoStatus ? (
-              <span
-                className={`text-xs font-bold ${
-                  photoStatus.includes("no permitido")
-                    ? "text-red-700"
-                    : "text-[#2D5D5E]"
-                }`}
-              >
-                {photoStatus}
-              </span>
-            ) : null}
-          </label>
+              setPhotoName(validationError ? "" : (file?.name ?? ""));
+              setPhotoStatus(validationError);
+            }}
+          />
 
-          <TextField
+          <FileField
             accept="image/png,image/jpeg,image/webp,application/pdf"
-            label="Factura, ticket o captura adicional"
+            label="Factura o ticket (opcional)"
             name="invoice"
             statusMessage={invoiceStatus}
-            type="file"
             onChange={(file) => {
               const validationError = file
                 ? validateStorageFile(file, storageBuckets.purchaseDocuments)
@@ -232,7 +175,7 @@ export function CreatorUpdateForm({
               setInvoiceStatus(validationError);
             }}
           />
-          <TextAreaField label="Descripción breve" name="description" />
+          <TextAreaField label="Descripción breve (opcional)" name="description" />
 
           <Button
             className="inline-flex min-h-14 w-fit items-center gap-2 whitespace-nowrap !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
@@ -256,11 +199,6 @@ export function CreatorUpdateForm({
             </p>
           ) : null}
 
-          <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-            En la versión conectada, esta novedad crea una compra pendiente con
-            foto privada. Un admin decide si aprueba la compra y si la foto se
-            muestra públicamente.
-          </div>
         </Card.Content>
       </form>
     </Card>
@@ -277,61 +215,101 @@ async function readResponseError(response: Response, fallback: string) {
 }
 
 function TextField({
+  helperText,
+  label,
+  name,
+  placeholder,
+  prefix,
+  required = false,
+  step,
+  type = "text",
+}: {
+  helperText?: string;
+  label: string;
+  name: string;
+  placeholder?: string;
+  prefix?: string;
+  required?: boolean;
+  step?: string;
+  type?: string;
+}) {
+  return (
+    <label className="field-label">
+      {label}
+      {prefix ? (
+        <span className="flex min-h-11 items-center overflow-hidden rounded-full border border-neutral-200 bg-white focus-within:border-[#2D5D5E]">
+          <span className="flex min-h-11 items-center border-r border-neutral-200 bg-neutral-50 px-4 text-sm font-black text-[#2D5D5E]">
+            {prefix}
+          </span>
+          <Input
+            className="field !border-0 !bg-transparent"
+            name={name}
+            placeholder={placeholder}
+            required={required}
+            step={step}
+            type={type}
+            variant="secondary"
+          />
+        </span>
+      ) : (
+        <Input
+          className="field"
+          name={name}
+          placeholder={placeholder}
+          required={required}
+          step={step}
+          type={type}
+          variant="secondary"
+        />
+      )}
+      {helperText ? (
+        <span className="text-xs font-bold leading-5 text-neutral-500">
+          {helperText}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function FileField({
   accept,
   label,
   name,
   required = false,
   statusMessage,
-  step,
-  type = "text",
   onChange,
 }: {
-  accept?: string;
+  accept: string;
   label: string;
   name: string;
   required?: boolean;
   statusMessage?: string;
-  step?: string;
-  type?: string;
-  onChange?: (file: File | null) => void;
+  onChange: (file: File | null) => void;
 }) {
-  if (type === "file") {
-    return (
-      <label className="field-label">
-        {label}
-        <input
-          accept={accept}
-          className="field"
-          name={name}
-          type="file"
-          onChange={(event) => onChange?.(event.target.files?.[0] ?? null)}
-        />
-        {statusMessage ? (
-          <span
-            className={`text-xs font-bold ${
-              statusMessage.includes("no permitido")
-                ? "text-red-700"
-                : "text-[#2D5D5E]"
-            }`}
-          >
-            {statusMessage}
-          </span>
-        ) : null}
-      </label>
-    );
-  }
-
   return (
     <label className="field-label">
       {label}
-      <Input
-        className="field"
+      <span className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm transition hover:border-[#2D5D5E]">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[#2D5D5E] text-[#FAE880]">
+          <Upload size={17} />
+        </span>
+        <span className="min-w-0 truncate font-bold text-[#2A3534]">
+          {statusMessage && !statusMessage.includes("no permitido")
+            ? statusMessage
+            : "Seleccionar archivo"}
+        </span>
+      </span>
+      <input
+        accept={accept}
+        className="sr-only"
         name={name}
         required={required}
-        step={step}
-        type={type}
-        variant="secondary"
+        type="file"
+        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
+      {statusMessage?.includes("no permitido") ? (
+        <span className="text-xs font-bold text-red-700">{statusMessage}</span>
+      ) : null}
     </label>
   );
 }

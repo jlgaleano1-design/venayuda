@@ -721,6 +721,12 @@ function PaymentMethodPanel({
                 </option>
               ))}
             </select>
+            {method.receivingCategory === "venezuela" ? (
+              <span className="text-xs font-bold leading-5 text-neutral-500">
+                Para Venezuela, publica montos e instrucciones en USD o en una
+                aproximación en USD.
+              </span>
+            ) : null}
           </label>
           <PaymentTextField
             label="Titular / destinatario"

@@ -1,5 +1,7 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { ErrorState, errorStateActions } from "@/components/error-state";
+import { PublishedCampaignActions } from "@/components/published-campaign-actions";
+import { PublicCampaignLink } from "@/components/public-campaign-link";
 import { verifyCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -48,7 +50,7 @@ export default async function CampaignReviewPage({
     supabase
       .from("campaigns")
       .select(
-        "affected_area, contact_info, description, instagram_handle, location, responsible_organization, responsible_person_name, slug, status, title, verification_status",
+        "affected_area, contact_info, cover_image_path, description, instagram_handle, location, responsible_organization, responsible_person_name, slug, status, title, verification_status",
       )
       .eq("id", campaignId)
       .single(),
@@ -68,6 +70,80 @@ export default async function CampaignReviewPage({
           message="Puede que la solicitud ya no exista, que el enlace no corresponda a esta campaña o que la revisión haya sido cerrada."
           title="No encontramos esta solicitud"
           variant="not-found"
+        />
+      </main>
+    );
+  }
+
+  if (campaign.status === "active") {
+    const campaignPath = `/campanas/${campaign.slug}`;
+    const publicCampaignUrl = new URL(
+      campaignPath,
+      normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org"),
+    ).toString();
+    const displayCampaignUrl = publicCampaignUrl.replace(/^https?:\/\//, "");
+    const coverImageUrl = await createCampaignAssetSignedUrl(
+      supabase,
+      campaign.cover_image_path,
+    );
+
+    return (
+      <main className="min-h-screen bg-[#FFFCF8] px-2 pb-28 pt-4 text-[#2A3534] sm:px-6 sm:py-10">
+        <section className="mx-auto flex max-w-3xl items-start sm:min-h-[calc(100vh-5rem)] sm:items-center">
+          <div className="surface-card w-full overflow-hidden">
+            <div className="flex flex-col gap-4 p-4 md:gap-7 md:p-8">
+              <div className="relative -mx-4 -mt-4 overflow-hidden rounded-t-[2rem] bg-[#E8F2ED] md:-mx-8 md:-mt-8">
+                {coverImageUrl ? (
+                  <div
+                    aria-label={`Imagen de ${campaign.title}`}
+                    className="aspect-[16/9] bg-cover bg-center"
+                    role="img"
+                    style={{ backgroundImage: `url(${coverImageUrl})` }}
+                  />
+                ) : (
+                  <div className="aspect-[16/9] bg-[#E8F2ED]" />
+                )}
+                <span className="absolute left-4 top-4 inline-flex size-12 items-center justify-center rounded-full bg-[#FFFCF8]/90 text-[#2D5D5E] shadow-[0_4px_16px_rgb(42_53_52/8%)] md:size-14">
+                  <CheckCircle2 size={28} />
+                </span>
+              </div>
+
+              <div>
+                <div>
+                  <h1 className="text-[1.7rem] font-black leading-tight tracking-normal md:text-4xl">
+                    Tu campaña ya está publicada
+                  </h1>
+                </div>
+              </div>
+
+              <PublicCampaignLink
+                displayUrl={displayCampaignUrl}
+                publicCampaignUrl={publicCampaignUrl}
+              />
+
+              <PublishedCampaignActions
+                campaignPath={campaignPath}
+                publicCampaignUrl={publicCampaignUrl}
+                variant="inline"
+              />
+
+              <p className="text-sm font-semibold leading-6 text-[#2D5D5E] md:text-base md:leading-7">
+                Gracias por ayudar desde donde estás. Venezuela se sostiene por
+                personas como tú: gente que ayuda, organiza y acompaña cuando
+                más hace falta.
+              </p>
+
+              <p className="border-t border-neutral-200 pt-4 text-sm leading-6 text-neutral-600">
+                Te enviamos por correo tu enlace privado. Guárdalo para subir
+                fotos o comprobantes cuando uses las donaciones.
+              </p>
+            </div>
+          </div>
+        </section>
+        <PublishedCampaignActions
+          campaignPath={campaignPath}
+          publicCampaignUrl={publicCampaignUrl}
+          variant="fixed"
         />
       </main>
     );
@@ -215,6 +291,25 @@ function getVisibleNotes(notes: string | null) {
       .join("\n")
       .trim() || ""
   );
+}
+
+function normalizeSiteUrl(value: string) {
+  return value.replace(/\/+$/g, "");
+}
+
+async function createCampaignAssetSignedUrl(
+  supabase: ReturnType<typeof createAdminClient>,
+  path: string | null,
+) {
+  if (!path) {
+    return null;
+  }
+
+  const { data } = await supabase.storage
+    .from("campaign-assets")
+    .createSignedUrl(path, 60 * 60);
+
+  return data?.signedUrl ?? null;
 }
 
 function Info({ label, value }: { label: string; value: string }) {

@@ -69,7 +69,6 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
         donorEmail: formData.get("donorEmail"),
         isAnonymous: formData.get("isAnonymous") === "on",
         amount: formData.get("amount"),
-        amountUsdEstimated: formData.get("amountUsdEstimated"),
         currency: formData.get("currency"),
         transferDate: formData.get("transferDate"),
         paymentMethodUsed: formData.get("paymentMethodUsed"),
@@ -118,21 +117,21 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
           </label>
           <div className="grid gap-4 md:grid-cols-3">
             <TextField
-              label="Monto original"
+              label="Monto"
               name="amount"
               required
               step="any"
               type="number"
             />
-            <TextField label="Moneda original" name="currency" required />
+            <TextField
+              helperText="Si estás donando desde Venezuela, reporta el monto en USD o una aproximación en USD."
+              label="Moneda"
+              name="currency"
+              placeholder="USD"
+              required
+            />
             <TextField label="Fecha" name="transferDate" type="date" />
           </div>
-          <TextField
-            label="Equivalente aproximado en USD, si lo conoces"
-            name="amountUsdEstimated"
-            step="any"
-            type="number"
-          />
           <TextField
             label="Método usado"
             name="paymentMethodUsed"
@@ -201,6 +200,7 @@ async function readResponseError(response: Response, fallback: string) {
 
 function TextField({
   accept,
+  helperText,
   label,
   name,
   placeholder,
@@ -211,6 +211,7 @@ function TextField({
   onChange,
 }: {
   accept?: string;
+  helperText?: string;
   label: string;
   name: string;
   placeholder?: string;
@@ -258,6 +259,11 @@ function TextField({
         type={type}
         variant="secondary"
       />
+      {helperText ? (
+        <span className="text-xs font-bold leading-5 text-neutral-500">
+          {helperText}
+        </span>
+      ) : null}
     </label>
   );
 }

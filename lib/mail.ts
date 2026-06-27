@@ -85,6 +85,9 @@ export type PurchaseImpactEmail = {
   recipientEmail: string;
 };
 
+const creatorAccessInstructions =
+  "Guarda este link y utilízalo para dar updates sobre cómo utilizas tus donaciones. Cada vez que subas algo, se le avisará a las personas que te han donado.";
+
 function createMailer() {
   const provider = (process.env.EMAIL_PROVIDER ?? "smtp").toLowerCase();
   const host = process.env.SMTP_HOST;
@@ -323,10 +326,10 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
       "Link público:",
       email.publicCampaignUrl,
       "",
-      "Link privado para subir novedades de compras:",
+      "Link privado del creador - NO COMPARTIR:",
       email.creatorAccessUrl,
       "",
-      "Guarda este link privado. No lo publiques.",
+      creatorAccessInstructions,
     ].join("\n"),
     html: renderBrandEmail({
       preview: `Tu campaña ${email.campaignTitle} ya está publicada`,
@@ -336,9 +339,9 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
         `<p>${renderEmailButton("Ver campaña pública", email.publicCampaignUrl)}</p>`,
         renderPanel(
           [
-            `<p style="margin:0 0 8px;font-weight:900;">Link privado del creador</p>`,
+            `<p style="margin:0 0 8px;font-weight:900;">Link privado del creador · <strong>NO COMPARTIR</strong></p>`,
             `<p style="margin:0;">${renderSecondaryLink(email.creatorAccessUrl, email.creatorAccessUrl)}</p>`,
-            `<p style="margin:12px 0 0;color:#626866;font-size:13px;">Guarda este link privado. No lo publiques.</p>`,
+            `<p style="margin:12px 0 0;color:#626866;font-size:13px;">${creatorAccessInstructions}</p>`,
           ].join(""),
         ),
       ].join(""),

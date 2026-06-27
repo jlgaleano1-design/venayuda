@@ -87,7 +87,7 @@
   }
 
   .surface-card {
-    @apply rounded-[2rem] border border-neutral-200 transition;
+    @apply rounded-[2rem] border border-neutral-200 bg-[#FEFEFE] transition;
   }
 
   .soft-pill {

@@ -48,7 +48,7 @@ export default async function HomePage() {
 
       <section
         id="campanas"
-        className="mx-auto flex max-w-6xl scroll-mt-8 flex-col gap-5 px-6 pb-16"
+        className="mx-auto flex max-w-6xl scroll-mt-8 flex-col gap-5 overflow-visible px-6 pb-16"
       >
         <div className="flex flex-col gap-2">
           <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">

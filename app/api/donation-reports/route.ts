@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enqueueEmailEvent } from "@/lib/email-queue";
+import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
 import { createDonationReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -10,7 +11,6 @@ const donationReportSchema = z.object({
   donorEmail: z.string().email().optional().or(z.literal("")),
   isAnonymous: z.boolean().optional(),
   amount: z.string().min(1),
-  amountUsdEstimated: z.string().optional(),
   currency: z.string().min(1),
   transferDate: z.string().optional(),
   paymentMethodUsed: z.string().optional(),
@@ -64,9 +64,7 @@ export async function POST(request: Request) {
   const campaignUrl = new URL(`/campanas/${campaign.slug}`, siteUrl).toString();
 
   const numericAmount = Number(report.amount);
-  const amountUsdEstimated = parseOptionalPositiveNumber(
-    report.amountUsdEstimated,
-  );
+  const currency = normalizeCurrency(report.currency);
   const proofFilePath = report.proofFilePath ?? report.proofFileName ?? "";
 
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -76,10 +74,15 @@ export async function POST(request: Request) {
     );
   }
 
-  if (amountUsdEstimated === null) {
+  const usdEstimate = await estimateUsdAmount({
+    amount: numericAmount,
+    currency,
+  });
+
+  if ("error" in usdEstimate) {
     return NextResponse.json(
-      { error: "El equivalente aproximado en USD no es válido." },
-      { status: 400 },
+      { error: usdEstimate.error },
+      { status: 422 },
     );
   }
 
@@ -90,11 +93,15 @@ export async function POST(request: Request) {
     .from("donations")
     .insert({
       amount_original: numericAmount,
-      amount_usd_estimated: amountUsdEstimated ?? null,
+      amount_usd_estimated: usdEstimate.amount,
       campaign_id: campaign.id,
-      currency_original: normalizeCurrency(report.currency),
+      conversion_notes: usdEstimate.conversionNotes,
+      currency_original: currency,
       donor_contact: normalizeOptionalText(report.donorEmail),
       donor_name: report.donorName || null,
+      exchange_rate_date: usdEstimate.exchangeRateDate,
+      exchange_rate_source: usdEstimate.exchangeRateSource,
+      exchange_rate_used: usdEstimate.exchangeRateUsed,
       is_anonymous: Boolean(report.isAnonymous),
       payment_method_id: paymentMethod?.id ?? null,
       proof_file_path: proofFilePath || null,
@@ -136,7 +143,7 @@ export async function POST(request: Request) {
             donorName: report.donorName,
             donorEmail: report.donorEmail,
             amount: report.amount,
-            currency: normalizeCurrency(report.currency),
+            currency,
             transferDate: report.transferDate,
             paymentMethod: report.paymentMethodUsed,
             transferReference: report.transferReference,
@@ -230,24 +237,10 @@ function extractEmail(value: string) {
   return value.match(/[^\s:@]+@[^\s@]+\.[^\s@]+/)?.[0] ?? "";
 }
 
-function normalizeCurrency(value: string) {
-  return value.trim().toUpperCase().slice(0, 12);
-}
-
 function normalizeOptionalText(value?: string) {
   const normalized = value?.trim() ?? "";
 
   return normalized.length > 0 ? normalized : null;
-}
-
-function parseOptionalPositiveNumber(value?: string) {
-  if (!value || value.trim().length === 0) {
-    return undefined;
-  }
-
-  const numberValue = Number(value);
-
-  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
 }
 
 async function safeQueueEmail(

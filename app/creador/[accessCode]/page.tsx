@@ -56,12 +56,12 @@ export default async function CreatorPortalPage({
             <div className="space-y-3">
               <span className="soft-pill">Portal del creador</span>
               <h1 className="text-3xl font-black tracking-normal md:text-4xl">
-                Sube novedades de compras para tu campaña.
+                Sube novedades sobre tu campaña.
               </h1>
               <p className="max-w-3xl leading-7 text-neutral-700">
                 Este espacio es para que {campaign.responsible} pueda reportar
-                qué compró, cuánto costó y adjuntar una foto. Cada novedad queda
-                pendiente hasta revisión.
+                qué compró, cuánto costó y adjuntar una foto. Cada novedad se
+                publica directamente en la campaña.
               </p>
             </div>
 
@@ -69,7 +69,6 @@ export default async function CreatorPortalPage({
               campaign={{
                 creatorAccessCode: accessCode,
                 slug: campaign.slug,
-                title: campaign.title,
               }}
             />
           </div>
@@ -92,7 +91,7 @@ export default async function CreatorPortalPage({
                 />
                 <Metric
                   label="Gastos"
-                  emptyText="Sin gastos aprobados"
+                  emptyText="Sin gastos registrados"
                   value={
                     activity.spent === null ? undefined : formatUsd(activity.spent)
                   }
@@ -108,7 +107,7 @@ export default async function CreatorPortalPage({
                 />
                 <p className="text-xs leading-5 text-neutral-600">
                   Estos datos se llenan solo con donaciones verificadas y compras
-                  aprobadas.
+                  registradas.
                 </p>
                 <Link
                   className="btn-secondary"
@@ -123,7 +122,7 @@ export default async function CreatorPortalPage({
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">
-                  Últimas compras aprobadas
+                  Últimas novedades
                 </h2>
                 {activity.purchases.length > 0 ? (
                   activity.purchases.map((purchase) => (
@@ -140,8 +139,8 @@ export default async function CreatorPortalPage({
                   ))
                 ) : (
                   <EmptyState
-                    title="Todavía no hay compras aprobadas"
-                    body="Cuando subas una compra y pase revisión, aparecerá aquí con su monto y fecha."
+                    title="Todavía no hay compras registradas"
+                    body="Cuando subas una compra, aparecerá aquí con su monto."
                   />
                 )}
               </div>

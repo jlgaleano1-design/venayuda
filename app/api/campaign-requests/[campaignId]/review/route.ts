@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
@@ -82,7 +83,8 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
   }
 
   if (campaign.status === "active") {
-    return redirectToCampaign(requestUrl, campaign.slug, "published");
+    revalidatePublishedCampaign(campaign.slug);
+    return redirectToPublishedReview(requestUrl, campaignId);
   }
 
   const creatorAccessToken = randomBytes(32).toString("base64url");
@@ -114,6 +116,8 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
     );
   }
 
+  revalidatePublishedCampaign(campaign.slug);
+
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
   );
@@ -140,7 +144,7 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
     }
   }
 
-  return redirectToCampaign(requestUrl, campaign.slug, "published");
+  return redirectToPublishedReview(requestUrl, campaignId);
 }
 
 async function rejectCampaign(requestUrl: URL, campaignId: string) {
@@ -153,7 +157,14 @@ async function rejectCampaign(requestUrl: URL, campaignId: string) {
     })
     .eq("id", campaignId);
 
+  revalidatePath("/admin");
+
   return redirectBack(requestUrl, campaignId, "rejected");
+}
+
+function revalidatePublishedCampaign(slug: string) {
+  revalidatePath("/");
+  revalidatePath(`/campanas/${slug}`);
 }
 
 function extractEmail(contactInfo?: string | null) {
@@ -176,9 +187,14 @@ function redirectBack(requestUrl: URL, campaignId: string, status: string) {
   return NextResponse.redirect(redirectUrl, { status: 303 });
 }
 
-function redirectToCampaign(requestUrl: URL, slug: string, status: string) {
-  const redirectUrl = new URL(`/campanas/${slug}`, requestUrl);
-  redirectUrl.searchParams.set("status", status);
+function redirectToPublishedReview(requestUrl: URL, campaignId: string) {
+  const redirectUrl = new URL(`/revisar/campana/${campaignId}`, requestUrl);
+  redirectUrl.searchParams.set("status", "published");
+  const token = requestUrl.searchParams.get("token");
+
+  if (token) {
+    redirectUrl.searchParams.set("token", token);
+  }
 
   return NextResponse.redirect(redirectUrl, { status: 303 });
 }

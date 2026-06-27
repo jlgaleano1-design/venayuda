@@ -1,8 +1,9 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCreatorAccessRecord } from "@/lib/creator-access";
 import { enqueueEmailEvent } from "@/lib/email-queue";
-import { createPurchaseReviewToken } from "@/lib/review-token";
+import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const creatorUpdateSchema = z.object({
@@ -12,9 +13,7 @@ const creatorUpdateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   amount: z.string().min(1),
-  amountUsdEstimated: z.string().optional(),
   currency: z.string().min(1),
-  purchaseDate: z.string().min(1),
   vendor: z.string().optional(),
   photoFileName: z.string().optional(),
   photoFilePath: z.string().optional(),
@@ -58,9 +57,7 @@ export async function POST(request: Request) {
   const photoFilePath = update.photoFilePath ?? update.photoFileName ?? "";
   const invoiceFilePath = update.invoiceFilePath ?? update.invoiceFileName ?? "";
   const numericAmount = Number(update.amount);
-  const amountUsdEstimated = parseOptionalPositiveNumber(
-    update.amountUsdEstimated,
-  );
+  const currency = normalizeCurrency(update.currency);
 
   if (!photoFilePath) {
     return NextResponse.json(
@@ -76,13 +73,19 @@ export async function POST(request: Request) {
     );
   }
 
-  if (amountUsdEstimated === null) {
+  const usdEstimate = await estimateUsdAmount({
+    amount: numericAmount,
+    currency,
+  });
+
+  if ("error" in usdEstimate) {
     return NextResponse.json(
-      { error: "El equivalente aproximado en USD no es válido." },
-      { status: 400 },
+      { error: usdEstimate.error },
+      { status: 422 },
     );
   }
 
+  const purchaseDate = new Date().toISOString().slice(0, 10);
   const { data: purchase, error } = await supabase
     .from("purchases")
     .insert({
@@ -91,14 +94,20 @@ export async function POST(request: Request) {
       title: update.title,
       description: update.description || null,
       amount_original: numericAmount,
-      amount_usd_estimated: amountUsdEstimated ?? null,
-      currency_original: normalizeCurrency(update.currency),
-      purchase_date: update.purchaseDate,
+      amount_usd_estimated: usdEstimate.amount,
+      conversion_notes: usdEstimate.conversionNotes,
+      currency_original: currency,
+      exchange_rate_date: usdEstimate.exchangeRateDate,
+      exchange_rate_source: usdEstimate.exchangeRateSource,
+      exchange_rate_used: usdEstimate.exchangeRateUsed,
+      is_photo_public: true,
+      purchase_date: purchaseDate,
       vendor: update.vendor || null,
       photo_file_path: photoFilePath,
       invoice_file_path: invoiceFilePath || null,
       submitted_by_creator_access_id: accessRecord.id,
-      status: "pending",
+      approved_at: new Date().toISOString(),
+      status: "approved",
     })
     .select("id")
     .single();
@@ -110,55 +119,26 @@ export async function POST(request: Request) {
     );
   }
 
-  const recipientEmail = process.env.APPROVAL_RECIPIENT_EMAIL;
-  let reviewEmailQueued = false;
-
-  if (recipientEmail) {
-    const siteUrl = normalizeSiteUrl(
-      process.env.NEXT_PUBLIC_SITE_URL ??
-        request.headers.get("origin") ??
-        "https://vendonar.com",
-    );
-    const reviewToken = createPurchaseReviewToken(purchase.id);
-    const approvalUrl = new URL(
-      `/api/creator-updates/${purchase.id}/review`,
-      siteUrl,
-    );
-    approvalUrl.searchParams.set("token", reviewToken);
-    approvalUrl.searchParams.set("decision", "approve");
-    const rejectionUrl = new URL(
-      `/api/creator-updates/${purchase.id}/review`,
-      siteUrl,
-    );
-    rejectionUrl.searchParams.set("token", reviewToken);
-    rejectionUrl.searchParams.set("decision", "reject");
-
-    try {
-      const result = await enqueueEmailEvent(supabase, "purchase_review", {
-        amount: update.amount,
-        approvalUrl: approvalUrl.toString(),
-        campaignTitle: accessRecord.campaign.title,
-        currency: normalizeCurrency(update.currency),
-        description: update.description,
-        purchaseDate: update.purchaseDate,
-        recipientEmail,
-        rejectionUrl: rejectionUrl.toString(),
-        title: update.title,
-        vendor: update.vendor,
-      });
-      reviewEmailQueued = result.queued;
-    } catch {
-      reviewEmailQueued = false;
-    }
-  }
+  revalidatePath(`/campanas/${accessRecord.campaign.slug}`);
+  const impactEmailsQueued = await notifyVerifiedDonors({
+    amount: update.amount,
+    campaignId: accessRecord.campaign.id,
+    campaignSlug: accessRecord.campaign.slug,
+    campaignTitle: accessRecord.campaign.title,
+    currency,
+    description: update.description,
+    purchaseDate,
+    purchaseTitle: update.title,
+    request,
+    supabase,
+  });
 
   return NextResponse.json({
     ok: true,
+    impactEmailsQueued,
     purchaseId: purchase.id,
-    reviewEmailQueued,
-    reviewEmailSent: reviewEmailQueued,
-    status: "pending_review",
-    message: "Novedad recibida y pendiente de revisión.",
+    status: "approved",
+    message: "Novedad publicada en la campaña.",
   });
 }
 
@@ -166,16 +146,62 @@ function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
 }
 
-function normalizeCurrency(value: string) {
-  return value.trim().toUpperCase().slice(0, 12);
-}
+async function notifyVerifiedDonors({
+  amount,
+  campaignId,
+  campaignSlug,
+  campaignTitle,
+  currency,
+  description,
+  purchaseDate,
+  purchaseTitle,
+  request,
+  supabase,
+}: {
+  amount: string;
+  campaignId: string;
+  campaignSlug: string;
+  campaignTitle: string;
+  currency: string;
+  description?: string;
+  purchaseDate: string;
+  purchaseTitle: string;
+  request: Request;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
+  const { data: donors } = await supabase
+    .from("donations")
+    .select("donor_contact")
+    .eq("status", "verified")
+    .eq("campaign_id", campaignId)
+    .not("donor_contact", "is", null);
+  const uniqueEmails = Array.from(
+    new Set(
+      (donors ?? [])
+        .map((donor) => String(donor.donor_contact ?? "").trim())
+        .filter((contact) => contact.includes("@")),
+    ),
+  );
+  const siteUrl = normalizeSiteUrl(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      request.headers.get("origin") ??
+      "https://vendonar.com",
+  );
+  const campaignUrl = new URL(`/campanas/${campaignSlug}`, siteUrl).toString();
+  const results = await Promise.allSettled(
+    uniqueEmails.map((recipientEmail) =>
+      enqueueEmailEvent(supabase, "purchase_impact", {
+        amount,
+        campaignTitle,
+        campaignUrl,
+        currency,
+        description,
+        purchaseDate,
+        purchaseTitle,
+        recipientEmail,
+      }),
+    ),
+  );
 
-function parseOptionalPositiveNumber(value?: string) {
-  if (!value || value.trim().length === 0) {
-    return undefined;
-  }
-
-  const numberValue = Number(value);
-
-  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+  return results.filter((result) => result.status === "fulfilled").length;
 }

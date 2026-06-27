@@ -65,15 +65,13 @@ export async function POST(
         verification_status: "verified",
       })
       .eq("id", campaignId),
-    campaign.status === "active"
-      ? Promise.resolve({ error: null })
-      : supabase.from("campaign_creator_access_links").insert({
-          campaign_id: campaignId,
-          created_by: profile.user_id,
-          label: "Link privado del creador",
-          recipient_contact: extractEmail(campaign.contact_info),
-          token_hash: creatorAccessTokenHash,
-        }),
+    supabase.from("campaign_creator_access_links").insert({
+      campaign_id: campaignId,
+      created_by: profile.user_id,
+      label: "Link privado del creador",
+      recipient_contact: extractEmail(campaign.contact_info),
+      token_hash: creatorAccessTokenHash,
+    }),
   ]);
 
   revalidatePath("/admin");

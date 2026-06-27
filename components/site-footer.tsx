@@ -9,27 +9,20 @@ export function SiteFooter() {
 
   return (
     <>
-      <footer className="border-t border-neutral-200 px-6 py-6 text-sm leading-6 text-neutral-600">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <p>
-              Esta plataforma fue creada sin ningún tipo de interés individual y
-              no se hace responsable por uso indebido. Ninguna donación es
-              procesada internamente.{" "}
-              <button
-                className="font-semibold text-[#2D5D5E] underline-offset-4 hover:underline"
-                type="button"
-                onClick={() => setIsProjectModalOpen(true)}
-              >
-                Más sobre vendonar &rarr;
-              </button>
-            </p>
-            <p>
-              Los montos en USD son aproximados y se usan solo para facilitar el
-              seguimiento público. Las donaciones no se procesan dentro de la
-              plataforma y pueden realizarse en distintas monedas.
-            </p>
-          </div>
+      <footer className="border-t border-neutral-200 px-6 py-4 text-sm leading-6 text-neutral-600">
+        <div className="mx-auto max-w-6xl">
+          <p>
+            Vendonar facilita campañas de ayuda directa y seguimiento público.
+            No recibimos, retenemos ni procesamos donaciones; cada aporte se
+            realiza directamente con la persona responsable.{" "}
+            <button
+              className="font-semibold text-[#2D5D5E] underline-offset-4 hover:underline"
+              type="button"
+              onClick={() => setIsProjectModalOpen(true)}
+            >
+              Más sobre Vendonar &rarr;
+            </button>
+          </p>
         </div>
       </footer>
 

@@ -123,6 +123,12 @@ await step("Aprobar campaña y extraer link privado del creador", async () => {
   assert(creatorAccessUrl, "no se encoló email de campaña aprobada con link creador");
   context.creatorAccessToken = new URL(creatorAccessUrl).pathname.split("/").pop();
   assert(context.creatorAccessToken, "no se pudo leer token de creador");
+
+  const creatorPortalHtml = await text(fetchUrl(`/creador/${context.creatorAccessToken}`));
+  assert(
+    creatorPortalHtml.includes("Portal del creador"),
+    "link creador recién enviado no abrió el portal",
+  );
 });
 
 await step("Validar render público sin placeholder", async () => {
@@ -183,12 +189,11 @@ await step("Reportar y aprobar donación con comprobante", async () => {
   );
 });
 
-await step("Reportar y aprobar donación no USD con estimado", async () => {
+await step("Reportar y aprobar donación con conversión USD automática", async () => {
   const response = await postJson("/api/donation-reports", {
     amount: "500",
-    amountUsdEstimated: "27",
     campaignSlug: slug,
-    currency: "MXN",
+    currency: "USD",
     donorName: "Donante MXN QA",
     isAnonymous: false,
     paymentMethodUsed: "Transferencia QA",
@@ -204,10 +209,10 @@ await step("Reportar y aprobar donación no USD con estimado", async () => {
     .select("id, amount_original, amount_usd_estimated, currency_original, status")
     .eq("public_code", body.publicCode)
     .single();
-  assert(donation?.status === "pending", "donación MXN no quedó pending");
-  assert(donation?.currency_original === "MXN", "donación MXN no guardó moneda original");
-  assert(Number(donation?.amount_original) === 500, "donación MXN no guardó monto original");
-  assert(Number(donation?.amount_usd_estimated) === 27, "donación MXN no guardó estimado USD");
+  assert(donation?.status === "pending", "donación USD no quedó pending");
+  assert(donation?.currency_original === "USD", "donación USD no guardó moneda original");
+  assert(Number(donation?.amount_original) === 500, "donación USD no guardó monto original");
+  assert(Number(donation?.amount_usd_estimated) === 500, "donación USD no generó estimado USD");
 
   const token = createReviewToken("donation", donation.id);
   const approveResponse = await fetchUrl(
@@ -217,7 +222,7 @@ await step("Reportar y aprobar donación no USD con estimado", async () => {
   assert([200, 302, 303].includes(approveResponse.status), "aprobación de donación MXN falló");
 });
 
-await step("Subir compra, aprobarla y validar impacto público", async () => {
+await step("Subir compra y validar publicación directa", async () => {
   const photoPath = `${context.purchaseId}/photo/${Date.now()}-photo.png`;
   const invoicePath = `${context.purchaseId}/invoice/${Date.now()}-invoice.png`;
   await uploadAnonFile("purchase-documents", photoPath, pngFile);
@@ -226,13 +231,11 @@ await step("Subir compra, aprobarla y validar impacto público", async () => {
   const response = await postJson("/api/creator-updates", {
     accessCode: context.creatorAccessToken,
     amount: "18",
-    amountUsdEstimated: "18",
     campaignSlug: slug,
     currency: "USD",
     description: "Compra sintética para validar seguimiento a donantes.",
     invoiceFilePath: invoicePath,
     photoFilePath: photoPath,
-    purchaseDate: new Date().toISOString().slice(0, 10),
     purchaseId: context.purchaseId,
     title: `Compra E2E ${runId}`,
     vendor: "Proveedor QA",
@@ -242,31 +245,17 @@ await step("Subir compra, aprobarla y validar impacto público", async () => {
 
   const { data: purchase } = await adminSupabase
     .from("purchases")
-    .select("id, status, photo_file_path, invoice_file_path")
+    .select("id, status, amount_usd_estimated, is_photo_public, photo_file_path, invoice_file_path")
     .eq("id", context.purchaseId)
     .single();
-  assert(purchase?.status === "pending", "compra no quedó pending");
+  assert(purchase?.status === "approved", "compra no quedó approved");
+  assert(
+    Number(purchase?.amount_usd_estimated) === 18,
+    "compra no generó amount_usd_estimated",
+  );
+  assert(purchase?.is_photo_public === true, "foto no quedó pública");
   assert(purchase?.photo_file_path === photoPath, "foto no guardó path real");
   assert(purchase?.invoice_file_path === invoicePath, "factura no guardó path real");
-
-  const token = createReviewToken("purchase", context.purchaseId);
-  const approveResponse = await fetchUrl(
-    `/api/creator-updates/${context.purchaseId}/review?token=${token}&decision=approve`,
-    { redirect: "manual" },
-  );
-  assert([200, 302, 303].includes(approveResponse.status), "aprobación de compra falló");
-
-  const { data: approvedPurchase } = await adminSupabase
-    .from("purchases")
-    .select("status, amount_usd_estimated, is_photo_public")
-    .eq("id", context.purchaseId)
-    .single();
-  assert(approvedPurchase?.status === "approved", "compra no quedó approved");
-  assert(
-    Number(approvedPurchase?.amount_usd_estimated) === 18,
-    "compra no actualizó amount_usd_estimated",
-  );
-  assert(approvedPurchase?.is_photo_public === true, "foto aprobada no quedó pública");
 
   const detailHtml = await text(fetchUrl(`/campanas/${slug}`));
   assert(detailHtml.includes(`Compra E2E ${runId}`), "detalle no muestra la compra aprobada");

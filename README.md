@@ -139,9 +139,18 @@ Cada donacion y compra guarda:
 
 - `amount_original` y `currency_original`: monto y moneda original.
 - `amount_usd_estimated`: equivalente aproximado en USD para totales publicos.
-- `exchange_rate_used`, `exchange_rate_date`, `exchange_rate_source` y `conversion_notes`: contexto opcional de la conversion manual.
+- `exchange_rate_used`, `exchange_rate_date`, `exchange_rate_source` y `conversion_notes`: contexto de la conversion a USD.
 
-La conversion no es automatica en esta version. El admin debe capturar o confirmar el monto aproximado en USD manualmente al validar/aprobar. Los montos en USD son aproximados y se usan solo para facilitar el seguimiento publico; Vendonar no procesa pagos ni garantiza tasas de cambio.
+La conversion se genera automaticamente cuando se reportan donaciones o compras. USD, USDC y USDT se toman 1:1. Para otras monedas, la app intenta primero `USD_EXCHANGE_RATES_JSON` y luego `EXCHANGE_RATE_API_URL` con base USD. Los montos en USD son aproximados y se usan solo para facilitar el seguimiento publico; Vendonar no procesa pagos ni garantiza tasas de cambio.
+
+Para Venezuela, no se muestran ni se aceptan bolivares en los flujos publicos. Se pide reportar el monto en USD o en una aproximacion en USD.
+
+Ejemplo de fallback manual:
+
+```bash
+USD_EXCHANGE_RATES_JSON={"MXN":0.055,"COP":0.00025}
+EXCHANGE_RATE_API_URL=https://open.er-api.com/v6/latest/USD
+```
 
 ## Fases de construccion
 
