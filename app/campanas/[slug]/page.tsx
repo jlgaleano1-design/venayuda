@@ -3,9 +3,9 @@ import { ArrowLeft, ExternalLink, Instagram } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
+import { DonationReportModal } from "@/components/donation-report-modal";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
-import { formatUsdAprox } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
   crypto: "Cripto",
@@ -19,6 +19,10 @@ const categoryLabels: Record<string, string> = {
   argentina: "Argentina",
   international: "Otros países",
 };
+
+const compactUsdFormatter = new Intl.NumberFormat("es-MX", {
+  maximumFractionDigits: 0,
+});
 
 export const dynamic = "force-dynamic";
 
@@ -63,15 +67,20 @@ export async function generateMetadata({
 
 export default async function CampaignDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ reportar?: string }>;
 }) {
   const { slug } = await params;
+  const query = searchParams ? await searchParams : {};
   const campaign = await getPublicCampaign(slug);
 
   if (!campaign) {
     notFound();
   }
+
+  const shouldOpenDonationReport = query.reportar === "aporte";
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
@@ -95,10 +104,18 @@ export default async function CampaignDetailPage({
                   {campaign.location}
                 </span>
               </div>
-              <h1 className="text-4xl font-black leading-tight tracking-normal md:text-5xl">
+              <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
                 {campaign.title}
               </h1>
-              <p className="max-w-3xl text-base leading-7 text-neutral-700">
+              {campaign.coverImageUrl ? (
+                <div
+                  aria-label={`Foto de ${campaign.title}`}
+                  className="aspect-[16/9] w-full max-w-3xl rounded-[2rem] bg-neutral-100 bg-cover bg-center"
+                  role="img"
+                  style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
+                />
+              ) : null}
+              <p className="max-w-3xl text-sm leading-6 text-neutral-700 md:text-base md:leading-7">
                 {campaign.description}
               </p>
             </div>
@@ -128,8 +145,6 @@ export default async function CampaignDetailPage({
                 ) : null}
               </div>
             </section>
-
-            <TransparencyCard campaign={campaign} />
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="surface-card">
@@ -197,8 +212,15 @@ export default async function CampaignDetailPage({
             </div>
           </div>
 
-          <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px]">
-            <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+          <aside className="lg:sticky lg:top-6">
+            <div className="space-y-4">
+              <TransparencyCard
+                campaign={campaign}
+                defaultDonationReportOpen={shouldOpenDonationReport}
+              />
+              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+              <TransparencyLegend />
+            </div>
           </aside>
         </div>
       </section>
@@ -215,12 +237,12 @@ function PaymentMethodsCard({
   >["paymentMethods"];
 }) {
   return (
-    <section className="surface-card h-full overflow-hidden border-[#2D5D5E]/20 shadow-sm">
-      <div className="flex h-full flex-col gap-5 p-5 lg:p-6">
+    <section className="surface-card overflow-hidden border-[#2D5D5E]/20 shadow-sm">
+      <div className="flex flex-col gap-5 p-5 lg:p-6">
         <h2 className="text-2xl font-black leading-tight">
           Métodos disponibles para recibir donaciones
         </h2>
-        <div className="min-h-0 flex-1 divide-y divide-neutral-200 overflow-y-auto pr-1">
+        <div className="divide-y divide-neutral-200 pr-1">
           {paymentMethods.map((method) => {
             const details = parsePaymentDetails({
               instructions: method.instructions,
@@ -348,45 +370,45 @@ function isCryptoMarkerLine(line: string) {
 
 function TransparencyCard({
   campaign,
+  defaultDonationReportOpen = false,
 }: {
   campaign: NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
+  defaultDonationReportOpen?: boolean;
 }) {
   return (
     <section className="surface-card">
-      <div className="flex flex-col gap-5 p-5 lg:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 flex-1 space-y-4">
-            <h2 className="text-xl font-extrabold">Transparencia</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Metric
-                label="Recaudados"
-                value={formatUsdAprox(campaign.totals.donated)}
-              />
-              <Metric
-                label="Utilizados"
-                value={formatUsdAprox(campaign.totals.spent)}
-              />
-              <Metric
-                label="Disponibles"
-                value={formatUsdAprox(campaign.totals.balance)}
-              />
-            </div>
-          </div>
-          <Link
-            className="btn-primary w-full sm:w-fit lg:min-w-48"
-            href={`/campanas/${campaign.slug}/donar`}
-          >
-            Avisar que doné
-            <ExternalLink size={16} />
-          </Link>
+      <div className="flex flex-col gap-4 p-5">
+        <h2 className="text-lg font-extrabold">Transparencia</h2>
+        <div className="grid gap-3">
+          <Metric
+            label="Recaudados"
+            value={formatCompactUsd(campaign.totals.donated)}
+          />
+          <Metric
+            label="Utilizados"
+            value={formatCompactUsd(campaign.totals.spent)}
+          />
+          <Metric
+            label="Disponibles"
+            value={formatCompactUsd(campaign.totals.balance)}
+          />
         </div>
-        <p className="text-xs leading-5 text-neutral-600">
-          Las donaciones se hacen directamente por los métodos publicados.
-          Repórtanos tu aporte para revisarlo manualmente y actualizar el
-          seguimiento público en USD referencial.
-        </p>
+        <DonationReportModal
+          campaign={campaign}
+          defaultOpen={defaultDonationReportOpen}
+        />
       </div>
     </section>
+  );
+}
+
+function TransparencyLegend() {
+  return (
+    <p className="px-1 text-xs leading-5 text-neutral-600">
+      Las donaciones se hacen directamente por los métodos publicados.
+      Repórtanos tu aporte para revisarlo manualmente y actualizar el
+      seguimiento público en USD referencial.
+    </p>
   );
 }
 
@@ -401,11 +423,13 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 border-b border-neutral-200 pb-3 last:border-b-0 md:border-b-0 md:border-r md:pb-0 md:pr-4 md:last:border-r-0">
+    <div className="min-w-0 border-b border-neutral-200 pb-3 last:border-b-0">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="break-words text-lg font-extrabold leading-tight md:text-xl">
-        {value}
-      </p>
+      <p className="break-words text-lg font-extrabold leading-tight">{value}</p>
     </div>
   );
+}
+
+function formatCompactUsd(value: number) {
+  return `${compactUsdFormatter.format(value)} USD`;
 }

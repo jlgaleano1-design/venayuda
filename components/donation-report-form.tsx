@@ -11,7 +11,13 @@ import {
   validateStorageFile,
 } from "@/lib/storage-upload";
 
-export function DonationReportForm({ campaign }: { campaign: Campaign }) {
+export function DonationReportForm({
+  campaign,
+  framed = true,
+}: {
+  campaign: Campaign;
+  framed?: boolean;
+}) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
@@ -102,86 +108,91 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
     setProofFileStatus("");
   }
 
+  const form = (
+    <form onSubmit={submitDonationReport}>
+      <div className="flex flex-col gap-5 p-5 md:p-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextField label="Tu nombre (opcional)" name="donorName" />
+          <TextField
+            label="Correo electrónico (opcional)"
+            name="donorEmail"
+            type="email"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input name="isAnonymous" type="checkbox" />
+          Donar anónimamente en la vista pública
+        </label>
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextField
+            label="Monto en dolares"
+            name="amount"
+            prefix="USD"
+            required
+            step="any"
+            type="number"
+          />
+          <TextField label="Fecha" name="transferDate" type="date" />
+        </div>
+        <TextField
+          label="Método usado"
+          name="paymentMethodUsed"
+          placeholder="Ej. Zelle, SPEI, Pago móvil, transferencia bancaria..."
+        />
+        <TextField
+          label="Referencia / tracking number (opcional)"
+          name="transferReference"
+        />
+        <FileField
+          accept="image/png,image/jpeg,image/webp,application/pdf"
+          label="Comprobante o screenshot"
+          name="proof"
+          statusMessage={proofFileStatus || proofFileName}
+          onChange={(file) => {
+            const validationError = file
+              ? validateStorageFile(file, storageBuckets.donationProofs)
+              : "";
+
+            setProofFileName(validationError ? "" : (file?.name ?? ""));
+            setProofFileStatus(validationError);
+          }}
+        />
+        <TextAreaField label="Mensaje público (opcional)" name="publicMessage" />
+        <Button
+          className="min-h-14 w-fit !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
+          isDisabled={status === "sending"}
+          type="submit"
+          variant="primary"
+        >
+          {status === "sending" ? "Enviando..." : "Enviar reporte"}
+        </Button>
+        {statusMessage ? (
+          <p
+            className={
+              status === "error"
+                ? "text-sm font-bold text-red-700"
+                : "text-sm font-bold text-[#2D5D5E]"
+            }
+          >
+            {statusMessage}
+          </p>
+        ) : null}
+        <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
+          Mostraremos tus aportes después de una verificación manual. Recibirás
+          un correo cuando el responsable de la campaña suba cualquier
+          actualización.
+        </div>
+      </div>
+    </form>
+  );
+
+  if (!framed) {
+    return form;
+  }
+
   return (
     <Card className="surface-card shadow-none">
-      <form onSubmit={submitDonationReport}>
-        <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <TextField label="Tu nombre (opcional)" name="donorName" />
-            <TextField
-              label="Correo electrónico (opcional)"
-              name="donorEmail"
-              type="email"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input name="isAnonymous" type="checkbox" />
-            Donar anónimamente en la vista pública
-          </label>
-          <div className="grid gap-4 md:grid-cols-2">
-            <TextField
-              label="Monto en dolares"
-              name="amount"
-              prefix="USD"
-              required
-              step="any"
-              type="number"
-            />
-            <TextField label="Fecha" name="transferDate" type="date" />
-          </div>
-          <TextField
-            label="Método usado"
-            name="paymentMethodUsed"
-            placeholder="Ej. Zelle, SPEI, Pago móvil, transferencia bancaria..."
-          />
-          <TextField
-            label="Referencia / tracking number (opcional)"
-            name="transferReference"
-          />
-          <FileField
-            accept="image/png,image/jpeg,image/webp,application/pdf"
-            label="Comprobante o screenshot"
-            name="proof"
-            statusMessage={proofFileStatus || proofFileName}
-            onChange={(file) => {
-              const validationError = file
-                ? validateStorageFile(file, storageBuckets.donationProofs)
-                : "";
-
-              setProofFileName(validationError ? "" : (file?.name ?? ""));
-              setProofFileStatus(validationError);
-            }}
-          />
-          <TextAreaField
-            label="Mensaje público (opcional)"
-            name="publicMessage"
-          />
-          <Button
-            className="min-h-14 w-fit !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
-            isDisabled={status === "sending"}
-            type="submit"
-            variant="primary"
-          >
-            {status === "sending" ? "Enviando..." : "Enviar reporte"}
-          </Button>
-          {statusMessage ? (
-            <p
-              className={
-                status === "error"
-                  ? "text-sm font-bold text-red-700"
-                  : "text-sm font-bold text-[#2D5D5E]"
-              }
-            >
-              {statusMessage}
-            </p>
-          ) : null}
-          <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-            Mostraremos tus aportes después de una verificación manual.
-            Recibirás un correo cuando el responsable de la campaña suba
-            cualquier actualización.
-          </div>
-        </Card.Content>
-      </form>
+      <Card.Content>{form}</Card.Content>
     </Card>
   );
 }
