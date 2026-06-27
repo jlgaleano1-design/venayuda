@@ -84,8 +84,8 @@ export default async function CampaignDetailPage({
           Campañas
         </Link>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-6 lg:order-1">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="space-y-6">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 <span className="status-pill bg-emerald-50 text-emerald-800">
@@ -102,13 +102,7 @@ export default async function CampaignDetailPage({
                 {campaign.description}
               </p>
             </div>
-          </div>
 
-          <aside className="space-y-4 lg:order-2 lg:sticky lg:top-6 lg:h-fit lg:self-start">
-            <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
-          </aside>
-
-          <div className="space-y-6 lg:order-1">
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">Quién responde</h2>
@@ -202,6 +196,10 @@ export default async function CampaignDetailPage({
               </section>
             </div>
           </div>
+
+          <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px]">
+            <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+          </aside>
         </div>
       </section>
       <SiteFooter />
@@ -217,12 +215,12 @@ function PaymentMethodsCard({
   >["paymentMethods"];
 }) {
   return (
-    <section className="surface-card">
-      <div className="flex flex-col gap-4 p-5">
+    <section className="surface-card h-full overflow-hidden border-[#2D5D5E]/20 shadow-sm">
+      <div className="flex h-full flex-col gap-5 p-5 lg:p-6">
         <h2 className="text-2xl font-black leading-tight">
           Métodos disponibles para recibir donaciones
         </h2>
-        <div className="divide-y divide-neutral-200">
+        <div className="min-h-0 flex-1 divide-y divide-neutral-200 overflow-y-auto pr-1">
           {paymentMethods.map((method) => {
             const details = parsePaymentDetails({
               instructions: method.instructions,
@@ -359,7 +357,7 @@ function TransparencyCard({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-4">
             <h2 className="text-xl font-extrabold">Transparencia</h2>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
               <Metric
                 label="Recaudados"
                 value={formatUsdAprox(campaign.totals.donated)}
@@ -403,9 +401,9 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-neutral-200 pb-3 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
+    <div className="min-w-0 border-b border-neutral-200 pb-3 last:border-b-0 md:border-b-0 md:border-r md:pb-0 md:pr-4 md:last:border-r-0">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="text-xl font-extrabold leading-tight lg:text-2xl">
+      <p className="break-words text-lg font-extrabold leading-tight md:text-xl">
         {value}
       </p>
     </div>

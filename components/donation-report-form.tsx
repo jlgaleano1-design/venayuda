@@ -2,6 +2,7 @@
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
 import { useState } from "react";
+import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
 import {
   buildCampaignDocumentPath,
@@ -15,6 +16,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
     "idle",
   );
   const [statusMessage, setStatusMessage] = useState("");
+  const [proofFileName, setProofFileName] = useState("");
   const [proofFileStatus, setProofFileStatus] = useState("");
 
   async function submitDonationReport(event: React.FormEvent<HTMLFormElement>) {
@@ -69,7 +71,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
         donorEmail: formData.get("donorEmail"),
         isAnonymous: formData.get("isAnonymous") === "on",
         amount: formData.get("amount"),
-        currency: formData.get("currency"),
+        currency: "USD",
         transferDate: formData.get("transferDate"),
         paymentMethodUsed: formData.get("paymentMethodUsed"),
         transferReference: formData.get("transferReference"),
@@ -96,6 +98,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
         : "Reporte recibido. Tu aporte quedó registrado para revisión; no pudimos enviar el correo de confirmación.",
     );
     event.currentTarget.reset();
+    setProofFileName("");
     setProofFileStatus("");
   }
 
@@ -115,20 +118,14 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             <input name="isAnonymous" type="checkbox" />
             Donar anónimamente en la vista pública
           </label>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <TextField
-              label="Monto"
+              label="Monto en dolares"
               name="amount"
+              prefix="USD"
               required
               step="any"
               type="number"
-            />
-            <TextField
-              helperText="Si estás donando desde Venezuela, reporta el monto en USD o una aproximación en USD."
-              label="Moneda"
-              name="currency"
-              placeholder="USD"
-              required
             />
             <TextField label="Fecha" name="transferDate" type="date" />
           </div>
@@ -141,17 +138,17 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             label="Referencia / tracking number (opcional)"
             name="transferReference"
           />
-          <TextField
+          <FileField
             accept="image/png,image/jpeg,image/webp,application/pdf"
             label="Comprobante o screenshot"
             name="proof"
-            statusMessage={proofFileStatus}
-            type="file"
+            statusMessage={proofFileStatus || proofFileName}
             onChange={(file) => {
               const validationError = file
                 ? validateStorageFile(file, storageBuckets.donationProofs)
                 : "";
 
+              setProofFileName(validationError ? "" : (file?.name ?? ""));
               setProofFileStatus(validationError);
             }}
           />
@@ -160,7 +157,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             name="publicMessage"
           />
           <Button
-            className="w-fit !rounded-full bg-[#2D5D5E] px-5 font-black text-[#FAE880]"
+            className="min-h-14 w-fit !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
             isDisabled={status === "sending"}
             type="submit"
             variant="primary"
@@ -179,9 +176,9 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             </p>
           ) : null}
           <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-            Al enviar, el aporte quedará pendiente. En el flujo conectado se
-            generará un código de seguimiento y aparecerá
-            públicamente solo después de revisión manual.
+            Mostraremos tus aportes después de una verificación manual.
+            Recibirás un correo cuando el responsable de la campaña suba
+            cualquier actualización.
           </div>
         </Card.Content>
       </form>
@@ -199,66 +196,53 @@ async function readResponseError(response: Response, fallback: string) {
 }
 
 function TextField({
-  accept,
   helperText,
   label,
   name,
   placeholder,
+  prefix,
   required = false,
-  statusMessage,
   step,
   type = "text",
-  onChange,
 }: {
-  accept?: string;
   helperText?: string;
   label: string;
   name: string;
   placeholder?: string;
+  prefix?: string;
   required?: boolean;
-  statusMessage?: string;
   step?: string;
   type?: string;
-  onChange?: (file: File | null) => void;
 }) {
-  if (type === "file") {
-    return (
-      <label className="field-label">
-        {label}
-        <input
-          accept={accept}
-          className="field"
-          name={name}
-          type="file"
-          onChange={(event) => onChange?.(event.target.files?.[0] ?? null)}
-        />
-        {statusMessage ? (
-          <span
-            className={`text-xs font-bold ${
-              statusMessage.includes("no permitido")
-                ? "text-red-700"
-                : "text-[#2D5D5E]"
-            }`}
-          >
-            {statusMessage}
-          </span>
-        ) : null}
-      </label>
-    );
-  }
-
   return (
     <label className="field-label">
       {label}
-      <Input
-        className="field"
-        name={name}
-        placeholder={placeholder}
-        required={required}
-        step={step}
-        type={type}
-        variant="secondary"
-      />
+      {prefix ? (
+        <span className="flex min-h-11 items-center overflow-hidden rounded-full border border-neutral-200 bg-white focus-within:border-[#2D5D5E]">
+          <span className="flex min-h-11 items-center border-r border-neutral-200 bg-neutral-50 px-4 text-sm font-black text-[#2D5D5E]">
+            {prefix}
+          </span>
+          <Input
+            className="field !border-0 !bg-transparent"
+            name={name}
+            placeholder={placeholder}
+            required={required}
+            step={step}
+            type={type}
+            variant="secondary"
+          />
+        </span>
+      ) : (
+        <Input
+          className="field"
+          name={name}
+          placeholder={placeholder}
+          required={required}
+          step={step}
+          type={type}
+          variant="secondary"
+        />
+      )}
       {helperText ? (
         <span className="text-xs font-bold leading-5 text-neutral-500">
           {helperText}

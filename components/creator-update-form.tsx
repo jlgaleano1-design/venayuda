@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
-import { Plus, Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
+import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
 import {
   buildPurchaseDocumentPath,
@@ -266,49 +267,6 @@ function TextField({
         <span className="text-xs font-bold leading-5 text-neutral-500">
           {helperText}
         </span>
-      ) : null}
-    </label>
-  );
-}
-
-function FileField({
-  accept,
-  label,
-  name,
-  required = false,
-  statusMessage,
-  onChange,
-}: {
-  accept: string;
-  label: string;
-  name: string;
-  required?: boolean;
-  statusMessage?: string;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <label className="field-label">
-      {label}
-      <span className="flex min-h-14 cursor-pointer items-center gap-3 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm transition hover:border-[#2D5D5E]">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[#2D5D5E] text-[#FAE880]">
-          <Upload size={17} />
-        </span>
-        <span className="min-w-0 truncate font-bold text-[#2A3534]">
-          {statusMessage && !statusMessage.includes("no permitido")
-            ? statusMessage
-            : "Seleccionar archivo"}
-        </span>
-      </span>
-      <input
-        accept={accept}
-        className="sr-only"
-        name={name}
-        required={required}
-        type="file"
-        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-      />
-      {statusMessage?.includes("no permitido") ? (
-        <span className="text-xs font-bold text-red-700">{statusMessage}</span>
       ) : null}
     </label>
   );
