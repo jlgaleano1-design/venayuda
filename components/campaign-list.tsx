@@ -27,7 +27,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
               className="shrink-0 text-sm font-black text-neutral-600"
               htmlFor="campaign-receiving-filter"
             >
-              Puedo donar desde / con:
+              Donar desde / con:
             </label>
             <select
               id="campaign-receiving-filter"
@@ -48,7 +48,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
           <div className="no-scrollbar hidden items-center gap-2 overflow-x-auto md:flex">
             <span className="shrink-0 text-sm font-black text-neutral-600">
-              Puedo donar desde / con:
+              Donar desde / con:
             </span>
             {receivingFilters.map((item) => {
               const isSelected = filter === item.key;
