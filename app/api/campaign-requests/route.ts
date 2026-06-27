@@ -4,6 +4,8 @@ import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const cryptoCategoryMarker = "Categoría de recepción: Cripto";
+
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
   accountReference: z.string().min(1),
@@ -102,27 +104,42 @@ export async function POST(request: Request) {
     );
   }
 
+  const methodRows = requestData.paymentMethods.map((method) =>
+    toPaymentMethodRow({
+      campaignId: campaign.id,
+      method,
+      useCryptoFallback: false,
+    }),
+  );
   const { error: methodsError } = await supabase
     .from("campaign_payment_methods")
-    .insert(
-      requestData.paymentMethods.map((method) => ({
-        account_holder: method.accountHolder,
-        campaign_id: campaign.id,
-        method_name: method.methodName,
-        notes: [
-          `Banco, plataforma o método: ${method.bank}`,
-          `Cuenta, correo, wallet o ID: ${method.accountReference}`,
-        ].join("\n"),
-        receiving_category: method.receivingCategory,
-        transfer_instructions: [
-          method.transferInstructions,
-          `Banco, plataforma o método: ${method.bank}`,
-          `Cuenta, correo, wallet o ID: ${method.accountReference}`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      })),
+    .insert(methodRows);
+
+  if (methodsError && shouldRetryWithCryptoFallback(methodsError, requestData)) {
+    const fallbackRows = requestData.paymentMethods.map((method) =>
+      toPaymentMethodRow({
+        campaignId: campaign.id,
+        method,
+        useCryptoFallback: true,
+      }),
     );
+    const { error: fallbackMethodsError } = await supabase
+      .from("campaign_payment_methods")
+      .insert(fallbackRows);
+
+    if (!fallbackMethodsError) {
+      return await finalizeCampaignRequest({
+        campaignId: campaign.id,
+        publicCampaignUrl: new URL(
+          `/campanas/${requestData.slug}`,
+          siteUrl,
+        ).toString(),
+        requestData,
+        siteUrl,
+        supabase,
+      });
+    }
+  }
 
   if (methodsError) {
     await supabase.from("campaigns").delete().eq("id", campaign.id);
@@ -133,10 +150,81 @@ export async function POST(request: Request) {
     );
   }
 
-  const publicCampaignUrl = new URL(
-    `/campanas/${requestData.slug}`,
+  return await finalizeCampaignRequest({
+    campaignId: campaign.id,
+    publicCampaignUrl: new URL(
+      `/campanas/${requestData.slug}`,
+      siteUrl,
+    ).toString(),
+    requestData,
     siteUrl,
-  ).toString();
+    supabase,
+  });
+}
+
+function toPaymentMethodRow({
+  campaignId,
+  method,
+  useCryptoFallback,
+}: {
+  campaignId: string;
+  method: z.infer<typeof paymentMethodSchema>;
+  useCryptoFallback: boolean;
+}) {
+  const isCrypto = method.receivingCategory === "crypto";
+  const notes = [
+    isCrypto ? cryptoCategoryMarker : "",
+    `Banco, plataforma o método: ${method.bank}`,
+    `Cuenta, correo, wallet o ID: ${method.accountReference}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    account_holder: method.accountHolder,
+    campaign_id: campaignId,
+    method_name: method.methodName,
+    notes,
+    receiving_category:
+      useCryptoFallback && isCrypto ? "international" : method.receivingCategory,
+    transfer_instructions: [
+      method.transferInstructions,
+      `Banco, plataforma o método: ${method.bank}`,
+      `Cuenta, correo, wallet o ID: ${method.accountReference}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+
+function shouldRetryWithCryptoFallback(
+  error: { code?: string; message?: string },
+  requestData: z.infer<typeof campaignRequestSchema>,
+) {
+  return (
+    requestData.paymentMethods.some(
+      (method) => method.receivingCategory === "crypto",
+    ) &&
+    (error.code === "22P02" ||
+      /crypto|receiving_category|invalid input value for enum/i.test(
+        error.message ?? "",
+      ))
+  );
+}
+
+async function finalizeCampaignRequest({
+  campaignId,
+  publicCampaignUrl,
+  requestData,
+  siteUrl,
+  supabase,
+}: {
+  campaignId: string;
+  publicCampaignUrl: string;
+  requestData: z.infer<typeof campaignRequestSchema>;
+  siteUrl: string;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
   let confirmationEmailResult: {
     queued: boolean;
     reason?: string;
@@ -154,14 +242,14 @@ export async function POST(request: Request) {
       sent: false,
     };
   } else {
-    const reviewToken = createCampaignReviewToken(campaign.id);
+    const reviewToken = createCampaignReviewToken(campaignId);
     const confirmationUrl = new URL(
-      `/api/campaign-requests/${campaign.id}/review`,
+      `/api/campaign-requests/${campaignId}/review`,
       siteUrl,
     );
     confirmationUrl.searchParams.set("token", reviewToken);
     confirmationUrl.searchParams.set("decision", "approve");
-    const reviewUrl = new URL(`/revisar/campana/${campaign.id}`, siteUrl);
+    const reviewUrl = new URL(`/revisar/campana/${campaignId}`, siteUrl);
     reviewUrl.searchParams.set("token", reviewToken);
 
     try {

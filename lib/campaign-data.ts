@@ -6,6 +6,8 @@ import {
 } from "@/lib/demo-data";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+const cryptoCategoryMarker = "Categoría de recepción: Cripto";
+
 type PublicCampaignRow = {
   id: string;
   slug: string;
@@ -26,7 +28,7 @@ type PublicCampaignRow = {
 type PublicPaymentMethodRow = {
   id: string;
   campaign_id: string;
-  receiving_category: Exclude<ReceivingCategory, "all">;
+  receiving_category: ReceivingCategory;
   method_name: string | null;
   currency: string | null;
   account_holder: string | null;
@@ -104,7 +106,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       .filter((method) => method.campaign_id === campaign.id)
       .map((method) => ({
         id: method.id,
-        receivingCategory: method.receiving_category,
+        receivingCategory: normalizeReceivingCategory(method),
         label: method.method_name ?? "Método de pago",
         currency: method.currency ?? "",
         accountHolder: method.account_holder ?? "",
@@ -173,6 +175,17 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
           }))),
     };
   }));
+}
+
+function normalizeReceivingCategory(method: PublicPaymentMethodRow) {
+  if (
+    method.receiving_category === "international" &&
+    method.notes?.includes(cryptoCategoryMarker)
+  ) {
+    return "crypto";
+  }
+
+  return method.receiving_category;
 }
 
 async function createStorageSignedUrl(

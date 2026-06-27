@@ -3,6 +3,8 @@ import { ErrorState, errorStateActions } from "@/components/error-state";
 import { verifyCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const cryptoCategoryMarker = "Categoría de recepción: Cripto";
+
 const categoryLabels: Record<string, string> = {
   argentina: "Argentina",
   chile: "Chile",
@@ -168,16 +170,15 @@ export default async function CampaignReviewPage({
                 key={`${method.method_name}-${index}`}
               >
                 <span className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700">
-                  {categoryLabels[method.receiving_category] ??
-                    method.receiving_category}
+                  {getCategoryLabel(method)}
                 </span>
                 <p className="mt-3 font-bold">{method.method_name}</p>
                 <p className="mt-1 text-sm text-neutral-600">
                   Titular: {method.account_holder}
                 </p>
-                {method.notes ? (
+                {getVisibleNotes(method.notes) ? (
                   <p className="mt-2 whitespace-pre-line text-sm text-neutral-600">
-                    {method.notes}
+                    {getVisibleNotes(method.notes)}
                   </p>
                 ) : null}
                 <p className="mt-2 whitespace-pre-line text-sm leading-6">
@@ -189,6 +190,30 @@ export default async function CampaignReviewPage({
         </section>
       </section>
     </main>
+  );
+}
+
+function getCategoryLabel(method: {
+  notes: string | null;
+  receiving_category: string;
+}) {
+  if (
+    method.receiving_category === "international" &&
+    method.notes?.includes(cryptoCategoryMarker)
+  ) {
+    return "Cripto";
+  }
+
+  return categoryLabels[method.receiving_category] ?? method.receiving_category;
+}
+
+function getVisibleNotes(notes: string | null) {
+  return (
+    notes
+      ?.split("\n")
+      .filter((line) => line.trim() !== cryptoCategoryMarker)
+      .join("\n")
+      .trim() || ""
   );
 }
 
