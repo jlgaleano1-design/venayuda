@@ -7,6 +7,12 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
+const syntheticQaCampaign = {
+  affectedArea: "Prueba E2E staging",
+  instagramHandle: "vendonar_test",
+  organization: "Equipo Vendonar QA",
+  titlePrefix: "Campaña E2E ",
+};
 
 type PublicCampaignRow = {
   id: string;
@@ -72,7 +78,11 @@ export async function getPublicCampaigns() {
       return campaigns;
     }
 
-    return await hydrateCampaignRows(campaignRows as PublicCampaignRow[]);
+    return await hydrateCampaignRows(
+      (campaignRows as PublicCampaignRow[]).filter(
+        (campaign) => !isSyntheticQaCampaign(campaign),
+      ),
+    );
   } catch {
     return campaigns;
   }
@@ -209,6 +219,15 @@ function normalizeReceivingCategory(method: PublicPaymentMethodRow) {
   }
 
   return method.receiving_category;
+}
+
+function isSyntheticQaCampaign(campaign: PublicCampaignRow) {
+  return (
+    campaign.title.startsWith(syntheticQaCampaign.titlePrefix) &&
+    campaign.affected_area === syntheticQaCampaign.affectedArea &&
+    campaign.instagram_handle === syntheticQaCampaign.instagramHandle &&
+    campaign.responsible_organization === syntheticQaCampaign.organization
+  );
 }
 
 async function createStorageSignedUrl(

@@ -131,10 +131,10 @@ await step("Aprobar campaña y extraer link privado del creador", async () => {
   );
 });
 
-await step("Validar render público sin placeholder", async () => {
+await step("Validar render público ocultando campaña sintética", async () => {
   const homeHtml = await text(fetchUrl("/"));
   const detailHtml = await text(fetchUrl(`/campanas/${slug}`));
-  assert(homeHtml.includes(`Campaña E2E ${runId}`), "home no muestra la campaña aprobada");
+  assert(!homeHtml.includes(`Campaña E2E ${runId}`), "home muestra la campaña sintética");
   assert(detailHtml.includes(`Campaña E2E ${runId}`), "detalle no muestra la campaña aprobada");
   assert(!detailHtml.toLowerCase().includes("placeholder"), "detalle contiene texto placeholder");
 });
