@@ -11,8 +11,12 @@ En Vercel staging configura:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `RESEND_API_KEY`
+- `EMAIL_PROVIDER` (`smtp` recomendado)
 - `EMAIL_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
 - `APPROVAL_RECIPIENT_EMAIL`
 - `CAMPAIGN_REVIEW_SECRET`
 - `EMAIL_WORKER_SECRET`
@@ -21,6 +25,12 @@ En Vercel staging configura:
 Usa el mismo valor para `EMAIL_WORKER_SECRET` y `CRON_SECRET` en Vercel. El
 cron definido en `vercel.json` llama `GET /api/internal/email-worker` cada
 minuto; Vercel adjunta `Authorization: Bearer $CRON_SECRET`.
+
+Para evitar el limite gratuito de Resend, usa un proveedor SMTP con mayor cuota
+gratuita, por ejemplo Brevo, Sender o SMTP2GO. Si `EMAIL_PROVIDER=auto`,
+Vendonar usa SMTP cuando `SMTP_HOST` esta configurado; si quieres forzarlo,
+define `EMAIL_PROVIDER=smtp`. Resend queda disponible solo si configuras
+`EMAIL_PROVIDER=resend` junto con `RESEND_API_KEY`.
 
 En Supabase staging:
 

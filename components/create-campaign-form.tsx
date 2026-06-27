@@ -217,11 +217,7 @@ export function CreateCampaignForm() {
       });
       setIsSubmitted(true);
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "No pudimos enviar la solicitud.",
-      );
+      setSubmitError(normalizeSubmissionError(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -234,11 +230,10 @@ export function CreateCampaignForm() {
           <div className="flex items-start gap-4 rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-5">
             <CheckCircle2 className="mt-1 shrink-0 text-[#2D5D5E]" size={26} />
             <div>
-              <h2 className="text-xl font-extrabold">Solicitud recibida</h2>
+              <h2 className="text-xl font-extrabold">Campaña creada</h2>
               <p className="mt-2 leading-7 text-neutral-700">
-                Guardamos la solicitud como pendiente de revisión. Cuando se
-                apruebe, la campaña se publica y la persona responsable recibe
-                su enlace privado para subir novedades.
+                Para publicarla, ve a tu correo y confirma el enlace que te
+                enviamos. Después de confirmar, podrás compartir tu campaña.
               </p>
             </div>
           </div>
@@ -246,11 +241,10 @@ export function CreateCampaignForm() {
           {submissionResult?.approvalEmailSent ? (
             <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#FFFCF8] p-4">
               <p className="font-extrabold text-[#2D5D5E]">
-                Correo de revisión enviado
+                Revisa tu correo
               </p>
               <p className="mt-2 text-sm leading-6 text-neutral-600">
-                La solicitud llegó al correo configurado para aprobar o rechazar
-                campañas.
+                Te enviamos un enlace para confirmar y publicar esta campaña.
               </p>
             </div>
           ) : (
@@ -258,11 +252,11 @@ export function CreateCampaignForm() {
               <AlertCircle className="mt-0.5 shrink-0 text-amber-700" size={20} />
               <div>
                 <p className="font-extrabold text-amber-900">
-                  Solicitud guardada, correo pendiente
+                  Campaña guardada, correo pendiente
                 </p>
                 <p className="mt-2 text-sm leading-6 text-amber-900/80">
-                  Recibimos tu solicitud. El correo automático de revisión no
-                  pudo enviarse, pero tu información no se perdió
+                  Recibimos tu información, pero el correo automático de
+                  confirmación no pudo enviarse
                   {submissionResult?.reason ? ` (${submissionResult.reason})` : ""}.
                 </p>
               </div>
@@ -285,21 +279,7 @@ export function CreateCampaignForm() {
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Este enlace se activa cuando confirmas desde el correo. Antes de
-              aprobar no aparece en el listado público ni se puede compartir
-              como campaña activa.
-            </p>
-          </div>
-
-          <div className="rounded-[1.5rem] border border-neutral-200 p-4">
-            <p className="text-sm font-bold text-neutral-500">
-              Acceso privado del organizador
-            </p>
-            <p className="mt-2 font-extrabold">Pendiente de aprobación</p>
-            <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Este enlace no se muestra públicamente. Se genera con un token
-              privado cuando el equipo aprueba la campaña y permite reportar
-              compras con foto.
+              Este enlace se activa cuando confirmas desde tu correo.
             </p>
           </div>
         </Card.Content>
@@ -366,7 +346,7 @@ export function CreateCampaignForm() {
           )}
         </label>
         <TextAreaField
-          helperText="Explica para qué necesitas las donaciones, qué se comprará o cubrirá y por qué es urgente. Si no queda claro el uso del dinero, la campaña podría no ser aprobada."
+          helperText="Explica para qué necesitas las donaciones, qué se comprará o cubrirá y por qué es urgente."
           label="Descripción / historia"
           name="description"
           required
@@ -512,6 +492,17 @@ function normalizeOperationalReason(reason: string) {
   }
 
   return reason;
+}
+
+function normalizeSubmissionError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "No pudimos enviar la solicitud.";
+
+  if (/Invalid Compact JWS/i.test(message)) {
+    return "No pudimos conectar con el almacenamiento de imágenes. Revisa la llave pública de Supabase o intenta enviar la solicitud sin imagen por ahora.";
+  }
+
+  return message;
 }
 
 function isValidEmail(value: string) {

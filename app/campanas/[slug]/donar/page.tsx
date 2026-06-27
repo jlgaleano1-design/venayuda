@@ -5,9 +5,7 @@ import { DonationReportForm } from "@/components/donation-report-form";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
 
-export function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 export default async function DonationReportPage({
   params,

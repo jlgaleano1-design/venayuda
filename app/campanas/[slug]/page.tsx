@@ -18,9 +18,7 @@ const categoryLabels: Record<string, string> = {
   international: "Otros países",
 };
 
-export function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

@@ -48,7 +48,7 @@ export type CampaignReviewEmail = {
   }[];
   publicCampaignUrl: string;
   recipientEmail: string;
-  reviewUrl: string;
+  reviewUrl?: string;
   responsibleName: string;
   slug: string;
   title: string;
@@ -86,14 +86,32 @@ export type PurchaseImpactEmail = {
 };
 
 function createMailer() {
+  const provider = (process.env.EMAIL_PROVIDER ?? "auto").toLowerCase();
   const resendApiKey = process.env.RESEND_API_KEY;
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT ?? 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.EMAIL_FROM ?? process.env.SMTP_FROM;
+  const hasSmtpConfig = Boolean(host && from);
+  const hasResendConfig = Boolean(resendApiKey && from);
 
-  if (resendApiKey && from) {
+  if ((provider === "smtp" || (provider === "auto" && hasSmtpConfig)) && host && from) {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: user && pass ? { user, pass } : undefined,
+    });
+
+    return { from, transporter };
+  }
+
+  if (
+    (provider === "resend" || (provider === "auto" && hasResendConfig)) &&
+    resendApiKey &&
+    from
+  ) {
     return {
       from,
       transporter: {
@@ -121,18 +139,7 @@ function createMailer() {
     };
   }
 
-  if (!host || !from) {
-    return null;
-  }
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: user && pass ? { user, pass } : undefined,
-  });
-
-  return { from, transporter };
+  return null;
 }
 
 export async function sendDonationReportEmail(report: DonationReportEmail) {
@@ -249,90 +256,41 @@ export async function sendCampaignReviewEmail(email: CampaignReviewEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
-  const paymentText = email.paymentMethods
-    .map((method, index) =>
-      [
-        `Método ${index + 1}`,
-        `Dona desde: ${method.receivingCategory}`,
-        `Método: ${method.methodName}`,
-        `Titular: ${method.accountHolder}`,
-        `Banco: ${method.bank}`,
-        `Cuenta / correo: ${method.accountReference}`,
-        method.transferInstructions
-          ? `Instrucciones: ${method.transferInstructions}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    )
-    .join("\n\n");
-
   await mailer.transporter.sendMail({
     from: mailer.from,
     to: email.recipientEmail,
-    subject: `Solicitud de campaña por aprobar: ${email.title}`,
+    subject: `Confirma tu campaña en Vendonar: ${email.title}`,
     text: [
-      "Nueva solicitud de campaña en Vendonar.",
+      "Hola,",
       "",
-      `Título: ${email.title}`,
-      `Link solicitado: ${email.publicCampaignUrl}`,
-      `Responsable: ${email.responsibleName}`,
-      email.organization ? `Organización: ${email.organization}` : null,
-      `Correo: ${email.contactEmail}`,
-      email.instagramHandle ? `Instagram: @${email.instagramHandle}` : null,
-      `Zona afectada: ${email.affectedArea}`,
+      `Creamos la campaña "${email.title}" en Vendonar.`,
       "",
-      "Descripción:",
-      email.description,
-      "",
-      "Métodos de pago:",
-      paymentText,
-      "",
-      "Aprobar con un click:",
+      "Para publicarla, confirma este correo:",
       email.approvalUrl,
       "",
-      "Revisar detalles o rechazar:",
-      email.reviewUrl,
+      "Link solicitado:",
+      email.publicCampaignUrl,
+      "",
+      "Si tú no creaste esta campaña, puedes ignorar este correo.",
+      "",
+      "Vendonar no procesa pagos; solo ayuda a publicar instrucciones, reportar aportes y mantener seguimiento transparente.",
     ]
       .filter(Boolean)
       .join("\n"),
     html: renderBrandEmail({
-      preview: `Solicitud de campaña por aprobar: ${email.title}`,
-      title: "Solicitud de campaña",
+      preview: `Confirma tu campaña ${email.title}`,
+      title: "Confirma tu campaña",
       children: [
-        `<p>Hay una nueva solicitud lista para revisar. El botón principal aprueba la campaña directamente.</p>`,
+        `<p>Creamos la campaña <strong>${escapeHtml(email.title)}</strong> en Vendonar.</p>`,
+        `<p>Para publicarla, confirma que este correo pertenece a la persona responsable.</p>`,
+        `<p style="margin-top:24px;">${renderEmailButton("Confirmar y publicar", email.approvalUrl)}</p>`,
         renderInfoList([
           { label: "Campaña", value: email.title },
           { label: "Link solicitado", value: email.publicCampaignUrl },
           { label: "Responsable", value: email.responsibleName },
-          { label: "Organización", value: email.organization },
           { label: "Correo", value: email.contactEmail },
-          {
-            label: "Instagram",
-            value: email.instagramHandle ? `@${email.instagramHandle}` : null,
-          },
-          { label: "Zona afectada", value: email.affectedArea },
         ]),
-        `<h2 style="font-size:18px;margin:22px 0 8px;">Descripción</h2>`,
-        `<p>${escapeHtml(email.description)}</p>`,
-        `<h2 style="font-size:18px;margin:22px 0 8px;">Métodos de pago</h2>`,
-        ...email.paymentMethods.map((method, index) =>
-          renderPanel(
-            [
-              `<p style="margin:0 0 10px;font-weight:900;">Método ${index + 1}</p>`,
-              renderInfoList([
-                { label: "Dona desde", value: method.receivingCategory },
-                { label: "Método", value: method.methodName },
-                { label: "Titular", value: method.accountHolder },
-                { label: "Banco", value: method.bank },
-                { label: "Cuenta / correo", value: method.accountReference },
-                { label: "Instrucciones", value: method.transferInstructions },
-              ]),
-            ].join(""),
-          ),
-        ),
-        `<p style="margin-top:24px;">${renderEmailButton("Aprobar campaña", email.approvalUrl)}</p>`,
-        `<p style="margin-top:14px;font-size:13px;">Para ver detalles completos o rechazar: ${renderSecondaryLink("abrir revisión", email.reviewUrl)}</p>`,
+        `<p style="color:#626866;font-size:13px;">Si tú no creaste esta campaña, puedes ignorar este correo.</p>`,
       ].join(""),
     }),
   });
@@ -350,11 +308,11 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
   await mailer.transporter.sendMail({
     from: mailer.from,
     to: email.recipientEmail,
-    subject: `Tu campaña fue aprobada: ${email.campaignTitle}`,
+    subject: `Tu campaña ya está publicada: ${email.campaignTitle}`,
     text: [
       "Hola,",
       "",
-      `Tu campaña "${email.campaignTitle}" fue aprobada y ya puede compartirse.`,
+      `Tu campaña "${email.campaignTitle}" ya está publicada y puede compartirse.`,
       "",
       "Link público:",
       email.publicCampaignUrl,
@@ -365,10 +323,10 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
       "Guarda este link privado. No lo publiques.",
     ].join("\n"),
     html: renderBrandEmail({
-      preview: `Tu campaña ${email.campaignTitle} fue aprobada`,
-      title: "Campaña aprobada",
+      preview: `Tu campaña ${email.campaignTitle} ya está publicada`,
+      title: "Campaña publicada",
       children: [
-        `<p>Tu campaña <strong>${escapeHtml(email.campaignTitle)}</strong> fue aprobada y ya puede compartirse.</p>`,
+        `<p>Tu campaña <strong>${escapeHtml(email.campaignTitle)}</strong> ya está publicada y puede compartirse.</p>`,
         `<p>${renderEmailButton("Ver campaña pública", email.publicCampaignUrl)}</p>`,
         renderPanel(
           [
