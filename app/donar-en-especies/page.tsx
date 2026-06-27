@@ -3,18 +3,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { CollectionCenterList } from "@/components/collection-center-list";
 import { SiteFooter } from "@/components/site-footer";
-import { getCollectionCentersFromSheet } from "@/lib/collection-centers";
+import { getCollectionCenters } from "@/lib/collection-centers";
 
 export const dynamic = "force-dynamic";
 
 const sheetUrl =
   "https://docs.google.com/spreadsheets/u/1/d/1OTNQGMsK3nU2wqy00rtPPcwsSzAlorWeP-uIotWpkxM/htmlview#gid=115303742";
+const reportCenterUrl = "https://www.centrosdeacopiovzla.com/#aportar";
 
 export default async function DonateGoodsPage() {
-  const centers = await getCollectionCentersFromSheet();
+  const centers = await getCollectionCenters();
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex min-h-[56vh] max-w-6xl flex-col justify-center gap-8 px-6 py-12">
         <div className="flex items-center justify-between gap-4">
           <Link className="btn-secondary" href="/">
@@ -27,7 +28,7 @@ export default async function DonateGoodsPage() {
               className="h-9 w-auto"
               height={36}
               src="/vendonar_logo.svg"
-              width={212}
+              width={141}
             />
           </Link>
         </div>
@@ -77,14 +78,24 @@ export default async function DonateGoodsPage() {
                 .
               </p>
             </div>
-            <a
-              className="btn-secondary"
-              href={sheetUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Ver Sheet original
-            </a>
+            <div className="flex flex-wrap gap-3">
+              <a
+                className="btn-primary"
+                href={reportCenterUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Reportar nuevo centro
+              </a>
+              <a
+                className="btn-secondary"
+                href={sheetUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Ver Sheet original
+              </a>
+            </div>
           </div>
         </div>
         <CollectionCenterList centers={centers} />

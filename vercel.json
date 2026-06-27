@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/email-worker",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/internal/collection-centers-sync",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 
 export default function CreateCampaignPage() {
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
         <Link className="inline-flex w-fit items-center gap-2 text-sm" href="/">
           <ArrowLeft size={18} />
@@ -20,9 +20,8 @@ export default function CreateCampaignPage() {
             Cuéntanos quién está respondiendo y cómo puede recibir ayuda.
           </h1>
           <p className="max-w-2xl leading-7 text-neutral-700">
-            Completa los datos de la campaña y confirma tu correo para
-            publicarla. Vendonar no procesa pagos; solo ayuda a publicar
-            instrucciones, reportar aportes y mantener seguimiento transparente.
+            Publica métodos de ayuda directa y seguimiento transparente.
+            Vendonar no procesa pagos.
           </p>
         </div>
 

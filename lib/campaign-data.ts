@@ -4,7 +4,7 @@ import {
   type Campaign,
   type ReceivingCategory,
 } from "@/lib/demo-data";
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type PublicCampaignRow = {
   id: string;
@@ -60,7 +60,7 @@ type PublicPurchaseRow = {
 
 export async function getPublicCampaigns() {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
     const { data: campaignRows, error } = await supabase
       .from("public_campaigns")
       .select("*")
@@ -88,7 +88,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
   }
 
   const campaignIds = campaignRows.map((campaign) => campaign.id);
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
   const [{ data: paymentRows }, { data: donationRows }, { data: purchaseRows }] =
     await Promise.all([
       supabase
@@ -176,7 +176,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
 }
 
 async function createStorageSignedUrl(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseClient,
   bucket: "campaign-assets" | "purchase-documents",
   path: string | null,
 ) {
@@ -189,6 +189,12 @@ async function createStorageSignedUrl(
     .createSignedUrl(path, 60 * 60);
 
   return data?.signedUrl ?? undefined;
+}
+
+async function createServerSupabaseClient() {
+  const { createClient } = await import("@/lib/supabase/server");
+
+  return createClient();
 }
 
 function toNumber(value: number | string | null) {

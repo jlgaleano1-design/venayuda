@@ -339,32 +339,32 @@ export function CreateCampaignForm() {
                 ? "Ese link ya está usado. Prueba con otro nombre."
                 : "Disponible. Este será el link público de la campaña."}
             </span>
-          ) : (
-            <span className="text-xs leading-5 text-neutral-500">
-              Usa letras, números y guiones. Por ejemplo: ayuda-la-guaira.
-            </span>
-          )}
+          ) : null}
         </label>
         <TextAreaField
-          helperText="Explica para qué necesitas las donaciones, qué se comprará o cubrirá y por qué es urgente."
+          helperText="Cuenta qué se necesita, para qué y por qué urge."
           label="Descripción / historia"
           name="description"
           required
         />
         <label className="field-label">
           Imagen de portada
-          <span className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-neutral-300 bg-neutral-50 px-5 py-6 text-center transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
-            <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
-              <ImageIcon size={20} />
+          <span className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-dashed border-neutral-300 bg-neutral-50 px-4 py-2.5 transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
+                <ImageIcon size={16} />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-black text-[#161d21]">
+                  {coverImageName || "Subir imagen"}
+                </span>
+                <span className="block truncate text-xs text-neutral-500">
+                  JPG, PNG o WebP
+                </span>
+              </span>
             </span>
-            <span className="text-sm font-black text-[#121515]">
-              {coverImageName || "Subir imagen de la campaña"}
-            </span>
-            <span className="text-xs leading-5 text-neutral-500">
-              JPG, PNG o WebP. Idealmente una foto horizontal y clara.
-            </span>
-            <span className="inline-flex items-center gap-2 text-sm font-bold text-[#2D5D5E]">
-              <Upload size={16} />
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-bold text-[#2D5D5E]">
+              <Upload size={15} />
               Elegir archivo
             </span>
           </span>
@@ -396,7 +396,7 @@ export function CreateCampaignForm() {
           ) : null}
         </label>
         <div className="border-t border-neutral-200 pt-5">
-          <h2 className="font-extrabold">Métodos de recepción de pago</h2>
+          <h2 className="font-extrabold">Cuentas para recibir ayuda</h2>
           <p className="mt-1 text-sm text-neutral-600">
             Usa instrucciones abiertas. No forzamos campos bancarios por país
             porque cada caso es distinto.
@@ -427,20 +427,20 @@ export function CreateCampaignForm() {
         </div>
 
         <Button
-          className="min-h-14 w-full !justify-center !rounded-full bg-neutral-100 px-6 py-3 font-black text-[#121515]"
+          className="min-h-10 w-full !justify-center !rounded-full bg-neutral-100 px-4 py-2 text-sm font-black text-[#161d21]"
           isDisabled={!canAddPaymentMethod}
           type="button"
           variant="secondary"
           onPress={addPaymentMethod}
         >
-          <span className="inline-flex items-center justify-center gap-2">
-            <Plus className="shrink-0" size={18} />
-            <span>Agregar otro método de pago</span>
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <Plus className="shrink-0" size={15} />
+            <span>Agregar otra cuenta</span>
           </span>
         </Button>
         {!canAddPaymentMethod ? (
           <p className="text-sm font-bold text-neutral-500">
-            Completa todos los campos del método actual para agregar otro.
+            Completa todos los campos de la cuenta actual para agregar otra.
           </p>
         ) : null}
 
@@ -512,7 +512,6 @@ function isValidEmail(value: string) {
 function isPaymentMethodComplete(method: PaymentMethodDraft) {
   return [
     method.receivingCategory,
-    method.methodName,
     method.accountHolder,
     method.bank,
     method.accountReference,
@@ -521,7 +520,6 @@ function isPaymentMethodComplete(method: PaymentMethodDraft) {
 
 function isPaymentMethodStarted(method: PaymentMethodDraft) {
   return [
-    method.methodName,
     method.accountHolder,
     method.bank,
     method.accountReference,
@@ -545,7 +543,7 @@ function getSubmitBlockReason({
   shareSlug: string;
 }) {
   if (!shareSlug) {
-    return "Agrega un link personalizado para poder enviar la solicitud.";
+    return "Completa el link personalizado para poder enviar la solicitud.";
   }
 
   if (isShareFieldTaken) {
@@ -561,11 +559,11 @@ function getSubmitBlockReason({
   }
 
   if (!hasPaymentMethod) {
-    return "Agrega al menos un método de pago completo. Los métodos adicionales vacíos no bloquean el envío.";
+    return "Agrega al menos una cuenta completa. Las cuentas adicionales vacías no bloquean el envío.";
   }
 
   if (incompletePaymentMethodIndex >= 0) {
-    return `Completa los campos obligatorios del método ${incompletePaymentMethodIndex + 1} o déjalo totalmente vacío.`;
+    return `Completa los campos obligatorios de la cuenta ${incompletePaymentMethodIndex + 1} o déjala totalmente vacía.`;
   }
 
   return "";
@@ -574,7 +572,7 @@ function getSubmitBlockReason({
 function toPaymentMethodPayload(method: PaymentMethodDraft) {
   return {
     receivingCategory: method.receivingCategory,
-    methodName: method.methodName,
+    methodName: method.bank,
     accountHolder: method.accountHolder,
     bank: method.bank,
     accountReference: method.accountReference,
@@ -611,20 +609,20 @@ function PaymentMethodPanel({
       <div className="flex items-center gap-2 rounded-[1.5rem] bg-neutral-50 px-3 py-2">
         <Button
           aria-expanded={isOpen}
-          className="flex h-auto min-h-11 flex-1 items-center justify-between gap-3 !rounded-full bg-transparent px-2 py-2 text-left font-black text-[#121515]"
+          className="flex h-auto min-h-11 flex-1 items-center justify-between gap-3 !rounded-full bg-transparent px-2 py-2 text-left font-black text-[#161d21]"
           type="button"
           variant="secondary"
           onPress={onToggle}
         >
           <span className="inline-flex items-center gap-2">
-            <span>Método {index + 1}</span>
+            <span>Cuenta {index + 1}</span>
             <span
               className={`inline-flex size-6 items-center justify-center rounded-full ${
                 isComplete
                   ? "bg-[#2D5D5E] text-[#FAE880]"
                   : "bg-neutral-200 text-neutral-500"
               }`}
-              title={isComplete ? "Método listo" : "Método incompleto"}
+              title={isComplete ? "Cuenta lista" : "Cuenta incompleta"}
             >
               <CheckCircle2 size={15} />
             </span>
@@ -636,9 +634,9 @@ function PaymentMethodPanel({
         </Button>
         {canDelete ? (
           <button
-            aria-label={`Borrar método ${index + 1}`}
+            aria-label={`Borrar cuenta ${index + 1}`}
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
-            title="Borrar método"
+            title="Borrar cuenta"
             type="button"
             onClick={onDelete}
           >
@@ -650,7 +648,7 @@ function PaymentMethodPanel({
       {isOpen ? (
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <label className="field-label">
-            Dona desde
+            Cuenta en
             <select
               className="field"
               required
@@ -667,12 +665,6 @@ function PaymentMethodPanel({
             </select>
           </label>
           <PaymentTextField
-            label="Método (SPEI, Zelle, Pago móvil...)"
-            showError={showRequiredErrors && method.methodName.trim().length === 0}
-            value={method.methodName}
-            onChange={(value) => onUpdate("methodName", value)}
-          />
-          <PaymentTextField
             label="Titular / destinatario"
             showError={
               showRequiredErrors && method.accountHolder.trim().length === 0
@@ -681,7 +673,7 @@ function PaymentMethodPanel({
             onChange={(value) => onUpdate("accountHolder", value)}
           />
           <PaymentTextField
-            label="Banco"
+            label="Banco o método"
             showError={showRequiredErrors && method.bank.trim().length === 0}
             value={method.bank}
             onChange={(value) => onUpdate("bank", value)}
@@ -751,7 +743,7 @@ function PaymentTextAreaField({
     <label className="field-label">
       {label}
       <textarea
-        className="textarea-field"
+        className="textarea-field-compact"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -849,7 +841,11 @@ function TextAreaField({
       {helperText ? (
         <span className="text-xs leading-5 text-neutral-500">{helperText}</span>
       ) : null}
-      <textarea className="textarea-field" name={name} required={required} />
+      <textarea
+        className="textarea-field-compact"
+        name={name}
+        required={required}
+      />
     </label>
   );
 }

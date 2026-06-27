@@ -20,7 +20,7 @@ export default async function DonationReportPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
         <Link
           className="inline-flex w-fit items-center gap-2 text-sm"

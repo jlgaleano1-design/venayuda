@@ -4,7 +4,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 py-10 text-[#121515]">
+    <main className="flex min-h-screen items-center justify-center bg-[#FFFCF8] px-6 py-10 text-[#161d21]">
       <section className="surface-card w-full max-w-xl border-red-200 bg-red-50/70">
         <div className="flex flex-col gap-5 p-6">
           <div className="flex items-start gap-4">

@@ -12,6 +12,7 @@ const creatorUpdateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   amount: z.string().min(1),
+  amountUsdEstimated: z.string().optional(),
   currency: z.string().min(1),
   purchaseDate: z.string().min(1),
   vendor: z.string().optional(),
@@ -56,10 +57,28 @@ export async function POST(request: Request) {
   const supabase = createAdminClient();
   const photoFilePath = update.photoFilePath ?? update.photoFileName ?? "";
   const invoiceFilePath = update.invoiceFilePath ?? update.invoiceFileName ?? "";
+  const numericAmount = Number(update.amount);
+  const amountUsdEstimated = parseOptionalPositiveNumber(
+    update.amountUsdEstimated,
+  );
 
   if (!photoFilePath) {
     return NextResponse.json(
       { error: "La foto de la compra es obligatoria." },
+      { status: 400 },
+    );
+  }
+
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return NextResponse.json(
+      { error: "El monto de la compra no es válido." },
+      { status: 400 },
+    );
+  }
+
+  if (amountUsdEstimated === null) {
+    return NextResponse.json(
+      { error: "El equivalente aproximado en USD no es válido." },
       { status: 400 },
     );
   }
@@ -71,8 +90,9 @@ export async function POST(request: Request) {
       campaign_id: accessRecord.campaign.id,
       title: update.title,
       description: update.description || null,
-      amount: Number(update.amount),
-      currency: update.currency.toUpperCase().slice(0, 3),
+      amount_original: numericAmount,
+      amount_usd_estimated: amountUsdEstimated ?? null,
+      currency_original: normalizeCurrency(update.currency),
       purchase_date: update.purchaseDate,
       vendor: update.vendor || null,
       photo_file_path: photoFilePath,
@@ -118,7 +138,7 @@ export async function POST(request: Request) {
         amount: update.amount,
         approvalUrl: approvalUrl.toString(),
         campaignTitle: accessRecord.campaign.title,
-        currency: update.currency,
+        currency: normalizeCurrency(update.currency),
         description: update.description,
         purchaseDate: update.purchaseDate,
         recipientEmail,
@@ -144,4 +164,18 @@ export async function POST(request: Request) {
 
 function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
+}
+
+function normalizeCurrency(value: string) {
+  return value.trim().toUpperCase().slice(0, 12);
+}
+
+function parseOptionalPositiveNumber(value?: string) {
+  if (!value || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
 }

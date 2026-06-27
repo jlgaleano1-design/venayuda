@@ -2,7 +2,7 @@ const brand = {
   background: "#FFFCF8",
   border: "#E6E0D8",
   card: "#FFFFFF",
-  ink: "#121515",
+  ink: "#161d21",
   muted: "#626866",
   primary: "#2D5D5E",
   primaryText: "#FAE880",

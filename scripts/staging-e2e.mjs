@@ -140,6 +140,7 @@ await step("Reportar y aprobar donación con comprobante", async () => {
 
   const response = await postJson("/api/donation-reports", {
     amount: "25",
+    amountUsdEstimated: "25",
     campaignSlug: slug,
     currency: "USD",
     donorEmail,
@@ -172,11 +173,48 @@ await step("Reportar y aprobar donación con comprobante", async () => {
 
   const { data: verifiedDonation } = await adminSupabase
     .from("donations")
-    .select("status, amount_usd")
+    .select("status, amount_usd_estimated")
     .eq("id", context.donationId)
     .single();
   assert(verifiedDonation?.status === "verified", "donación no quedó verified");
-  assert(Number(verifiedDonation?.amount_usd) === 25, "donación USD no actualizó amount_usd");
+  assert(
+    Number(verifiedDonation?.amount_usd_estimated) === 25,
+    "donación USD no actualizó amount_usd_estimated",
+  );
+});
+
+await step("Reportar y aprobar donación no USD con estimado", async () => {
+  const response = await postJson("/api/donation-reports", {
+    amount: "500",
+    amountUsdEstimated: "27",
+    campaignSlug: slug,
+    currency: "MXN",
+    donorName: "Donante MXN QA",
+    isAnonymous: false,
+    paymentMethodUsed: "Transferencia QA",
+    publicMessage: "Donación MXN sintética E2E.",
+    transferDate: new Date().toISOString().slice(0, 10),
+    transferReference: `QA-MXN-${runId}`,
+  });
+  const body = await response.json();
+  assert(response.ok, `reportar donación MXN falló: ${JSON.stringify(body)}`);
+
+  const { data: donation } = await adminSupabase
+    .from("donations")
+    .select("id, amount_original, amount_usd_estimated, currency_original, status")
+    .eq("public_code", body.publicCode)
+    .single();
+  assert(donation?.status === "pending", "donación MXN no quedó pending");
+  assert(donation?.currency_original === "MXN", "donación MXN no guardó moneda original");
+  assert(Number(donation?.amount_original) === 500, "donación MXN no guardó monto original");
+  assert(Number(donation?.amount_usd_estimated) === 27, "donación MXN no guardó estimado USD");
+
+  const token = createReviewToken("donation", donation.id);
+  const approveResponse = await fetchUrl(
+    `/api/donation-reports/${donation.id}/review?token=${token}&decision=approve`,
+    { redirect: "manual" },
+  );
+  assert([200, 302, 303].includes(approveResponse.status), "aprobación de donación MXN falló");
 });
 
 await step("Subir compra, aprobarla y validar impacto público", async () => {
@@ -188,6 +226,7 @@ await step("Subir compra, aprobarla y validar impacto público", async () => {
   const response = await postJson("/api/creator-updates", {
     accessCode: context.creatorAccessToken,
     amount: "18",
+    amountUsdEstimated: "18",
     campaignSlug: slug,
     currency: "USD",
     description: "Compra sintética para validar seguimiento a donantes.",
@@ -219,10 +258,14 @@ await step("Subir compra, aprobarla y validar impacto público", async () => {
 
   const { data: approvedPurchase } = await adminSupabase
     .from("purchases")
-    .select("status, is_photo_public")
+    .select("status, amount_usd_estimated, is_photo_public")
     .eq("id", context.purchaseId)
     .single();
   assert(approvedPurchase?.status === "approved", "compra no quedó approved");
+  assert(
+    Number(approvedPurchase?.amount_usd_estimated) === 18,
+    "compra no actualizó amount_usd_estimated",
+  );
   assert(approvedPurchase?.is_photo_public === true, "foto aprobada no quedó pública");
 
   const detailHtml = await text(fetchUrl(`/campanas/${slug}`));
@@ -239,18 +282,27 @@ await step("Subir compra, aprobarla y validar impacto público", async () => {
 });
 
 await step("Validar privacidad básica", async () => {
-  const { error: donationReadError } = await anonSupabase
+  const { data: anonDonations, error: donationReadError } = await anonSupabase
     .from("donations")
     .select("id")
+    .eq("id", context.donationId)
     .limit(1);
-  assert(donationReadError, "anon pudo leer tabla donations");
+  assert(
+    donationReadError || (anonDonations ?? []).length === 0,
+    "anon pudo leer tabla donations",
+  );
 
   const { error: proofDownloadError } = await anonSupabase.storage
     .from("donation-proofs")
     .download(context.proofPath);
   assert(proofDownloadError, "anon pudo descargar comprobante privado");
 
-  const invalidCreatorHtml = await text(fetchUrl("/creador/token-invalido-e2e"));
+  const invalidCreatorResponse = await fetchUrl("/creador/token-invalido-e2e");
+  assert(
+    [403, 404].includes(invalidCreatorResponse.status) || invalidCreatorResponse.ok,
+    `link creador inválido respondió ${invalidCreatorResponse.status}`,
+  );
+  const invalidCreatorHtml = await invalidCreatorResponse.text();
   assert(
     invalidCreatorHtml.includes("no tiene acceso") ||
       invalidCreatorHtml.includes("No encontramos"),

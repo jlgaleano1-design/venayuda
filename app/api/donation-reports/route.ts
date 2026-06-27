@@ -7,9 +7,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const donationReportSchema = z.object({
   campaignSlug: z.string().min(1),
   donorName: z.string().optional(),
-  donorEmail: z.string().email(),
+  donorEmail: z.string().email().optional().or(z.literal("")),
   isAnonymous: z.boolean().optional(),
   amount: z.string().min(1),
+  amountUsdEstimated: z.string().optional(),
   currency: z.string().min(1),
   transferDate: z.string().optional(),
   paymentMethodUsed: z.string().optional(),
@@ -63,11 +64,21 @@ export async function POST(request: Request) {
   const campaignUrl = new URL(`/campanas/${campaign.slug}`, siteUrl).toString();
 
   const numericAmount = Number(report.amount);
+  const amountUsdEstimated = parseOptionalPositiveNumber(
+    report.amountUsdEstimated,
+  );
   const proofFilePath = report.proofFilePath ?? report.proofFileName ?? "";
 
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
     return NextResponse.json(
       { error: "El monto del reporte no es válido." },
+      { status: 400 },
+    );
+  }
+
+  if (amountUsdEstimated === null) {
+    return NextResponse.json(
+      { error: "El equivalente aproximado en USD no es válido." },
       { status: 400 },
     );
   }
@@ -78,10 +89,11 @@ export async function POST(request: Request) {
   const { data: donation, error: donationError } = await supabase
     .from("donations")
     .insert({
-      amount: numericAmount,
+      amount_original: numericAmount,
+      amount_usd_estimated: amountUsdEstimated ?? null,
       campaign_id: campaign.id,
-      currency: report.currency.toUpperCase().slice(0, 3),
-      donor_contact: report.donorEmail,
+      currency_original: normalizeCurrency(report.currency),
+      donor_contact: normalizeOptionalText(report.donorEmail),
       donor_name: report.donorName || null,
       is_anonymous: Boolean(report.isAnonymous),
       payment_method_id: paymentMethod?.id ?? null,
@@ -124,7 +136,7 @@ export async function POST(request: Request) {
             donorName: report.donorName,
             donorEmail: report.donorEmail,
             amount: report.amount,
-            currency: report.currency,
+            currency: normalizeCurrency(report.currency),
             transferDate: report.transferDate,
             paymentMethod: report.paymentMethodUsed,
             transferReference: report.transferReference,
@@ -138,13 +150,18 @@ export async function POST(request: Request) {
             reason: "La campaña no tiene correo de responsable.",
           }),
     ),
-    safeQueueEmail(
-      enqueueEmailEvent(supabase, "donation_confirmation", {
-        campaignTitle: campaign.title,
-        campaignUrl,
-        recipientEmail: report.donorEmail,
-      }),
-    ),
+    report.donorEmail
+      ? safeQueueEmail(
+          enqueueEmailEvent(supabase, "donation_confirmation", {
+            campaignTitle: campaign.title,
+            campaignUrl,
+            recipientEmail: report.donorEmail,
+          }),
+        )
+      : Promise.resolve({
+          queued: false,
+          reason: "El reporte no incluyó correo de contacto.",
+        }),
   ]);
 
   return NextResponse.json({
@@ -211,6 +228,26 @@ async function findPaymentMethod(
 
 function extractEmail(value: string) {
   return value.match(/[^\s:@]+@[^\s@]+\.[^\s@]+/)?.[0] ?? "";
+}
+
+function normalizeCurrency(value: string) {
+  return value.trim().toUpperCase().slice(0, 12);
+}
+
+function normalizeOptionalText(value?: string) {
+  const normalized = value?.trim() ?? "";
+
+  return normalized.length > 0 ? normalized : null;
+}
+
+function parseOptionalPositiveNumber(value?: string) {
+  if (!value || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
 }
 
 async function safeQueueEmail(

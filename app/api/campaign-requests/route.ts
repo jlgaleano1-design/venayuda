@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { enqueueEmailEvent } from "@/lib/email-queue";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -135,15 +135,21 @@ export async function POST(request: Request) {
     `/campanas/${requestData.slug}`,
     siteUrl,
   ).toString();
-  let confirmationEmailResult: { queued: boolean; reason?: string } = {
+  let confirmationEmailResult: {
+    queued: boolean;
+    reason?: string;
+    sent: boolean;
+  } = {
     queued: false,
     reason: "el servicio de correo no está disponible",
+    sent: false,
   };
 
   if (!process.env.CAMPAIGN_REVIEW_SECRET) {
     confirmationEmailResult = {
       queued: false,
       reason: "el enlace de confirmación necesita configuración interna",
+      sent: false,
     };
   } else {
     const reviewToken = createCampaignReviewToken(campaign.id);
@@ -157,7 +163,7 @@ export async function POST(request: Request) {
     reviewUrl.searchParams.set("token", reviewToken);
 
     try {
-      confirmationEmailResult = await enqueueEmailEvent(
+      confirmationEmailResult = await queueOrSendEmailEvent(
         supabase,
         "campaign_review",
         {
@@ -180,6 +186,7 @@ export async function POST(request: Request) {
       confirmationEmailResult = {
         queued: false,
         reason: "No se pudo poner en cola el correo de confirmación",
+        sent: false,
       };
     }
   }
@@ -187,9 +194,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     approvalEmailQueued: confirmationEmailResult.queued,
-    approvalEmailSent: confirmationEmailResult.queued,
+    approvalEmailSent: confirmationEmailResult.sent,
     confirmationEmailQueued: confirmationEmailResult.queued,
-    confirmationEmailSent: confirmationEmailResult.queued,
+    confirmationEmailSent: confirmationEmailResult.sent,
     creatorAccessLink: null,
     publicCampaignUrl,
     reason: confirmationEmailResult.reason,

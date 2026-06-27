@@ -35,10 +35,11 @@ type CampaignRow = {
 };
 
 type DonationRow = {
-  amount: string | number;
+  amount_original: string | number;
+  amount_usd_estimated: string | number | null;
   campaign: { slug: string; title: string } | null;
   created_at: string;
-  currency: string;
+  currency_original: string;
   donor_contact: string | null;
   donor_name: string | null;
   id: string;
@@ -50,10 +51,11 @@ type DonationRow = {
 };
 
 type PurchaseRow = {
-  amount: string | number;
+  amount_original: string | number;
+  amount_usd_estimated: string | number | null;
   campaign: { slug: string; title: string } | null;
   created_at: string;
-  currency: string;
+  currency_original: string;
   description: string | null;
   id: string;
   invoice_file_path: string | null;
@@ -92,7 +94,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     supabase
       .from("donations")
       .select(
-        "amount, campaign:campaigns(slug, title), created_at, currency, donor_contact, donor_name, id, proof_file_path, public_code, public_message, transfer_date, transfer_reference",
+        "amount_original, amount_usd_estimated, campaign:campaigns(slug, title), created_at, currency_original, donor_contact, donor_name, id, proof_file_path, public_code, public_message, transfer_date, transfer_reference",
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true })
@@ -101,7 +103,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     supabase
       .from("purchases")
       .select(
-        "amount, campaign:campaigns(slug, title), created_at, currency, description, id, invoice_file_path, photo_file_path, purchase_date, title, vendor",
+        "amount_original, amount_usd_estimated, campaign:campaigns(slug, title), created_at, currency_original, description, id, invoice_file_path, photo_file_path, purchase_date, title, vendor",
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true })
@@ -145,7 +147,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="space-y-2">
@@ -186,12 +188,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <SummaryCard
             icon={<CircleDollarSign size={20} />}
             label="Total verificado"
-            value={formatUsd(totals.verifiedDonations)}
+            value={formatUsdAprox(totals.verifiedDonations)}
           />
           <SummaryCard
             icon={<CheckCircle2 size={20} />}
             label="Saldo disponible"
-            value={formatUsd(totals.availableBalance)}
+            value={formatUsdAprox(totals.availableBalance)}
           />
         </div>
 
@@ -236,7 +238,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <QueueItem
                   action={`/admin/review/donations/${donation.id}`}
                   approveLabel="Verificar"
-                  badge={donation.currency}
+                  amountUsdEstimated={
+                    donation.amount_usd_estimated ??
+                    (donation.currency_original === "USD"
+                      ? donation.amount_original
+                      : null)
+                  }
+                  badge={donation.currency_original}
+                  currencyOriginal={donation.currency_original}
                   key={donation.id}
                   meta={[
                     donation.campaign?.title,
@@ -252,6 +261,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     donation.transfer_reference
                       ? `Referencia: ${donation.transfer_reference}`
                       : null,
+                    donation.amount_usd_estimated
+                      ? `Estimado reportado: ${formatUsdAprox(
+                          Number(donation.amount_usd_estimated),
+                        )}`
+                      : "Sin estimado USD reportado",
                     donation.public_message
                       ? `Mensaje: ${truncate(donation.public_message)}`
                       : null,
@@ -262,7 +276,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       : []
                   }
                   rejectLabel="Rechazar"
-                  title={formatMoney(donation.amount, donation.currency)}
+                  title={formatMoney(
+                    donation.amount_original,
+                    donation.currency_original,
+                  )}
                 />
               ))
             ) : (
@@ -276,7 +293,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <QueueItem
                   action={`/admin/review/purchases/${purchase.id}`}
                   approveLabel="Aprobar"
-                  badge={purchase.currency}
+                  amountUsdEstimated={
+                    purchase.amount_usd_estimated ??
+                    (purchase.currency_original === "USD"
+                      ? purchase.amount_original
+                      : null)
+                  }
+                  badge={purchase.currency_original}
+                  currencyOriginal={purchase.currency_original}
                   key={purchase.id}
                   meta={[purchase.campaign?.title, purchase.vendor]
                     .filter(Boolean)
@@ -288,6 +312,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     purchase.description
                       ? truncate(purchase.description)
                       : null,
+                    purchase.amount_usd_estimated
+                      ? `Estimado reportado: ${formatUsdAprox(
+                          Number(purchase.amount_usd_estimated),
+                        )}`
+                      : "Sin estimado USD reportado",
                   ].filter(Boolean)}
                   links={[
                     fileUrls.purchasePhotos[purchase.id]
@@ -305,8 +334,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   ].filter(isFileLink)}
                   rejectLabel="Rechazar"
                   title={`${purchase.title} · ${formatMoney(
-                    purchase.amount,
-                    purchase.currency,
+                    purchase.amount_original,
+                    purchase.currency_original,
                   )}`}
                 />
               ))
@@ -369,8 +398,10 @@ function QueueCard({
 
 function QueueItem({
   action,
+  amountUsdEstimated,
   approveLabel,
   badge,
+  currencyOriginal,
   details = [],
   links = [],
   meta,
@@ -378,8 +409,10 @@ function QueueItem({
   title,
 }: {
   action: string;
+  amountUsdEstimated?: string | number | null;
   approveLabel: string;
   badge: string;
+  currencyOriginal?: string;
   details?: (string | null | undefined)[];
   links?: FileLink[];
   meta: string;
@@ -421,9 +454,59 @@ function QueueItem({
           {badge}
         </span>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <form action={action} method="post">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
+        <form action={action} className="flex flex-col gap-3" method="post">
           <input name="decision" type="hidden" value="approve" />
+          {currencyOriginal ? (
+            <div className="grid gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs md:grid-cols-2">
+              <label className="field-label text-xs">
+                USD aprox.
+                <input
+                  className="field h-9 text-sm"
+                  defaultValue={formatInputNumber(amountUsdEstimated)}
+                  min="0"
+                  name="amountUsdEstimated"
+                  required
+                  step="any"
+                  type="number"
+                />
+              </label>
+              <label className="field-label text-xs">
+                Tasa usada
+                <input
+                  className="field h-9 text-sm"
+                  min="0"
+                  name="exchangeRateUsed"
+                  step="any"
+                  type="number"
+                />
+              </label>
+              <label className="field-label text-xs">
+                Fecha de tasa
+                <input
+                  className="field h-9 text-sm"
+                  name="exchangeRateDate"
+                  type="date"
+                />
+              </label>
+              <label className="field-label text-xs">
+                Fuente de tasa
+                <input
+                  className="field h-9 text-sm"
+                  name="exchangeRateSource"
+                  placeholder="Ej. referencia bancaria"
+                />
+              </label>
+              <label className="field-label text-xs md:col-span-2">
+                Notas de conversión
+                <textarea
+                  className="textarea-field min-h-20 text-sm"
+                  name="conversionNotes"
+                  placeholder="Contexto o ajuste manual para la conversión"
+                />
+              </label>
+            </div>
+          ) : null}
           <button className="btn-primary h-9 px-4" type="submit">
             {approveLabel}
           </button>
@@ -471,7 +554,7 @@ function ReviewNotice({ status }: { status: string }) {
     {
       "campaign-approved": "Campaña aprobada y publicada.",
       "campaign-rejected": "Campaña rechazada.",
-      currency: "Este registro necesita conversión manual a USD antes de aprobarse.",
+      currency: "Agrega el equivalente aproximado en USD antes de aprobar.",
       "donation-approved": "Donación verificada.",
       "donation-rejected": "Donación rechazada.",
       error: "No se pudo completar la acción. Revisa Supabase e inténtalo de nuevo.",
@@ -489,14 +572,30 @@ function ReviewNotice({ status }: { status: string }) {
 }
 
 function formatMoney(amount: string | number, currency: string) {
-  return new Intl.NumberFormat("es-MX", {
-    currency,
-    style: "currency",
-  }).format(Number(amount));
+  const normalizedCurrency = currency.trim().toUpperCase();
+
+  try {
+    return new Intl.NumberFormat("es-MX", {
+      currency: normalizedCurrency,
+      style: "currency",
+    }).format(Number(amount));
+  } catch {
+    return `${new Intl.NumberFormat("es-MX", {
+      maximumFractionDigits: 2,
+    }).format(Number(amount))} ${normalizedCurrency}`;
+  }
 }
 
-function formatUsd(amount: number) {
-  return formatMoney(amount, "USD");
+function formatUsdAprox(amount: number) {
+  return `${formatMoney(amount, "USD")} USD aprox.`;
+}
+
+function formatInputNumber(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  return String(value);
 }
 
 function formatDate(value: string) {

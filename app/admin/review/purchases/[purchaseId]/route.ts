@@ -6,6 +6,11 @@ import { enqueueEmailEvent } from "@/lib/email-queue";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
+  amountUsdEstimated: z.string().optional(),
+  conversionNotes: z.string().optional(),
+  exchangeRateDate: z.string().optional(),
+  exchangeRateSource: z.string().optional(),
+  exchangeRateUsed: z.string().optional(),
 });
 
 export async function POST(
@@ -16,7 +21,12 @@ export async function POST(
   const requestUrl = new URL(request.url);
   const formData = await request.formData();
   const payload = reviewSchema.safeParse({
+    amountUsdEstimated: getFormString(formData, "amountUsdEstimated"),
+    conversionNotes: getFormString(formData, "conversionNotes"),
     decision: formData.get("decision"),
+    exchangeRateDate: getFormString(formData, "exchangeRateDate"),
+    exchangeRateSource: getFormString(formData, "exchangeRateSource"),
+    exchangeRateUsed: getFormString(formData, "exchangeRateUsed"),
   });
 
   if (!payload.success) {
@@ -27,7 +37,7 @@ export async function POST(
   const { data: purchase } = await supabase
     .from("purchases")
     .select(
-      "amount, campaign_id, currency, description, purchase_date, title",
+      "amount_original, amount_usd_estimated, campaign_id, currency_original, description, purchase_date, title",
     )
     .eq("id", purchaseId)
     .single();
@@ -36,16 +46,37 @@ export async function POST(
     return redirectToAdmin(requestUrl, "missing");
   }
 
-  if (payload.data.decision === "approve" && purchase.currency !== "USD") {
+  const amountUsdEstimated = parseOptionalPositiveNumber(
+    payload.data.amountUsdEstimated,
+  );
+  const exchangeRateUsed = parseOptionalPositiveNumber(
+    payload.data.exchangeRateUsed,
+  );
+
+  if (
+    payload.data.decision === "approve" &&
+    (amountUsdEstimated === undefined || amountUsdEstimated === null)
+  ) {
     return redirectToAdmin(requestUrl, "currency");
+  }
+
+  if (exchangeRateUsed === null) {
+    return redirectToAdmin(requestUrl, "invalid");
   }
 
   const update =
     payload.data.decision === "approve"
       ? {
-          amount_usd: Number(purchase.amount),
+          amount_usd_estimated: amountUsdEstimated,
           approved_at: new Date().toISOString(),
           approved_by: profile.user_id,
+          conversion_notes: normalizeOptionalText(payload.data.conversionNotes),
+          exchange_rate_date:
+            normalizeOptionalText(payload.data.exchangeRateDate),
+          exchange_rate_source: normalizeOptionalText(
+            payload.data.exchangeRateSource,
+          ),
+          exchange_rate_used: exchangeRateUsed,
           is_photo_public: true,
           status: "approved",
         }
@@ -73,11 +104,11 @@ export async function POST(
     if (campaign) {
       revalidatePath(`/campanas/${campaign.slug}`);
       await notifyVerifiedDonors({
-        amount: String(purchase.amount),
+        amount: String(purchase.amount_original),
         campaignId: purchase.campaign_id,
         campaignSlug: campaign.slug,
         campaignTitle: campaign.title,
-        currency: purchase.currency,
+        currency: purchase.currency_original,
         description: purchase.description ?? undefined,
         purchaseDate: purchase.purchase_date,
         purchaseTitle: purchase.title,
@@ -163,4 +194,26 @@ function redirectToAdmin(requestUrl: URL, status: string) {
   redirectUrl.searchParams.set("review", status);
 
   return NextResponse.redirect(redirectUrl, { status: 303 });
+}
+
+function normalizeOptionalText(value?: string) {
+  const normalized = value?.trim() ?? "";
+
+  return normalized.length > 0 ? normalized : null;
+}
+
+function parseOptionalPositiveNumber(value?: string) {
+  if (!value || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
+function getFormString(formData: FormData, name: string) {
+  const value = formData.get(name);
+
+  return typeof value === "string" ? value : undefined;
 }

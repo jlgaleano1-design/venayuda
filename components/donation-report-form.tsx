@@ -69,6 +69,7 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
         donorEmail: formData.get("donorEmail"),
         isAnonymous: formData.get("isAnonymous") === "on",
         amount: formData.get("amount"),
+        amountUsdEstimated: formData.get("amountUsdEstimated"),
         currency: formData.get("currency"),
         transferDate: formData.get("transferDate"),
         paymentMethodUsed: formData.get("paymentMethodUsed"),
@@ -106,9 +107,8 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
           <div className="grid gap-4 md:grid-cols-2">
             <TextField label="Tu nombre (opcional)" name="donorName" />
             <TextField
-              label="Correo electrónico"
+              label="Correo electrónico (opcional)"
               name="donorEmail"
-              required
               type="email"
             />
           </div>
@@ -117,10 +117,22 @@ export function DonationReportForm({ campaign }: { campaign: Campaign }) {
             Donar anónimamente en la vista pública
           </label>
           <div className="grid gap-4 md:grid-cols-3">
-            <TextField label="Monto" name="amount" required type="number" />
-            <TextField label="Moneda" name="currency" required />
+            <TextField
+              label="Monto original"
+              name="amount"
+              required
+              step="any"
+              type="number"
+            />
+            <TextField label="Moneda original" name="currency" required />
             <TextField label="Fecha" name="transferDate" type="date" />
           </div>
+          <TextField
+            label="Equivalente aproximado en USD, si lo conoces"
+            name="amountUsdEstimated"
+            step="any"
+            type="number"
+          />
           <TextField
             label="Método usado"
             name="paymentMethodUsed"
@@ -194,6 +206,7 @@ function TextField({
   placeholder,
   required = false,
   statusMessage,
+  step,
   type = "text",
   onChange,
 }: {
@@ -203,6 +216,7 @@ function TextField({
   placeholder?: string;
   required?: boolean;
   statusMessage?: string;
+  step?: string;
   type?: string;
   onChange?: (file: File | null) => void;
 }) {
@@ -240,6 +254,7 @@ function TextField({
         name={name}
         placeholder={placeholder}
         required={required}
+        step={step}
         type={type}
         variant="secondary"
       />

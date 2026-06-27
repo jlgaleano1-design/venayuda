@@ -86,17 +86,14 @@ export type PurchaseImpactEmail = {
 };
 
 function createMailer() {
-  const provider = (process.env.EMAIL_PROVIDER ?? "auto").toLowerCase();
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const provider = (process.env.EMAIL_PROVIDER ?? "smtp").toLowerCase();
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT ?? 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.EMAIL_FROM ?? process.env.SMTP_FROM;
-  const hasSmtpConfig = Boolean(host && from);
-  const hasResendConfig = Boolean(resendApiKey && from);
+  const from = process.env.EMAIL_FROM;
 
-  if ((provider === "smtp" || (provider === "auto" && hasSmtpConfig)) && host && from) {
+  if (provider === "smtp" && host && from) {
     const transporter = nodemailer.createTransport({
       host,
       port,
@@ -105,38 +102,6 @@ function createMailer() {
     });
 
     return { from, transporter };
-  }
-
-  if (
-    (provider === "resend" || (provider === "auto" && hasResendConfig)) &&
-    resendApiKey &&
-    from
-  ) {
-    return {
-      from,
-      transporter: {
-        async sendMail(message: {
-          from: string;
-          html?: string;
-          subject: string;
-          text?: string;
-          to: string;
-        }) {
-          const response = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(message),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Resend error: ${await response.text()}`);
-          }
-        },
-      },
-    };
   }
 
   return null;

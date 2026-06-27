@@ -21,7 +21,7 @@ export function SiteFooter() {
                 type="button"
                 onClick={() => setIsProjectModalOpen(true)}
               >
-                Sobre este proyecto
+                Más sobre vendonar &rarr;
               </button>
             </p>
             <p>
@@ -37,17 +37,17 @@ export function SiteFooter() {
         <div
           aria-labelledby={modalTitleId}
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#121515]/45 px-5 py-8"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#161d21]/45 px-5 py-8"
           role="dialog"
           onClick={() => setIsProjectModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-[2rem] border border-neutral-200 bg-[#FFFCF8] p-6 text-[#121515] shadow-2xl"
+            className="relative w-full max-w-md rounded-[2rem] border border-neutral-200 bg-[#FFFCF8] p-6 text-[#161d21] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               aria-label="Cerrar"
-              className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-full bg-neutral-100 text-[#121515] transition hover:bg-neutral-200"
+              className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-full bg-neutral-100 text-[#161d21] transition hover:bg-neutral-200"
               type="button"
               onClick={() => setIsProjectModalOpen(false)}
             >

@@ -103,6 +103,7 @@ export function CreatorUpdateForm({
         title: formData.get("title"),
         description: formData.get("description"),
         amount: formData.get("amount"),
+        amountUsdEstimated: formData.get("amountUsdEstimated"),
         currency: formData.get("currency"),
         purchaseDate: formData.get("purchaseDate"),
         vendor: formData.get("vendor"),
@@ -153,8 +154,20 @@ export function CreatorUpdateForm({
           <div className="grid gap-4 md:grid-cols-2">
             <TextField label="Qué compraste" name="title" required />
             <TextField label="Proveedor / tienda" name="vendor" />
-            <TextField label="Monto" name="amount" required type="number" />
-            <TextField label="Moneda" name="currency" required />
+            <TextField
+              label="Monto original"
+              name="amount"
+              required
+              step="any"
+              type="number"
+            />
+            <TextField label="Moneda original" name="currency" required />
+            <TextField
+              label="Equivalente aproximado en USD"
+              name="amountUsdEstimated"
+              step="any"
+              type="number"
+            />
             <TextField
               label="Fecha de compra"
               name="purchaseDate"
@@ -169,7 +182,7 @@ export function CreatorUpdateForm({
               <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
                 <Camera size={20} />
               </span>
-              <span className="text-sm font-black text-[#121515]">
+              <span className="text-sm font-black text-[#161d21]">
                 {photoName || "Subir foto clara de lo comprado"}
               </span>
               <span className="text-xs leading-5 text-neutral-500">
@@ -269,6 +282,7 @@ function TextField({
   name,
   required = false,
   statusMessage,
+  step,
   type = "text",
   onChange,
 }: {
@@ -277,6 +291,7 @@ function TextField({
   name: string;
   required?: boolean;
   statusMessage?: string;
+  step?: string;
   type?: string;
   onChange?: (file: File | null) => void;
 }) {
@@ -313,6 +328,7 @@ function TextField({
         className="field"
         name={name}
         required={required}
+        step={step}
         type={type}
         variant="secondary"
       />

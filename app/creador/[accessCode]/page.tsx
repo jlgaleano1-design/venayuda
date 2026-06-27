@@ -44,7 +44,7 @@ export default async function CreatorPortalPage({
   const activity = getCreatorPortalActivity();
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
         <Link className="inline-flex w-fit items-center gap-2 text-sm" href="/">
           <ArrowLeft size={18} />
@@ -82,7 +82,7 @@ export default async function CreatorPortalPage({
                   <h2 className="text-xl font-extrabold">{campaign.title}</h2>
                 </div>
                 <Metric
-                  label="Donado verificado"
+                  label="Donación verificada"
                   emptyText="Sin donaciones verificadas"
                   value={
                     activity.donated === null
@@ -91,7 +91,7 @@ export default async function CreatorPortalPage({
                   }
                 />
                 <Metric
-                  label="Gastado aprobado"
+                  label="Gastos"
                   emptyText="Sin gastos aprobados"
                   value={
                     activity.spent === null ? undefined : formatUsd(activity.spent)

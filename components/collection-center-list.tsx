@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  CollectionCenter,
-  CollectionCenterCategory,
   collectionCenterFilters,
-} from "@/lib/collection-centers";
+  type CollectionCenter,
+  type CollectionCenterCategory,
+} from "@/lib/collection-center-types";
 import { CollectionCenterCard } from "./collection-center-card";
 
 export function CollectionCenterList({
@@ -55,7 +55,7 @@ export function CollectionCenterList({
                 className={
                   filter === item.key
                     ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515]"
+                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#161d21]"
                 }
                 type="button"
                 onClick={() => setFilter(item.key)}

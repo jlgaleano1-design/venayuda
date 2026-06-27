@@ -39,7 +39,7 @@ async function reviewPurchase(
   const { data: purchase } = await supabase
     .from("purchases")
     .select(
-      "amount, campaign_id, currency, description, purchase_date, status, title",
+      "amount_original, amount_usd_estimated, campaign_id, currency_original, description, purchase_date, status, title",
     )
     .eq("id", purchaseId)
     .single();
@@ -51,7 +51,7 @@ async function reviewPurchase(
     );
   }
 
-  if (status === "approved" && purchase.currency !== "USD") {
+  if (status === "approved" && purchase.amount_usd_estimated === null) {
     return NextResponse.json(
       {
         error: "Esta compra necesita conversión manual a USD antes de aprobarse.",
@@ -63,7 +63,6 @@ async function reviewPurchase(
   const update =
     status === "approved"
       ? {
-          amount_usd: Number(purchase.amount),
           approved_at: new Date().toISOString(),
           is_photo_public: true,
           status,
@@ -90,11 +89,11 @@ async function reviewPurchase(
 
   if (status === "approved" && campaign) {
     await notifyVerifiedDonors({
-      amount: String(purchase.amount),
+      amount: String(purchase.amount_original),
       campaignId: purchase.campaign_id,
       campaignSlug: campaign.slug,
       campaignTitle: campaign.title,
-      currency: purchase.currency,
+      currency: purchase.currency_original,
       description: purchase.description ?? undefined,
       purchaseDate: purchase.purchase_date,
       purchaseTitle: purchase.title,

@@ -3,7 +3,7 @@ import { SiteFooter } from "@/components/site-footer";
 
 export default function NotFoundPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-[#FFFCF8] px-6 py-10 text-[#121515]">
+    <main className="flex min-h-screen flex-col bg-[#FFFCF8] px-6 py-10 text-[#161d21]">
       <div className="flex flex-1 items-center justify-center">
         <ErrorState
           actions={[errorStateActions.campaigns, errorStateActions.home]}

@@ -1,43 +1,49 @@
-export type CollectionCenterCategory =
-  | "all"
-  | "medicines"
-  | "food"
-  | "hygiene"
-  | "clothing"
-  | "supplies"
-  | "pets";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  collectionCenterFilters,
+  type CollectionCenter,
+  type CollectionCenterCategory,
+} from "@/lib/collection-center-types";
+export type { CollectionCenter, CollectionCenterCategory } from "@/lib/collection-center-types";
 
-export type CollectionCenter = {
+type CollectionCenterRow = {
+  address: string | null;
+  categories: string[] | null;
+  city: string | null;
+  contact: string | null;
+  coordinates: string | null;
+  country: string | null;
   id: string;
   name: string;
-  address: string;
-  city: string;
-  country: string;
-  coordinates?: string;
-  receives: string;
-  contact?: string;
-  categories: Exclude<CollectionCenterCategory, "all">[];
+  receives: string | null;
 };
-
-export const collectionCenterFilters: {
-  key: CollectionCenterCategory;
-  label: string;
-}[] = [
-  { key: "all", label: "Todo" },
-  { key: "medicines", label: "Medicinas" },
-  { key: "food", label: "Alimentos" },
-  { key: "hygiene", label: "Higiene" },
-  { key: "clothing", label: "Ropa" },
-  { key: "supplies", label: "Insumos" },
-  { key: "pets", label: "Mascotas" },
-];
 
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1OTNQGMsK3nU2wqy00rtPPcwsSzAlorWeP-uIotWpkxM/gviz/tq?tqx=out:csv&gid=115303742";
 
-export async function getCollectionCentersFromSheet() {
+const collectionCenterColumns =
+  "id, name, address, city, country, coordinates, receives, contact, categories";
+
+export async function getCollectionCenters() {
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("collection_centers")
+    .select(collectionCenterColumns)
+    .order("country", { ascending: true })
+    .order("city", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as CollectionCenterRow[]).map(rowToPublicCollectionCenter);
+}
+
+export async function fetchCollectionCentersFromSheet() {
   const response = await fetch(SHEET_CSV_URL, {
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -45,13 +51,154 @@ export async function getCollectionCentersFromSheet() {
   }
 
   const csv = await response.text();
+  return parseCollectionCentersCsv(csv);
+}
+
+export function parseCollectionCentersCsv(csv: string) {
   const rows = parseCsv(csv);
   const [headerRow, ...dataRows] = rows;
+
+  if (!headerRow) {
+    throw new Error("El sheet de centros de acopio no tiene encabezados.");
+  }
+
   const headers = headerRow.map(normalizeHeader);
+  const requiredHeaders = ["id", "quien"];
+  const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+
+  if (missingHeaders.length > 0) {
+    throw new Error(
+      `El sheet de centros de acopio no tiene las columnas requeridas: ${missingHeaders.join(
+        ", ",
+      )}.`,
+    );
+  }
 
   return dataRows
     .map((row, index) => rowToCollectionCenter(headers, row, index))
     .filter((center): center is CollectionCenter => Boolean(center));
+}
+
+export async function syncCollectionCentersFromSheet({
+  supabase,
+}: {
+  supabase: SupabaseClient;
+}) {
+  const startedAt = new Date().toISOString();
+
+  try {
+    const centers = await fetchCollectionCentersFromSheet();
+    const now = new Date().toISOString();
+    const centerRows = centers.map((center) => ({
+      address: center.address,
+      categories: center.categories,
+      city: center.city,
+      contact: center.contact ?? null,
+      coordinates: center.coordinates ?? null,
+      country: center.country,
+      id: center.id,
+      name: center.name,
+      receives: center.receives,
+      synced_at: now,
+    }));
+
+    if (centerRows.length > 0) {
+      const { error: upsertError } = await supabase
+        .from("collection_centers")
+        .upsert(centerRows, { onConflict: "id" });
+
+      if (upsertError) {
+        throw new Error("No se pudo guardar la caché de centros de acopio.");
+      }
+    }
+
+    const { data: existingRows, error: selectError } = await supabase
+      .from("collection_centers")
+      .select("id");
+
+    if (selectError) {
+      throw new Error("No se pudo revisar la caché actual de centros de acopio.");
+    }
+
+    const syncedIds = new Set(centers.map((center) => center.id));
+    const staleIds = (existingRows ?? [])
+      .map((row) => row.id)
+      .filter((id) => !syncedIds.has(id));
+
+    if (staleIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("collection_centers")
+        .delete()
+        .in("id", staleIds);
+
+      if (deleteError) {
+        throw new Error("No se pudieron limpiar centros antiguos de la caché.");
+      }
+    }
+
+    const finishedAt = new Date().toISOString();
+    await supabase.from("collection_center_sync_runs").insert({
+      center_count: centers.length,
+      error_message: null,
+      finished_at: finishedAt,
+      started_at: startedAt,
+      status: "success",
+    });
+
+    return {
+      centerCount: centers.length,
+      finishedAt,
+      ok: true,
+      startedAt,
+    };
+  } catch (error) {
+    const finishedAt = new Date().toISOString();
+    const message =
+      error instanceof Error
+        ? error.message
+        : "No se pudo sincronizar el sheet de centros de acopio.";
+
+    await supabase.from("collection_center_sync_runs").insert({
+      center_count: 0,
+      error_message: message,
+      finished_at: finishedAt,
+      started_at: startedAt,
+      status: "failed",
+    });
+
+    throw error;
+  }
+}
+
+function rowToPublicCollectionCenter(row: CollectionCenterRow): CollectionCenter {
+  const center: CollectionCenter = {
+    address: row.address ?? "",
+    categories: normalizeCategories(row.categories),
+    city: row.city ?? "",
+    country: row.country ?? "",
+    id: row.id,
+    name: row.name,
+    receives: row.receives ?? "Centro de acopio",
+  };
+
+  if (row.coordinates) {
+    center.coordinates = row.coordinates;
+  }
+
+  if (row.contact) {
+    center.contact = row.contact;
+  }
+
+  return center;
+}
+
+function normalizeCategories(categories: string[] | null) {
+  const allowed = new Set(collectionCenterFilters.map((filter) => filter.key));
+
+  return (categories ?? []).filter(
+    (category): category is Exclude<CollectionCenterCategory, "all"> =>
+      category !== "all" && allowed.has(category as CollectionCenterCategory),
+  );
 }
 
 function rowToCollectionCenter(

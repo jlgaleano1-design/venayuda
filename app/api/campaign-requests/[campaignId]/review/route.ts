@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { enqueueEmailEvent } from "@/lib/email-queue";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { verifyCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -129,7 +129,7 @@ async function approveCampaign(requestUrl: URL, campaignId: string) {
 
   if (responsibleEmail) {
     try {
-      await enqueueEmailEvent(supabase, "campaign_approved", {
+      await queueOrSendEmailEvent(supabase, "campaign_approved", {
         campaignTitle: campaign.title,
         creatorAccessUrl,
         publicCampaignUrl,

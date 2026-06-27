@@ -123,7 +123,8 @@ Este acceso es distinto al link publico para compartir. El link publico es corto
 Desde el portal del creador se captura:
 
 - Titulo de la compra.
-- Monto y moneda.
+- Monto original y moneda original.
+- Equivalente aproximado en USD, si se conoce.
 - Fecha de compra.
 - Proveedor o tienda.
 - Foto obligatoria de lo comprado.
@@ -136,10 +137,11 @@ El envio crea una compra en estado `pending`. La compra no afecta totales ni apa
 
 Cada donacion y compra guarda:
 
-- `amount` y `currency`: monto y moneda original.
-- `amount_usd`: monto normalizado para totales publicos.
+- `amount_original` y `currency_original`: monto y moneda original.
+- `amount_usd_estimated`: equivalente aproximado en USD para totales publicos.
+- `exchange_rate_used`, `exchange_rate_date`, `exchange_rate_source` y `conversion_notes`: contexto opcional de la conversion manual.
 
-La conversion no es automatica en esta version. El admin debe capturar o confirmar el monto de reporte manualmente al validar/aprobar.
+La conversion no es automatica en esta version. El admin debe capturar o confirmar el monto aproximado en USD manualmente al validar/aprobar. Los montos en USD son aproximados y se usan solo para facilitar el seguimiento publico; Vendonar no procesa pagos ni garantiza tasas de cambio.
 
 ## Fases de construccion
 
@@ -199,21 +201,21 @@ La app usa este valor para construir links publicos de campana como `https://tu-
 ### 3. Configurar correo transaccional
 
 Vendonar encola correos en Supabase y los envia desde el worker
-`/api/internal/email-worker`. Para produccion, usa un proveedor SMTP con cuota
-gratuita suficiente y define:
+`/api/internal/email-worker`. Sender es el proveedor SMTP unico para correos
+transaccionales y requiere:
 
 ```bash
 EMAIL_PROVIDER=smtp
 EMAIL_FROM="Vendonar <notificaciones@tu-dominio.com>"
-SMTP_HOST=smtp-relay.brevo.com
+SMTP_HOST=valor-smtp-de-sender
 SMTP_PORT=587
-SMTP_USER=tu-usuario-smtp
-SMTP_PASS=tu-password-smtp
+SMTP_USER=tu-usuario-smtp-de-sender
+SMTP_PASS=tu-password-smtp-de-sender
 ```
 
-Con `EMAIL_PROVIDER=auto`, la app usa SMTP si `SMTP_HOST` existe y deja Resend
-solo como respaldo si no hay SMTP configurado. Para forzar Resend, define
-`EMAIL_PROVIDER=resend` y `RESEND_API_KEY`.
+La app no usa fallback de Resend. Si falta una variable SMTP o `EMAIL_PROVIDER`
+no es `smtp`, los correos quedan sin enviar y la cola permite reintentar cuando
+la configuracion este completa.
 
 ### 4. Iniciar Supabase local
 
@@ -283,11 +285,11 @@ Resumen de comandos:
 ```bash
 pnpm check:release
 pnpm ops:e2e:staging
-pnpm ops:stress:staging
 ```
 
-El E2E y el stress test requieren variables de staging reales, incluyendo
-`TARGET_SITE_URL`, Supabase, service role y secretos de revision/correo.
+El E2E requiere variables de staging reales, incluyendo `TARGET_SITE_URL`,
+Supabase, service role, secretos de revision/correo y Sender SMTP configurado.
+No ejecutes el stress test como parte de una verificacion de correo.
 
 ## Estructura creada
 

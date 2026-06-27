@@ -37,7 +37,7 @@ async function reviewDonation(
   const supabase = createAdminClient();
   const { data: donation } = await supabase
     .from("donations")
-    .select("amount, campaign_id, currency, status")
+    .select("amount_usd_estimated, campaign_id, status")
     .eq("id", donationId)
     .single();
 
@@ -48,7 +48,7 @@ async function reviewDonation(
     );
   }
 
-  if (status === "verified" && donation.currency !== "USD") {
+  if (status === "verified" && donation.amount_usd_estimated === null) {
     return NextResponse.json(
       {
         error:
@@ -65,7 +65,6 @@ async function reviewDonation(
   const update =
     status === "verified"
       ? {
-          amount_usd: Number(donation.amount),
           status,
           verified_at: new Date().toISOString(),
         }

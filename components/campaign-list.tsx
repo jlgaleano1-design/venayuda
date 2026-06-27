@@ -19,9 +19,9 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-2 backdrop-blur">
-        <div className="mx-auto max-w-6xl overflow-visible">
-          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto overflow-y-visible py-2">
+      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 py-2 backdrop-blur">
+        <div className="no-scrollbar overflow-x-auto">
+          <div className="mx-auto flex w-max min-w-full max-w-6xl items-center gap-2 px-6 py-3">
             <span className="shrink-0 text-sm font-black text-neutral-600">
               Puedo donar a una cuenta en:
             </span>
@@ -31,7 +31,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                 className={
                   filter === item.key
                     ? "h-9 shrink-0 !rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#121515]"
+                    : "h-9 shrink-0 !rounded-full bg-neutral-100 px-5 text-sm font-black text-[#161d21]"
                 }
                 type="button"
                 variant={filter === item.key ? "primary" : "secondary"}

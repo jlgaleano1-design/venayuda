@@ -111,6 +111,7 @@ await step("Enviar 100 reportes de donación sintéticos", async () => {
   const tasks = Array.from({ length: 100 }, (_, index) => async () => {
     const response = await postJson("/api/donation-reports", {
       amount: String(10 + (index % 7)),
+      amountUsdEstimated: String(10 + (index % 7)),
       campaignSlug: stressCampaignSlug,
       currency: "USD",
       donorEmail: `stress-donor-${runId}-${index}@example.com`,

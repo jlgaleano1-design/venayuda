@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireActiveAdminProfile } from "@/lib/admin-auth";
-import { enqueueEmailEvent } from "@/lib/email-queue";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -95,7 +95,7 @@ export async function POST(
       siteUrl,
     ).toString();
 
-    await enqueueEmailEvent(supabase, "campaign_approved", {
+    await queueOrSendEmailEvent(supabase, "campaign_approved", {
       campaignTitle: campaign.title,
       creatorAccessUrl,
       publicCampaignUrl,

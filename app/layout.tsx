@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Manrope } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -6,6 +7,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org";
 const siteName = "Vendonar";
 const siteDescription =
   "Campañas de ayuda directa con transparencia manual, aportes externos y seguimiento público de compras.";
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -17,6 +23,7 @@ export const metadata: Metadata = {
   description: siteDescription,
   icons: {
     icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
       { url: "/icon.png", sizes: "512x512", type: "image/png" },
     ],
@@ -53,7 +60,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>
+      <body className={manrope.className}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -31,6 +31,18 @@ export type EmailEventPayloadMap = {
   purchase_review: PurchaseReviewEmail;
 };
 
+type EmailDispatchResult = {
+  queued: boolean;
+  reason?: string;
+  sent: boolean;
+};
+
+type EmailQueueResult = {
+  eventId?: string;
+  queued: boolean;
+  reason?: string;
+};
+
 type EmailEventRow = {
   id: string;
   attempts: number;
@@ -43,12 +55,16 @@ export async function enqueueEmailEvent<T extends EmailEventType>(
   supabase: SupabaseClient,
   eventType: T,
   payload: EmailEventPayloadMap[T],
-) {
-  const { error } = await supabase.from("email_events").insert({
-    event_type: eventType,
-    payload,
-    status: "pending",
-  });
+): Promise<EmailQueueResult> {
+  const { data, error } = await supabase
+    .from("email_events")
+    .insert({
+      event_type: eventType,
+      payload,
+      status: "pending",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return {
@@ -57,7 +73,72 @@ export async function enqueueEmailEvent<T extends EmailEventType>(
     };
   }
 
-  return { queued: true };
+  return { eventId: data?.id as string | undefined, queued: true };
+}
+
+export async function queueOrSendEmailEvent<T extends EmailEventType>(
+  supabase: SupabaseClient,
+  eventType: T,
+  payload: EmailEventPayloadMap[T],
+): Promise<EmailDispatchResult> {
+  const queued = await enqueueEmailEvent(supabase, eventType, payload);
+
+  if (queued.queued && isEmailWorkerConfigured()) {
+    return { queued: true, sent: true };
+  }
+
+  const delivery = await sendEmailEventNow(eventType, payload);
+
+  if (delivery.sent) {
+    if (queued.eventId) {
+      await supabase
+        .from("email_events")
+        .update({
+          last_error: null,
+          locked_at: null,
+          sent_at: new Date().toISOString(),
+          status: "sent",
+        })
+        .eq("id", queued.eventId);
+    }
+
+    return { queued: false, sent: true };
+  }
+
+  return {
+    queued: queued.queued,
+    reason: queued.reason ?? delivery.reason,
+    sent: false,
+  };
+}
+
+export async function sendEmailEventNow<T extends EmailEventType>(
+  eventType: T,
+  payload: EmailEventPayloadMap[T],
+) {
+  try {
+    const delivery = await deliverEmailEvent({
+      attempts: 0,
+      event_type: eventType,
+      id: "direct",
+      max_attempts: 1,
+      payload,
+    });
+
+    if (!delivery.sent) {
+      return {
+        reason: delivery.reason ?? "El proveedor de email no envió.",
+        sent: false,
+      };
+    }
+
+    return { sent: true };
+  } catch (error) {
+    return {
+      reason: error instanceof Error ? error.message : "Error desconocido",
+      sent: false,
+    };
+  }
 }
 
 export async function processEmailQueue({
@@ -173,4 +254,8 @@ function backoffMs(attempts: number) {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isEmailWorkerConfigured() {
+  return Boolean(process.env.EMAIL_WORKER_SECRET || process.env.CRON_SECRET);
 }

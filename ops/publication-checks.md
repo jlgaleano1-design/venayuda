@@ -11,7 +11,7 @@ En Vercel staging configura:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `EMAIL_PROVIDER` (`smtp` recomendado)
+- `EMAIL_PROVIDER=smtp`
 - `EMAIL_FROM`
 - `SMTP_HOST`
 - `SMTP_PORT`
@@ -26,15 +26,16 @@ Usa el mismo valor para `EMAIL_WORKER_SECRET` y `CRON_SECRET` en Vercel. El
 cron definido en `vercel.json` llama `GET /api/internal/email-worker` cada
 minuto; Vercel adjunta `Authorization: Bearer $CRON_SECRET`.
 
-Para evitar el limite gratuito de Resend, usa un proveedor SMTP con mayor cuota
-gratuita, por ejemplo Brevo, Sender o SMTP2GO. Si `EMAIL_PROVIDER=auto`,
-Vendonar usa SMTP cuando `SMTP_HOST` esta configurado; si quieres forzarlo,
-define `EMAIL_PROVIDER=smtp`. Resend queda disponible solo si configuras
-`EMAIL_PROVIDER=resend` junto con `RESEND_API_KEY`.
+Sender es el unico proveedor de correo transaccional de Vendonar. Copia
+`SMTP_HOST`, `SMTP_USER` y `SMTP_PASS` desde Sender, usa `SMTP_PORT=587` y
+mantén `EMAIL_FROM` con un remitente verificado. La app no usa Resend ni otro
+fallback; si Sender no esta configurado, los eventos quedan en cola para
+reintentarse cuando la configuracion este completa.
 
 En Supabase staging:
 
-1. Aplica `supabase/migrations/0001_initial_transparency_ledger.sql`.
+1. Aplica todas las migraciones en orden, incluyendo
+   `supabase/migrations/0002_backfill_email_events_queue.sql`.
 2. Crea un usuario en Supabase Auth.
 3. Inserta su perfil admin:
 
@@ -67,6 +68,12 @@ export NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
 export SUPABASE_SERVICE_ROLE_KEY="..."
 export CAMPAIGN_REVIEW_SECRET="..."
 export EMAIL_WORKER_SECRET="..."
+export EMAIL_PROVIDER="smtp"
+export EMAIL_FROM="Vendonar <notificaciones@tu-dominio.com>"
+export SMTP_HOST="..."
+export SMTP_PORT="587"
+export SMTP_USER="..."
+export SMTP_PASS="..."
 ```
 
 Ejecuta:
@@ -90,6 +97,10 @@ Este script valida:
 - worker de correos si hay secreto configurado.
 
 ## 4. Stress test controlado
+
+No ejecutes este paso para validar la migracion a Sender; el E2E anterior es la
+prueba correcta para correo y cola. Reserva este test para una ventana separada
+de publicacion.
 
 Con las mismas variables:
 
@@ -130,7 +141,8 @@ Solo pasar a produccion si:
 
 - `pnpm check:release` pasa;
 - `pnpm ops:e2e:staging` pasa;
-- `pnpm ops:stress:staging` pasa;
+- `pnpm ops:stress:staging` pasa solo cuando haya una ventana explicita para
+  prueba de carga controlada;
 - el admin puede revisar sin abrir Supabase;
 - los correos fallidos no rompen formularios;
 - Storage guarda paths reales;

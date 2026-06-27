@@ -9,7 +9,7 @@ export default async function HomePage() {
   const campaigns = await getPublicCampaigns();
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#121515]">
+    <main className="min-h-screen bg-[#FFFCF8] text-[#161d21]">
       <section className="mx-auto flex min-h-[82vh] max-w-6xl flex-col justify-center gap-8 px-6 py-12">
         <div className="max-w-4xl space-y-6">
           <Image
@@ -17,17 +17,17 @@ export default async function HomePage() {
             className="h-12 w-auto"
             height={48}
             src="/vendonar_logo.svg"
-            width={282}
+            width={188}
           />
           <h1 className="text-4xl font-black leading-tight tracking-normal md:text-6xl">
-            Ayuda directa a venezolanos,
+            Ayuda directa,
             <br />
             sin intermediarios.
           </h1>
           <p className="max-w-3xl text-lg leading-8 text-neutral-700 md:text-xl">
-            Campañas creadas por personas que están ayudando directamente en las
-            zonas más afectadas por el terremoto en Venezuela. Dona desde donde
-            puedas y sigue públicamente cómo se registra y utiliza cada aporte.
+            Campañas creadas por personas que están apoyando directamente en las
+            zonas más afectadas de Venezuela por el terremoto. Dona directo y
+            sigue públicamente cómo se registra y utiliza tu aporte.
           </p>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <a className="btn-primary" href="#campanas">

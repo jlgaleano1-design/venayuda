@@ -1,6 +1,6 @@
 import { Card } from "@heroui/react";
 import { ExternalLink, MapPin, MessageCircle, PackageCheck } from "lucide-react";
-import { CollectionCenter } from "@/lib/collection-centers";
+import type { CollectionCenter } from "@/lib/collection-center-types";
 
 const categoryLabels: Record<string, string> = {
   medicines: "Medicinas",
