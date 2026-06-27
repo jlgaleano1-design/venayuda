@@ -1,5 +1,9 @@
-import type { Campaign, ReceivingCategory } from "@/lib/demo-data";
-import { campaigns } from "@/lib/demo-data";
+import {
+  campaigns,
+  formatOriginalAndUsd,
+  type Campaign,
+  type ReceivingCategory,
+} from "@/lib/demo-data";
 import { createClient } from "@/lib/supabase/server";
 
 type PublicCampaignRow = {
@@ -10,6 +14,7 @@ type PublicCampaignRow = {
   responsible_person_name: string;
   responsible_organization: string | null;
   instagram_handle: string | null;
+  cover_image_path: string | null;
   location: string | null;
   affected_area: string | null;
   status: "active" | "paused" | "completed";
@@ -33,8 +38,9 @@ type PublicDonationRow = {
   campaign_id: string;
   public_code: string;
   donor_name: string;
-  amount: number | string;
-  currency: string;
+  amount_original: number | string;
+  amount_usd_estimated: number | string | null;
+  currency_original: string;
   public_message: string | null;
   verified_at: string | null;
   created_at: string;
@@ -44,8 +50,9 @@ type PublicPurchaseRow = {
   campaign_id: string;
   title: string;
   description: string | null;
-  amount: number | string;
-  currency: string;
+  amount_original: number | string;
+  amount_usd_estimated: number | string | null;
+  currency_original: string;
   purchase_date: string | null;
   is_invoice_public: boolean;
   photo_file_path: string | null;
@@ -114,6 +121,11 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       responsibleEmail: "",
       instagramHandle: campaign.instagram_handle ?? undefined,
       organization: campaign.responsible_organization ?? undefined,
+      coverImageUrl: await createStorageSignedUrl(
+        supabase,
+        "campaign-assets",
+        campaign.cover_image_path,
+      ),
       location: campaign.location ?? campaign.affected_area ?? "Sin zona",
       affectedArea: campaign.affected_area ?? "Sin zona",
       status: campaign.status,
@@ -131,7 +143,11 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
         .map((donation) => ({
           code: donation.public_code,
           donor: donation.donor_name,
-          amount: `${donation.amount} ${donation.currency}`,
+          amount: formatOriginalAndUsd({
+            amountOriginal: donation.amount_original,
+            amountUsdEstimated: donation.amount_usd_estimated,
+            currencyOriginal: donation.currency_original,
+          }),
           message: donation.public_message ?? undefined,
           date: formatDate(donation.verified_at ?? donation.created_at),
         })),
@@ -140,13 +156,18 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
         .map(async (purchase) => ({
             title: purchase.title,
             description: purchase.description ?? undefined,
-            amount: `${purchase.amount} ${purchase.currency}`,
+            amount: formatOriginalAndUsd({
+              amountOriginal: purchase.amount_original,
+              amountUsdEstimated: purchase.amount_usd_estimated,
+              currencyOriginal: purchase.currency_original,
+            }),
             date: purchase.purchase_date
               ? formatDate(purchase.purchase_date)
               : "Sin fecha",
             invoicePublic: purchase.is_invoice_public,
-            photoUrl: await createPurchaseDocumentUrl(
+            photoUrl: await createStorageSignedUrl(
               supabase,
+              "purchase-documents",
               purchase.photo_file_path,
             ),
           }))),
@@ -154,8 +175,9 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
   }));
 }
 
-async function createPurchaseDocumentUrl(
+async function createStorageSignedUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  bucket: "campaign-assets" | "purchase-documents",
   path: string | null,
 ) {
   if (!path) {
@@ -163,7 +185,7 @@ async function createPurchaseDocumentUrl(
   }
 
   const { data } = await supabase.storage
-    .from("purchase-documents")
+    .from(bucket)
     .createSignedUrl(path, 60 * 60);
 
   return data?.signedUrl ?? undefined;

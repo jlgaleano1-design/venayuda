@@ -29,6 +29,7 @@ export type Campaign = {
   responsibleEmail: string;
   instagramHandle?: string;
   organization?: string;
+  coverImageUrl?: string;
   location: string;
   affectedArea: string;
   status: "active" | "paused" | "completed";
@@ -77,4 +78,57 @@ export function formatUsd(value: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export function formatUsdAprox(value: number) {
+  return `${formatUsd(value)} USD aprox.`;
+}
+
+export function formatOriginalAndUsd({
+  amountOriginal,
+  amountUsdEstimated,
+  currencyOriginal,
+}: {
+  amountOriginal: number | string;
+  amountUsdEstimated?: number | string | null;
+  currencyOriginal: string;
+}) {
+  const originalCurrency = currencyOriginal.trim().toUpperCase();
+  const original = formatCurrencyAmount(Number(amountOriginal), originalCurrency);
+
+  if (amountUsdEstimated === null || amountUsdEstimated === undefined) {
+    return original;
+  }
+
+  const usdAmount = Number(amountUsdEstimated);
+
+  if (!Number.isFinite(usdAmount)) {
+    return original;
+  }
+
+  if (originalCurrency === "USD" && Number(amountOriginal) === usdAmount) {
+    return original;
+  }
+
+  return `${original} · aprox. ${formatCurrencyAmount(usdAmount, "USD")}`;
+}
+
+function formatCurrencyAmount(amount: number, currency: string) {
+  if (!Number.isFinite(amount)) {
+    return `${amount} ${currency}`;
+  }
+
+  try {
+    const formatted = new Intl.NumberFormat("es-MX", {
+      currency,
+      maximumFractionDigits: currency === "USD" ? 0 : 2,
+      style: "currency",
+    }).format(amount);
+
+    return `${formatted} ${currency}`;
+  } catch {
+    return `${new Intl.NumberFormat("es-MX", {
+      maximumFractionDigits: 2,
+    }).format(amount)} ${currency}`;
+  }
 }

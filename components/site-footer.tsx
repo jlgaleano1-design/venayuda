@@ -11,26 +11,25 @@ export function SiteFooter() {
     <>
       <footer className="border-t border-neutral-200 px-6 py-6 text-sm leading-6 text-neutral-600">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p>
-            Esta plataforma no se hace responsable por uso indebido. Ninguna
-            donación es procesada internamente. Creada sin interés monetario por{" "}
-            <a
-              className="text-neutral-600 underline-offset-4 hover:underline"
-              href="https://www.instagram.com/jos.galeano"
-              rel="noreferrer"
-              target="_blank"
-            >
-              @jos.galeano
-            </a>
-            .
-          </p>
-          <button
-            className="w-fit font-semibold text-[#2D5D5E] underline-offset-4 hover:underline"
-            type="button"
-            onClick={() => setIsProjectModalOpen(true)}
-          >
-            Sobre este proyecto
-          </button>
+          <div className="space-y-2">
+            <p>
+              Esta plataforma fue creada sin ningún tipo de interés individual y
+              no se hace responsable por uso indebido. Ninguna donación es
+              procesada internamente.{" "}
+              <button
+                className="font-semibold text-[#2D5D5E] underline-offset-4 hover:underline"
+                type="button"
+                onClick={() => setIsProjectModalOpen(true)}
+              >
+                Sobre este proyecto
+              </button>
+            </p>
+            <p>
+              Los montos en USD son aproximados y se usan solo para facilitar el
+              seguimiento público. Las donaciones no se procesan dentro de la
+              plataforma y pueden realizarse en distintas monedas.
+            </p>
+          </div>
         </div>
       </footer>
 

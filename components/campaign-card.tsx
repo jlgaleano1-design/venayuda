@@ -1,7 +1,7 @@
 import { Card } from "@heroui/react";
 import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
-import { Campaign, formatUsd } from "@/lib/demo-data";
+import { Campaign, formatUsdAprox } from "@/lib/demo-data";
 
 const categoryLabels: Record<string, string> = {
   mexico: "México",
@@ -40,13 +40,18 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             {campaign.affectedArea}
           </div>
         </div>
-        <div className="space-y-2">
-          <h3 className="text-xl font-extrabold tracking-normal">
+        <div className="flex items-start justify-between gap-4">
+          <h3 className="min-w-0 text-xl font-extrabold leading-tight tracking-normal">
             {campaign.title}
           </h3>
-          <p className="text-sm leading-6 text-neutral-600">
-            {campaign.description}
-          </p>
+          {campaign.coverImageUrl ? (
+            <div
+              aria-label={`Foto de ${campaign.title}`}
+              className="h-20 w-20 shrink-0 rounded-[1.25rem] bg-neutral-100 bg-cover bg-center"
+              role="img"
+              style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
+            />
+          ) : null}
         </div>
         <div className="space-y-1 text-sm">
           <p>
@@ -79,9 +84,18 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2 border-y border-neutral-200 py-4 text-sm">
-          <Metric label="Verificado" value={formatUsd(campaign.totals.donated)} />
-          <Metric label="Gastado" value={formatUsd(campaign.totals.spent)} />
-          <Metric label="Saldo" value={formatUsd(campaign.totals.balance)} />
+          <Metric
+            label="Recaudados"
+            value={formatUsdAprox(campaign.totals.donated)}
+          />
+          <Metric
+            label="Utilizados"
+            value={formatUsdAprox(campaign.totals.spent)}
+          />
+          <Metric
+            label="Disponibles"
+            value={formatUsdAprox(campaign.totals.balance)}
+          />
         </div>
         <Link className="btn-primary" href={`/campanas/${campaign.slug}`}>
           Ver campaña
