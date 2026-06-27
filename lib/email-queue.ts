@@ -82,11 +82,6 @@ export async function queueOrSendEmailEvent<T extends EmailEventType>(
   payload: EmailEventPayloadMap[T],
 ): Promise<EmailDispatchResult> {
   const queued = await enqueueEmailEvent(supabase, eventType, payload);
-
-  if (queued.queued && isEmailWorkerConfigured()) {
-    return { queued: true, sent: true };
-  }
-
   const delivery = await sendEmailEventNow(eventType, payload);
 
   if (delivery.sent) {
@@ -107,7 +102,10 @@ export async function queueOrSendEmailEvent<T extends EmailEventType>(
 
   return {
     queued: queued.queued,
-    reason: queued.reason ?? delivery.reason,
+    reason:
+      queued.queued && isEmailWorkerConfigured()
+        ? "El correo quedó en cola de envío."
+        : (queued.reason ?? delivery.reason),
     sent: false,
   };
 }

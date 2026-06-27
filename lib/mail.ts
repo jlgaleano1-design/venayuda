@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions } from "nodemailer";
 import {
   escapeHtml,
   renderBrandEmail,
@@ -92,6 +92,15 @@ function createMailer() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.EMAIL_FROM;
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if ((provider === "resend" || resendApiKey) && resendApiKey && from) {
+    return {
+      from,
+      kind: "resend" as const,
+      resendApiKey,
+    };
+  }
 
   if (provider === "smtp" && host && from) {
     const transporter = nodemailer.createTransport({
@@ -101,10 +110,42 @@ function createMailer() {
       auth: user && pass ? { user, pass } : undefined,
     });
 
-    return { from, transporter };
+    return { from, kind: "smtp" as const, transporter };
   }
 
   return null;
+}
+
+async function sendMail(
+  mailer: NonNullable<ReturnType<typeof createMailer>>,
+  options: SendMailOptions,
+) {
+  if (mailer.kind === "smtp") {
+    await mailer.transporter.sendMail(options);
+    return;
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    body: JSON.stringify({
+      from: mailer.from,
+      html: options.html,
+      subject: options.subject,
+      text: options.text,
+      to: options.to,
+    }),
+    headers: {
+      Authorization: `Bearer ${mailer.resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Resend no envió el correo (${response.status}): ${errorBody}`,
+    );
+  }
 }
 
 export async function sendDonationReportEmail(report: DonationReportEmail) {
@@ -132,7 +173,7 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
     report.rejectionUrl ? `Rechazar donación: ${report.rejectionUrl}` : null,
   ].filter(Boolean);
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: report.recipientEmail,
     subject: `Nuevo aviso de donación: ${report.campaignTitle}`,
@@ -183,7 +224,7 @@ export async function sendDonationConfirmationEmail(
     return { sent: false, reason: "SMTP no configurado" };
   }
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
     subject: "Recibimos tu reporte de aporte",
@@ -221,7 +262,7 @@ export async function sendCampaignReviewEmail(email: CampaignReviewEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
     subject: `Confirma tu campaña en Vendonar: ${email.title}`,
@@ -270,7 +311,7 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
     subject: `Tu campaña ya está publicada: ${email.campaignTitle}`,
@@ -314,7 +355,7 @@ export async function sendPurchaseReviewEmail(email: PurchaseReviewEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
     subject: `Compra por aprobar: ${email.title}`,
@@ -364,7 +405,7 @@ export async function sendPurchaseImpactEmail(email: PurchaseImpactEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
-  await mailer.transporter.sendMail({
+  await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
     subject: `Tu donación ayudó a comprar: ${email.purchaseTitle}`,

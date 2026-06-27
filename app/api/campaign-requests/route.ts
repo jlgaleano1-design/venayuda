@@ -287,6 +287,7 @@ async function finalizeCampaignRequest({
     approvalEmailSent: confirmationEmailResult.sent,
     confirmationEmailQueued: confirmationEmailResult.queued,
     confirmationEmailSent: confirmationEmailResult.sent,
+    confirmationRecipientEmail: requestData.email,
     creatorAccessLink: null,
     publicCampaignUrl,
     reason: confirmationEmailResult.reason,

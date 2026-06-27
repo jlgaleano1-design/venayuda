@@ -80,6 +80,7 @@ export function CreateCampaignForm() {
   const [submitError, setSubmitError] = useState("");
   const [submissionResult, setSubmissionResult] = useState<{
     approvalEmailSent: boolean;
+    confirmationRecipientEmail: string;
     reason?: string;
     publicCampaignUrl: string;
   } | null>(null);
@@ -210,6 +211,10 @@ export function CreateCampaignForm() {
 
       setSubmissionResult({
         approvalEmailSent: Boolean(result.approvalEmailSent),
+        confirmationRecipientEmail:
+          typeof result.confirmationRecipientEmail === "string"
+            ? result.confirmationRecipientEmail
+            : email,
         reason:
           typeof result.reason === "string"
             ? normalizeOperationalReason(result.reason)
@@ -245,7 +250,11 @@ export function CreateCampaignForm() {
                 Revisa tu correo
               </p>
               <p className="mt-2 text-sm leading-6 text-neutral-600">
-                Te enviamos un enlace para confirmar y publicar esta campaña.
+                Te enviamos un enlace al correo{" "}
+                <span className="font-extrabold text-[#2A3534]">
+                  {submissionResult.confirmationRecipientEmail}
+                </span>{" "}
+                para confirmar y publicar esta campaña.
               </p>
             </div>
           ) : (
