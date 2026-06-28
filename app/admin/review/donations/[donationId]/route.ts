@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireActiveAdminProfile } from "@/lib/admin-auth";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -35,7 +36,7 @@ export async function POST(
   const { profile, supabase } = await requireActiveAdminProfile();
   const { data: donation } = await supabase
     .from("donations")
-    .select("amount_original, amount_usd_estimated, currency_original")
+    .select("amount_original, amount_usd_estimated, campaign_id, currency_original")
     .eq("id", donationId)
     .single();
 
@@ -89,6 +90,20 @@ export async function POST(
     .eq("id", donationId);
 
   revalidatePath("/admin");
+
+  if (!error) {
+    revalidatePath("/");
+    const { data: campaign } = await supabase
+      .from("campaigns")
+      .select("slug")
+      .eq("id", donation.campaign_id)
+      .single();
+
+    if (campaign) {
+      revalidatePath(getPublicCampaignPath(campaign.slug));
+    }
+  }
+
   return redirectToAdmin(
     requestUrl,
     error

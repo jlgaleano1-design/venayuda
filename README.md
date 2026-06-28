@@ -50,7 +50,7 @@ Ejemplo de formato:
 
 - Campo personalizado: `ayuda-la-guaira`
 - Link corto para compartir: `/ayuda-la-guaira`
-- Pagina real: `/campanas/ayuda-la-guaira`
+- Pagina real: `/venezuela/ayuda-la-guaira`
 
 Estados de campana:
 
@@ -166,8 +166,9 @@ El MVP frontend deja lista la estructura principal sin campañas placeholder:
 
 - `/`: home publica con hero, CTAs, filtros sticky y estado vacio de campanas publicadas.
 - `/[slug]`: link corto para compartir una campana; redirige al detalle publico.
-- `/campanas/[slug]`: detalle publico de campana con metodos de pago, resumen, donaciones y compras.
-- `/campanas/[slug]/donar`: formulario visual para reportar una donacion externa.
+- `/venezuela/[slug]`: detalle publico de campana con metodos de pago, resumen, donaciones y compras.
+- `/venezuela/[slug]/donar`: formulario visual para reportar una donacion externa.
+- `/campanas/[slug]`: redirect heredado hacia `/venezuela/[slug]` para no romper links compartidos.
 - `/campanas/crear`: formulario visual para solicitar una nueva campana.
 - `/creador/[accessCode]`: portal privado para subir novedades de compra con foto cuando exista un acceso real.
 - `/admin/login`: entrada visual para admins.

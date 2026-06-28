@@ -4,6 +4,7 @@ import {
   type Campaign,
   type ReceivingCategory,
 } from "@/lib/demo-data";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
@@ -251,9 +252,7 @@ async function createStorageSignedUrl(
 }
 
 async function createServerSupabaseClient() {
-  const { createClient } = await import("@/lib/supabase/server");
-
-  return createClient();
+  return createPublicClient();
 }
 
 function toNumber(value: number | string | null) {

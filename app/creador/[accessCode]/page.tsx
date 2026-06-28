@@ -5,6 +5,7 @@ import { CreatorUpdateForm } from "@/components/creator-update-form";
 import { SiteFooter } from "@/components/site-footer";
 import { getCreatorAccessRecord } from "@/lib/creator-access";
 import { formatUsd } from "@/lib/demo-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
 type CreatorPortalActivity = {
   donated: number | null;
@@ -111,7 +112,7 @@ export default async function CreatorPortalPage({
                 </p>
                 <Link
                   className="btn-secondary"
-                  href={`/campanas/${campaign.slug}`}
+                  href={getPublicCampaignPath(campaign.slug)}
                 >
                   Ver página pública
                   <ExternalLink size={16} />

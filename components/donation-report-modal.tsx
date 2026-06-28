@@ -20,6 +20,12 @@ export function DonationReportModal({
 
   useEffect(() => {
     setIsMounted(true);
+
+    const query = new URLSearchParams(window.location.search);
+
+    if (query.get("reportar") === "aporte") {
+      setIsOpen(true);
+    }
   }, []);
 
   useEffect(() => {

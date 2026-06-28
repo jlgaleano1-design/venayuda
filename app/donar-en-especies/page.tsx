@@ -5,7 +5,7 @@ import { CollectionCenterList } from "@/components/collection-center-list";
 import { SiteFooter } from "@/components/site-footer";
 import { getCollectionCenters } from "@/lib/collection-centers";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const sheetUrl =
   "https://docs.google.com/spreadsheets/u/1/d/1OTNQGMsK3nU2wqy00rtPPcwsSzAlorWeP-uIotWpkxM/htmlview#gid=115303742";

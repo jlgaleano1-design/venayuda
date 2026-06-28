@@ -1,5 +1,10 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { enqueueEmailEvent } from "@/lib/email-queue";
+import {
+  getPublicCampaignPath,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 import { verifyPurchaseReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -88,6 +93,8 @@ async function reviewPurchase(
   const campaign = await getCampaign(supabase, purchase.campaign_id);
 
   if (status === "approved" && campaign) {
+    revalidatePath("/");
+    revalidatePath(getPublicCampaignPath(campaign.slug));
     await notifyVerifiedDonors({
       amount: String(purchase.amount_original),
       campaignId: purchase.campaign_id,
@@ -103,7 +110,7 @@ async function reviewPurchase(
   }
 
   const redirectUrl = new URL(
-    campaign ? `/campanas/${campaign.slug}` : "/",
+    campaign ? getPublicCampaignPath(campaign.slug) : "/",
     requestUrl,
   );
   redirectUrl.searchParams.set("purchase", status);
@@ -163,7 +170,10 @@ async function notifyVerifiedDonors({
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
   );
-  const campaignUrl = new URL(`/campanas/${campaignSlug}`, siteUrl).toString();
+  const campaignUrl = getPublicCampaignUrl({
+    siteUrl,
+    slug: campaignSlug,
+  });
 
   await Promise.allSettled(
     uniqueEmails.map((recipientEmail) =>

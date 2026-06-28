@@ -3,8 +3,8 @@ import { PublishedCampaignActions } from "@/components/published-campaign-action
 import { PublicCampaignLink } from "@/components/public-campaign-link";
 
 export default function PublishedCampaignPreviewPage() {
-  const campaignPath = "/campanas/nelsonlaiton";
-  const publicCampaignUrl = "https://vendonar.org/campanas/nelsonlaiton";
+  const campaignPath = "/venezuela/nelsonlaiton";
+  const publicCampaignUrl = "https://vendonar.org/venezuela/nelsonlaiton";
   const displayCampaignUrl = publicCampaignUrl.replace(/^https?:\/\//, "");
   const coverImageUrl = "/preview-campaign-cover-2.png";
 

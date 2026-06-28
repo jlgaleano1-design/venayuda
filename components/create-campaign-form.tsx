@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
 import { campaigns } from "@/lib/demo-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import {
   buildCampaignAssetPath,
   storageBuckets,
@@ -81,7 +82,10 @@ export function CreateCampaignForm() {
   const [submitError, setSubmitError] = useState("");
   const [submissionResult, setSubmissionResult] = useState<{
     confirmationRecipientEmail: string;
+    creatorAccessLink?: string | null;
     publicCampaignUrl: string;
+    publicationFlow: "email_confirmation" | "instant";
+    published: boolean;
   } | null>(null);
 
   const siteUrl = normalizeSiteUrl(
@@ -118,7 +122,9 @@ export function CreateCampaignForm() {
   const lastPaymentMethod = paymentMethods[paymentMethods.length - 1];
   const canAddPaymentMethod =
     Boolean(lastPaymentMethod) && isPaymentMethodComplete(lastPaymentMethod);
-  const publicCampaignLink = `${siteUrl}/campanas/${shareSlug || "tu-campana"}`;
+  const publicCampaignLink = `${siteUrl}${getPublicCampaignPath(
+    shareSlug || "tu-campana",
+  )}`;
   const formHelpText = shareFieldError || (!canSubmit ? submitBlockReason : "");
   const shouldFocusShareField =
     Boolean(shareFieldError) || (!shareSlug && Boolean(formHelpText));
@@ -219,7 +225,16 @@ export function CreateCampaignForm() {
           typeof result.confirmationRecipientEmail === "string"
             ? result.confirmationRecipientEmail
             : email,
+        creatorAccessLink:
+          typeof result.creatorAccessLink === "string"
+            ? result.creatorAccessLink
+            : null,
         publicCampaignUrl: result.publicCampaignUrl ?? publicCampaignLink,
+        publicationFlow:
+          result.publicationFlow === "email_confirmation"
+            ? "email_confirmation"
+            : "instant",
+        published: result.published !== false,
       });
       setIsSubmitted(true);
     } catch (error) {
@@ -245,20 +260,40 @@ export function CreateCampaignForm() {
   }
 
   if (isSubmitted) {
+    const isPublished = submissionResult?.published ?? true;
+
     return (
       <Card className="surface-card shadow-none">
         <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
           <div className="flex items-start gap-4 rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-5">
             <CheckCircle2 className="mt-1 shrink-0 text-[#2D5D5E]" size={26} />
             <div>
-              <h2 className="text-xl font-extrabold">Revisa tu correo</h2>
+              <h2 className="text-xl font-extrabold">
+                {isPublished
+                  ? "Tu campaña ya está publicada"
+                  : "Revisa tu correo"}
+              </h2>
               <p className="mt-2 leading-7 text-neutral-700">
-                Te enviamos un enlace al correo{" "}
-                <span className="font-extrabold text-[#2A3534]">
-                  {submissionResult?.confirmationRecipientEmail ?? email}
-                </span>{" "}
-                para confirmar y publicar esta campaña. Puede tardar unos
-                minutos; si no lo ves, puedes buscar en Spam.
+                {isPublished ? (
+                  <>
+                    Ya puedes compartirla con el link de abajo. Guarda también
+                    el enlace privado para subir comprobantes y avances. Si el
+                    correo está disponible, también lo enviaremos a{" "}
+                    <span className="font-extrabold text-[#2A3534]">
+                      {submissionResult?.confirmationRecipientEmail ?? email}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Te enviamos un enlace al correo{" "}
+                    <span className="font-extrabold text-[#2A3534]">
+                      {submissionResult?.confirmationRecipientEmail ?? email}
+                    </span>{" "}
+                    para confirmar y publicar esta campaña. Puede tardar unos
+                    minutos; si no lo ves, puedes buscar en Spam.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -279,9 +314,26 @@ export function CreateCampaignForm() {
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Este enlace se activa cuando confirmas desde tu correo.
+              {isPublished
+                ? "Este enlace ya está activo y listo para compartir."
+                : "Este enlace se activa cuando confirmas desde tu correo."}
             </p>
           </div>
+
+          {isPublished && submissionResult?.creatorAccessLink ? (
+            <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-4">
+              <p className="text-sm font-bold text-neutral-500">
+                Link privado para gestionar la campaña
+              </p>
+              <p className="mt-2 break-all font-extrabold text-[#2D5D5E]">
+                {submissionResult.creatorAccessLink}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                Guárdalo. Con este enlace puedes subir fotos y comprobantes
+                cuando uses las donaciones.
+              </p>
+            </div>
+          ) : null}
         </Card.Content>
       </Card>
     );
@@ -319,7 +371,7 @@ export function CreateCampaignForm() {
             }`}
           >
             <span className="shrink-0 text-neutral-500">
-              {siteHost}/campanas/
+              {siteHost}/venezuela/
             </span>
             <input
               ref={shareInputRef}

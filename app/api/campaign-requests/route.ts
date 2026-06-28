@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { publishCampaign } from "@/lib/campaign-publication";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
+import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
 import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
 const duplicateCampaignLimitMessage =
   "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.";
+const campaignPublicationFlow = process.env.CAMPAIGN_PUBLICATION_FLOW;
+const shouldPublishInstantly = campaignPublicationFlow !== "email_confirmation";
 
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
@@ -99,20 +103,20 @@ export async function POST(request: Request) {
   }
 
   const campaignInsert = {
-      affected_area: requestData.affectedArea,
-      contact_email: contactEmail,
-      contact_info: `Correo: ${contactEmail}`,
-      cover_image_path: requestData.coverImageName || null,
-      description: requestData.description,
-      instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
-      location: requestData.affectedArea,
-      responsible_organization: requestData.organization || null,
-      responsible_person_name: requestData.responsibleName,
-      slug: requestData.slug,
-      status: "pending_review" as const,
-      title: requestData.title,
-      verification_status: "pending" as const,
-    };
+    affected_area: requestData.affectedArea,
+    contact_email: contactEmail,
+    contact_info: `Correo: ${contactEmail}`,
+    cover_image_path: requestData.coverImageName || null,
+    description: requestData.description,
+    instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
+    location: requestData.affectedArea,
+    responsible_organization: requestData.organization || null,
+    responsible_person_name: requestData.responsibleName,
+    slug: requestData.slug,
+    status: "pending_review" as const,
+    title: requestData.title,
+    verification_status: "pending" as const,
+  };
   const { data: campaign, error: campaignError } = await insertCampaign(
     supabase,
     campaignInsert,
@@ -166,10 +170,10 @@ export async function POST(request: Request) {
     if (!fallbackMethodsError) {
       return await finalizeCampaignRequest({
         campaignId: campaign.id,
-        publicCampaignUrl: new URL(
-          `/campanas/${requestData.slug}`,
+        publicCampaignUrl: getPublicCampaignUrl({
           siteUrl,
-        ).toString(),
+          slug: requestData.slug,
+        }),
         requestData,
         siteUrl,
         supabase,
@@ -188,10 +192,10 @@ export async function POST(request: Request) {
 
   return await finalizeCampaignRequest({
     campaignId: campaign.id,
-    publicCampaignUrl: new URL(
-      `/campanas/${requestData.slug}`,
+    publicCampaignUrl: getPublicCampaignUrl({
       siteUrl,
-    ).toString(),
+      slug: requestData.slug,
+    }),
     requestData,
     siteUrl,
     supabase,
@@ -351,6 +355,35 @@ async function finalizeCampaignRequest({
   siteUrl: string;
   supabase: ReturnType<typeof createAdminClient>;
 }) {
+  if (shouldPublishInstantly) {
+    const publicationResult = await publishCampaign({
+      campaignId,
+      siteUrl,
+      supabase,
+    });
+
+    if (publicationResult.error) {
+      return NextResponse.json(
+        { error: publicationResult.error },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      approvalEmailQueued: false,
+      approvalEmailSent: false,
+      confirmationEmailQueued: false,
+      confirmationEmailSent: false,
+      confirmationRecipientEmail: requestData.email,
+      creatorAccessLink: publicationResult.creatorAccessUrl,
+      publicCampaignUrl: publicationResult.publicCampaignUrl,
+      publicationFlow: "instant",
+      published: true,
+      reason: null,
+    });
+  }
+
   let confirmationEmailResult: {
     queued: boolean;
     reason?: string;
@@ -416,6 +449,8 @@ async function finalizeCampaignRequest({
     confirmationRecipientEmail: requestData.email,
     creatorAccessLink: null,
     publicCampaignUrl,
+    publicationFlow: "email_confirmation",
+    published: false,
     reason: confirmationEmailResult.reason,
   });
 }

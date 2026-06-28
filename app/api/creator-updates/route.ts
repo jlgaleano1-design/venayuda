@@ -4,6 +4,10 @@ import { z } from "zod";
 import { getCreatorAccessRecord } from "@/lib/creator-access";
 import { enqueueEmailEvent } from "@/lib/email-queue";
 import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
+import {
+  getPublicCampaignPath,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const creatorUpdateSchema = z.object({
@@ -119,7 +123,8 @@ export async function POST(request: Request) {
     );
   }
 
-  revalidatePath(`/campanas/${accessRecord.campaign.slug}`);
+  revalidatePath("/");
+  revalidatePath(getPublicCampaignPath(accessRecord.campaign.slug));
   const impactEmailsQueued = await notifyVerifiedDonors({
     amount: update.amount,
     campaignId: accessRecord.campaign.id,
@@ -187,7 +192,10 @@ async function notifyVerifiedDonors({
       request.headers.get("origin") ??
       "https://vendonar.com",
   );
-  const campaignUrl = new URL(`/campanas/${campaignSlug}`, siteUrl).toString();
+  const campaignUrl = getPublicCampaignUrl({
+    siteUrl,
+    slug: campaignSlug,
+  });
   const results = await Promise.allSettled(
     uniqueEmails.map((recipientEmail) =>
       enqueueEmailEvent(supabase, "purchase_impact", {

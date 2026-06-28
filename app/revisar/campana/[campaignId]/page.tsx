@@ -2,6 +2,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { ErrorState, errorStateActions } from "@/components/error-state";
 import { PublishedCampaignActions } from "@/components/published-campaign-actions";
 import { PublicCampaignLink } from "@/components/public-campaign-link";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import { verifyCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -76,7 +77,7 @@ export default async function CampaignReviewPage({
   }
 
   if (campaign.status === "active") {
-    const campaignPath = `/campanas/${campaign.slug}`;
+    const campaignPath = getPublicCampaignPath(campaign.slug);
     const publicCampaignUrl = new URL(
       campaignPath,
       normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org"),
@@ -190,7 +191,7 @@ export default async function CampaignReviewPage({
                 value={campaign.responsible_organization || "Independiente"}
               />
               <Info label="Zona afectada" value={campaign.affected_area || "-"} />
-              <Info label="Link solicitado" value={`/campanas/${campaign.slug}`} />
+              <Info label="Link solicitado" value={getPublicCampaignPath(campaign.slug)} />
               <Info
                 label="Instagram"
                 value={

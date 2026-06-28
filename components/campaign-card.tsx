@@ -2,6 +2,7 @@ import { Card } from "@heroui/react";
 import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Campaign, formatUsdAprox } from "@/lib/demo-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
 const categoryLabels: Record<string, string> = {
   crypto: "Cripto",
@@ -95,7 +96,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             value={formatUsdAprox(campaign.totals.balance)}
           />
         </div>
-        <Link className="btn-primary" href={`/campanas/${campaign.slug}`}>
+        <Link className="btn-primary" href={getPublicCampaignPath(campaign.slug)}>
           Ver campaña
         </Link>
       </Card.Content>

@@ -4,6 +4,7 @@ import {
   type CollectionCenter,
   type CollectionCenterCategory,
 } from "@/lib/collection-center-types";
+import { createPublicClient } from "@/lib/supabase/public";
 export type { CollectionCenter, CollectionCenterCategory } from "@/lib/collection-center-types";
 
 type CollectionCenterRow = {
@@ -27,8 +28,7 @@ const collectionCenterColumns =
 
 export async function getCollectionCenters() {
   try {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("collection_centers")
       .select(collectionCenterColumns)

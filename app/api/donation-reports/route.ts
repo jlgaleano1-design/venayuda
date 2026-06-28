@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enqueueEmailEvent } from "@/lib/email-queue";
 import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
+import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
 import { createDonationReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -61,7 +62,10 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     request.headers.get("origin") ??
     "https://vendonar.com";
-  const campaignUrl = new URL(`/campanas/${campaign.slug}`, siteUrl).toString();
+  const campaignUrl = getPublicCampaignUrl({
+    siteUrl,
+    slug: campaign.slug,
+  });
 
   const numericAmount = Number(report.amount);
   const currency = normalizeCurrency(report.currency);

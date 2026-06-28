@@ -1,8 +1,7 @@
-import { createHash, randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { queueOrSendEmailEvent } from "@/lib/email-queue";
+import { publishCampaign } from "@/lib/campaign-publication";
 import { verifyCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -69,79 +68,27 @@ export async function POST(
 
 async function approveCampaign(requestUrl: URL, campaignId: string) {
   const supabase = createAdminClient();
-  const { data: campaign, error: campaignError } = await supabase
-    .from("campaigns")
-    .select("id, contact_info, slug, status, title")
-    .eq("id", campaignId)
-    .single();
+  const siteUrl = normalizeSiteUrl(
+    process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
+  );
+  const publicationResult = await publishCampaign({
+    campaignId,
+    siteUrl,
+    supabase,
+  });
 
-  if (campaignError || !campaign) {
+  if (publicationResult.error === "No encontramos la solicitud.") {
     return NextResponse.json(
-      { error: "No encontramos la solicitud." },
+      { error: publicationResult.error },
       { status: 404 },
     );
   }
 
-  if (campaign.status === "active") {
-    revalidatePublishedCampaign(campaign.slug);
-    return redirectToPublishedReview(requestUrl, campaignId);
-  }
-
-  const creatorAccessToken = randomBytes(32).toString("base64url");
-  const creatorAccessTokenHash = createHash("sha256")
-    .update(creatorAccessToken)
-    .digest("hex");
-
-  const [{ error: updateError }, { error: accessError }] = await Promise.all([
-    supabase
-      .from("campaigns")
-      .update({
-        published_at: new Date().toISOString(),
-        status: "active",
-        verification_status: "verified",
-      })
-      .eq("id", campaignId),
-    supabase.from("campaign_creator_access_links").insert({
-      campaign_id: campaignId,
-      label: "Link privado del creador",
-      recipient_contact: extractEmail(campaign.contact_info),
-      token_hash: creatorAccessTokenHash,
-    }),
-  ]);
-
-  if (updateError || accessError) {
+  if (publicationResult.error) {
     return NextResponse.json(
-      { error: "No se pudo publicar la campaña." },
+      { error: publicationResult.error },
       { status: 500 },
     );
-  }
-
-  revalidatePublishedCampaign(campaign.slug);
-
-  const siteUrl = normalizeSiteUrl(
-    process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
-  );
-  const publicCampaignUrl = new URL(
-    `/campanas/${campaign.slug}`,
-    siteUrl,
-  ).toString();
-  const creatorAccessUrl = new URL(
-    `/creador/${creatorAccessToken}`,
-    siteUrl,
-  ).toString();
-  const responsibleEmail = extractEmail(campaign.contact_info);
-
-  if (responsibleEmail) {
-    try {
-      await queueOrSendEmailEvent(supabase, "campaign_approved", {
-        campaignTitle: campaign.title,
-        creatorAccessUrl,
-        publicCampaignUrl,
-        recipientEmail: responsibleEmail,
-      });
-    } catch {
-      // Publishing should remain valid even if email delivery needs retrying.
-    }
   }
 
   return redirectToPublishedReview(requestUrl, campaignId);
@@ -160,15 +107,6 @@ async function rejectCampaign(requestUrl: URL, campaignId: string) {
   revalidatePath("/admin");
 
   return redirectBack(requestUrl, campaignId, "rejected");
-}
-
-function revalidatePublishedCampaign(slug: string) {
-  revalidatePath("/");
-  revalidatePath(`/campanas/${slug}`);
-}
-
-function extractEmail(contactInfo?: string | null) {
-  return contactInfo?.match(/[^\s:]+@[^\s]+/)?.[0] ?? null;
 }
 
 function normalizeSiteUrl(value: string) {

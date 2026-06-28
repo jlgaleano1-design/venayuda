@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireActiveAdminProfile } from "@/lib/admin-auth";
 import { enqueueEmailEvent } from "@/lib/email-queue";
+import {
+  getPublicCampaignPath,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -102,7 +106,8 @@ export async function POST(
       .single();
 
     if (campaign) {
-      revalidatePath(`/campanas/${campaign.slug}`);
+      revalidatePath("/");
+      revalidatePath(getPublicCampaignPath(campaign.slug));
       await notifyVerifiedDonors({
         amount: String(purchase.amount_original),
         campaignId: purchase.campaign_id,
@@ -167,7 +172,10 @@ async function notifyVerifiedDonors({
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
   );
-  const campaignUrl = new URL(`/campanas/${campaignSlug}`, siteUrl).toString();
+  const campaignUrl = getPublicCampaignUrl({
+    siteUrl,
+    slug: campaignSlug,
+  });
 
   await Promise.allSettled(
     uniqueEmails.map((recipientEmail) =>

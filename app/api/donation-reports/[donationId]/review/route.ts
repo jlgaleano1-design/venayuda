@@ -1,4 +1,6 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import { verifyDonationReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -101,10 +103,15 @@ async function redirectToCampaign(
     .eq("id", campaignId)
     .single();
   const redirectUrl = new URL(
-    campaign ? `/campanas/${campaign.slug}` : "/",
+    campaign ? getPublicCampaignPath(campaign.slug) : "/",
     requestUrl,
   );
   redirectUrl.searchParams.set("donation", status);
+  revalidatePath("/");
+
+  if (campaign) {
+    revalidatePath(getPublicCampaignPath(campaign.slug));
+  }
 
   return NextResponse.redirect(redirectUrl, { status: 303 });
 }

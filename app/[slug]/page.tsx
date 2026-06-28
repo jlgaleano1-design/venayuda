@@ -1,7 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { getPublicCampaign } from "@/lib/campaign-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
+export const revalidate = 60;
 
 export default async function SharedCampaignPage({
   params,
@@ -15,5 +17,5 @@ export default async function SharedCampaignPage({
     notFound();
   }
 
-  redirect(`/campanas/${campaign.slug}`);
+  redirect(getPublicCampaignPath(campaign.slug));
 }

@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireActiveAdminProfile } from "@/lib/admin-auth";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
+import {
+  getPublicCampaignPath,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -76,7 +80,7 @@ export async function POST(
 
   revalidatePath("/admin");
   revalidatePath("/");
-  revalidatePath(`/campanas/${campaign.slug}`);
+  revalidatePath(getPublicCampaignPath(campaign.slug));
 
   const responsibleEmail = extractEmail(campaign.contact_info);
 
@@ -84,10 +88,10 @@ export async function POST(
     const siteUrl = normalizeSiteUrl(
       process.env.NEXT_PUBLIC_SITE_URL ?? requestUrl.origin,
     );
-    const publicCampaignUrl = new URL(
-      `/campanas/${campaign.slug}`,
+    const publicCampaignUrl = getPublicCampaignUrl({
       siteUrl,
-    ).toString();
+      slug: campaign.slug,
+    });
     const creatorAccessUrl = new URL(
       `/creador/${creatorAccessToken}`,
       siteUrl,
