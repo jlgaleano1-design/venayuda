@@ -1,9 +1,11 @@
 "use client";
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
+import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import {
   buildCampaignDocumentPath,
   storageBuckets,
@@ -24,6 +26,32 @@ export function DonationReportForm({
   const [statusMessage, setStatusMessage] = useState("");
   const [proofFileName, setProofFileName] = useState("");
   const [proofFileStatus, setProofFileStatus] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const publicCampaignPath = getPublicCampaignPath(campaign.slug);
+  const publicCampaignUrl =
+    typeof window === "undefined"
+      ? publicCampaignPath
+      : new URL(publicCampaignPath, window.location.origin).toString();
+
+  async function shareCampaign() {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: campaign.title,
+          text: `Gracias por apoyar a ${campaign.title}. Tu aporte ayuda a reconstruir Venezuela.`,
+          url: publicCampaignUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(publicCampaignUrl);
+      }
+
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2200);
+    } catch {
+      setShareCopied(false);
+    }
+  }
 
   async function submitDonationReport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,6 +133,60 @@ export function DonationReportForm({
     event.currentTarget.reset();
     setProofFileName("");
     setProofFileStatus("");
+  }
+
+  if (status === "sent") {
+    const thankYouScreen = (
+      <div className="flex flex-col gap-5 p-5 md:p-6">
+        <div className="overflow-hidden rounded-[1.75rem] bg-[#E8F2ED]">
+          {campaign.coverImageUrl ? (
+            <div
+              aria-label={`Foto de ${campaign.title}`}
+              className="aspect-[16/10] bg-cover bg-center"
+              role="img"
+              style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
+            />
+          ) : (
+            <div className="aspect-[16/10]" />
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <span className="soft-pill">Reporte enviado</span>
+          <h3 className="text-2xl font-black leading-tight tracking-normal">
+            Gracias por apoyar a {campaign.title}
+          </h3>
+          <p className="text-sm leading-6 text-neutral-700">
+            Tu aporte ayuda a que reconstruir Venezuela sea más posible. Será
+            muy valioso que compartas esta campaña con tus amigos para que más
+            personas puedan sumarse.
+          </p>
+        </div>
+
+        <button
+          className="btn-primary w-full justify-center"
+          type="button"
+          onClick={shareCampaign}
+        >
+          {shareCopied ? <Check size={18} /> : <Share2 size={18} />}
+          {shareCopied ? "Link copiado" : "Compartir campaña"}
+        </button>
+
+        <p className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
+          Revisaremos tu reporte antes de sumarlo al seguimiento público.
+        </p>
+      </div>
+    );
+
+    if (!framed) {
+      return thankYouScreen;
+    }
+
+    return (
+      <Card className="surface-card shadow-none">
+        <Card.Content>{thankYouScreen}</Card.Content>
+      </Card>
+    );
   }
 
   const form = (

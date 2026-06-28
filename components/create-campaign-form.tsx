@@ -530,7 +530,7 @@ export function CreateCampaignForm() {
           variant="primary"
         >
           <Plus className="shrink-0" size={18} />
-          <span>{isSubmitting ? "Enviando..." : "Enviar solicitud"}</span>
+          <span>{isSubmitting ? "Creando..." : "Crear campaña"}</span>
         </Button>
         </Card.Content>
       </form>

@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/opengraph-image.png",
-        width: 1200,
-        height: 630,
+        width: 1672,
+        height: 941,
         alt: "Vendonar - ayuda directa con transparencia",
       },
     ],

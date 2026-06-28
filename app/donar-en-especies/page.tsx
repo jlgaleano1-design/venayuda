@@ -9,7 +9,7 @@ export const revalidate = 300;
 
 const sheetUrl =
   "https://docs.google.com/spreadsheets/u/1/d/1OTNQGMsK3nU2wqy00rtPPcwsSzAlorWeP-uIotWpkxM/htmlview#gid=115303742";
-const reportCenterUrl = "https://www.centrosdeacopiovzla.com/#aportar";
+const reportCenterUrl = "https://centrosayudavenezuela.org/";
 
 export default async function DonateGoodsPage() {
   const centers = await getCollectionCenters();
