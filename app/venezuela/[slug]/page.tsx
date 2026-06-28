@@ -22,10 +22,6 @@ const categoryLabels: Record<string, string> = {
   international: "Otros países",
 };
 
-const compactUsdFormatter = new Intl.NumberFormat("es-MX", {
-  maximumFractionDigits: 0,
-});
-
 export const dynamic = "force-static";
 export const revalidate = 60;
 
@@ -150,16 +146,8 @@ export default async function CampaignDetailPage({
 
           <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
             <div className="flex flex-col gap-4">
-              <div className="order-2 lg:order-1">
-                <TransparencyCard
-                  campaign={campaign}
-                />
-              </div>
-              <div className="order-1 lg:order-2">
+              <div>
                 <PaymentMethodsCard campaign={campaign} />
-              </div>
-              <div className="order-3">
-                <TransparencyLegend />
               </div>
             </div>
           </aside>
@@ -395,54 +383,6 @@ function isCryptoMarkerLine(line: string) {
   return /^Categoría de recepción: Cripto$/i.test(line);
 }
 
-function TransparencyCard({
-  campaign,
-}: {
-  campaign: NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
-}) {
-  const hasNoDonations = campaign.totals.donated <= 0;
-
-  return (
-    <section className="surface-card">
-      <div className="flex flex-col gap-4 p-5">
-        <h2 className="text-lg font-extrabold">Transparencia</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Metric
-            label="Recaudados"
-            value={formatCompactUsd(campaign.totals.donated)}
-          />
-          <Metric
-            label="Utilizados"
-            value={formatCompactUsd(campaign.totals.spent)}
-          />
-          <Metric
-            label="Disponibles"
-            value={formatCompactUsd(campaign.totals.balance)}
-          />
-        </div>
-        {hasNoDonations ? (
-          <a
-            className="w-fit text-xs font-extrabold text-[#2D5D5E] underline-offset-4 hover:underline"
-            href="#metodos-donacion"
-          >
-            Sé el primero en ayudar
-          </a>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function TransparencyLegend() {
-  return (
-    <p className="px-1 text-xs leading-5 text-neutral-600">
-      Las donaciones se hacen directamente por los métodos publicados.
-      Repórtanos tu aporte para revisarlo manualmente y actualizar el
-      seguimiento público en USD referencial.
-    </p>
-  );
-}
-
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -450,19 +390,4 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="font-bold">{value}</p>
     </div>
   );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 border-r border-neutral-200 pr-3 last:border-r-0">
-      <p className="truncate text-xs text-neutral-500 sm:text-sm">{label}</p>
-      <p className="break-words text-base font-extrabold leading-tight sm:text-lg">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function formatCompactUsd(value: number) {
-  return `${compactUsdFormatter.format(value)} USD`;
 }

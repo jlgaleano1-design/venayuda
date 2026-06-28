@@ -1,7 +1,7 @@
 import { Card } from "@heroui/react";
 import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
-import { Campaign, formatUsdAprox } from "@/lib/demo-data";
+import { Campaign } from "@/lib/demo-data";
 import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
 const categoryLabels: Record<string, string> = {
@@ -82,33 +82,10 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             </span>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-2 border-y border-neutral-200 py-4 text-sm">
-          <Metric
-            label="Recaudados"
-            value={formatUsdAprox(campaign.totals.donated)}
-          />
-          <Metric
-            label="Utilizados"
-            value={formatUsdAprox(campaign.totals.spent)}
-          />
-          <Metric
-            label="Disponibles"
-            value={formatUsdAprox(campaign.totals.balance)}
-          />
-        </div>
         <Link className="btn-primary" href={getPublicCampaignPath(campaign.slug)}>
           Ver campaña
         </Link>
       </Card.Content>
     </Card>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className="font-bold">{value}</p>
-    </div>
   );
 }
