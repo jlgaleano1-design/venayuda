@@ -460,7 +460,7 @@ function QueueItem({
           {currencyOriginal ? (
             <div className="grid gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs md:grid-cols-2">
               <label className="field-label text-xs">
-                USD aprox.
+                USD
                 <input
                   className="field h-9 text-sm"
                   defaultValue={formatInputNumber(amountUsdEstimated)}
@@ -587,7 +587,9 @@ function formatMoney(amount: string | number, currency: string) {
 }
 
 function formatUsdAprox(amount: number) {
-  return `${formatMoney(amount, "USD")} USD aprox.`;
+  return `${new Intl.NumberFormat("es-MX", {
+    maximumFractionDigits: 0,
+  }).format(Number(amount))} USD`;
 }
 
 function formatInputNumber(value: string | number | null | undefined) {

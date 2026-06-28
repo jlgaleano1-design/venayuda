@@ -59,9 +59,6 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             <span className="text-neutral-500">Responsable:</span>{" "}
             {campaign.organization ?? campaign.responsible}
           </p>
-          <p>
-            <span className="text-neutral-500">Zona:</span> {campaign.location}
-          </p>
           {campaign.instagramHandle ? (
             <a
               className="inline-flex w-fit items-center gap-1 font-bold text-[#2D5D5E]"

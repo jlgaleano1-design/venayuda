@@ -81,7 +81,9 @@ export function formatUsd(value: number) {
 }
 
 export function formatUsdAprox(value: number) {
-  return `${formatUsd(value)} USD aprox.`;
+  return `${new Intl.NumberFormat("es-MX", {
+    maximumFractionDigits: 0,
+  }).format(value)} USD`;
 }
 
 export function formatOriginalAndUsd({
@@ -110,7 +112,7 @@ export function formatOriginalAndUsd({
     return original;
   }
 
-  return `${original} · aprox. ${formatCurrencyAmount(usdAmount, "USD")}`;
+  return `${original} · ${formatCurrencyAmount(usdAmount, "USD")}`;
 }
 
 function formatCurrencyAmount(amount: number, currency: string) {
