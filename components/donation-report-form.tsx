@@ -78,7 +78,6 @@ export function DonationReportForm({
         isAnonymous: formData.get("isAnonymous") === "on",
         amount: formData.get("amount"),
         currency: "USD",
-        transferDate: formData.get("transferDate"),
         paymentMethodUsed: formData.get("paymentMethodUsed"),
         transferReference: formData.get("transferReference"),
         proofFilePath,
@@ -123,17 +122,14 @@ export function DonationReportForm({
           <input name="isAnonymous" type="checkbox" />
           Donar anónimamente en la vista pública
         </label>
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextField
-            label="Monto en dolares"
-            name="amount"
-            prefix="USD"
-            required
-            step="any"
-            type="number"
-          />
-          <TextField label="Fecha" name="transferDate" type="date" />
-        </div>
+        <TextField
+          label="Monto en dólares"
+          name="amount"
+          prefix="USD"
+          required
+          step="any"
+          type="number"
+        />
         <TextField
           label="Método usado"
           name="paymentMethodUsed"

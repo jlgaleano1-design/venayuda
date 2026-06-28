@@ -71,15 +71,15 @@ export async function fetchCollectionCentersFromSheet({
 
 export function parseCollectionCentersCsv(csv: string) {
   const rows = parseCsv(csv);
-  const [headerRow, ...dataRows] = rows;
+  const [headerRow] = rows;
 
   if (!headerRow) {
     throw new Error("El sheet de centros de acopio no tiene encabezados.");
   }
 
-  const headers = headerRow.map(normalizeHeader);
-  const requiredHeaders = ["id", "quien"];
-  const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+  const parsedRows = getCollectionCenterRows(rows);
+  const { headers, rows: centerRows } = parsedRows;
+  const missingHeaders = getMissingRequiredHeaders(headers);
 
   if (missingHeaders.length > 0) {
     throw new Error(
@@ -89,9 +89,48 @@ export function parseCollectionCentersCsv(csv: string) {
     );
   }
 
-  return dataRows
+  return centerRows
     .map((row, index) => rowToCollectionCenter(headers, row, index))
     .filter((center): center is CollectionCenter => Boolean(center));
+}
+
+function getCollectionCenterRows(rows: string[][]) {
+  const [headerRow = [], ...dataRows] = rows;
+  const headers = headerRow.map(normalizeHeader);
+
+  if (getMissingRequiredHeaders(headers).length === 0) {
+    return { headers, rows: dataRows };
+  }
+
+  const fallbackHeaders = [
+    "id",
+    "quien",
+    "direccion",
+    "ciudad",
+    "coordenadas",
+    "pais",
+    "que reciben",
+    "contacto",
+  ];
+
+  return {
+    headers: fallbackHeaders,
+    rows: rows.filter((row) => looksLikeCollectionCenterDataRow(row)),
+  };
+}
+
+function getMissingRequiredHeaders(headers: string[]) {
+  return ["id", "quien"].filter((header) => !headers.includes(header));
+}
+
+function looksLikeCollectionCenterDataRow(row: string[]) {
+  const firstCell = cleanDisplayValue(row[0]);
+  const name = cleanDisplayValue(row[1]);
+  const address = cleanDisplayValue(row[2]);
+  const country = cleanDisplayValue(row[5]);
+  const receives = cleanDisplayValue(row[6]);
+
+  return /^\d+$/.test(firstCell) && Boolean(name && address && country && receives);
 }
 
 export async function syncCollectionCentersFromSheet({

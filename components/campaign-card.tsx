@@ -54,7 +54,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             />
           ) : null}
         </div>
-        <div className="space-y-1 text-sm">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <p>
             <span className="text-neutral-500">Responsable:</span>{" "}
             {campaign.organization ?? campaign.responsible}

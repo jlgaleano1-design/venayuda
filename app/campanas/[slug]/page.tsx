@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { DonationReportModal } from "@/components/donation-report-modal";
+import { ExpandableDescription } from "@/components/expandable-description";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
 
@@ -81,6 +82,7 @@ export default async function CampaignDetailPage({
   }
 
   const shouldOpenDonationReport = query.reportar === "aporte";
+  const organization = campaign.organization?.trim();
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
@@ -93,31 +95,34 @@ export default async function CampaignDetailPage({
           Campañas
         </Link>
 
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <span className="status-pill bg-emerald-50 text-emerald-800">
+              {campaign.status === "active" ? "Activa" : "Pausada"}
+            </span>
+            <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
+              {campaign.location}
+            </span>
+          </div>
+          <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
+            {campaign.title}
+          </h1>
+        </div>
+
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="space-y-6">
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <span className="status-pill bg-emerald-50 text-emerald-800">
-                  {campaign.status === "active" ? "Activa" : "Pausada"}
-                </span>
-                <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
-                  {campaign.location}
-                </span>
-              </div>
-              <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
-                {campaign.title}
-              </h1>
               {campaign.coverImageUrl ? (
                 <div
                   aria-label={`Foto de ${campaign.title}`}
-                  className="aspect-[16/9] w-full max-w-3xl rounded-[2rem] bg-neutral-100 bg-cover bg-center"
+                  className="aspect-[16/9] w-full rounded-[2rem] bg-neutral-100 bg-cover bg-center"
                   role="img"
                   style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
                 />
               ) : null}
-              <p className="max-w-3xl text-sm leading-6 text-neutral-700 md:text-base md:leading-7">
+              <ExpandableDescription className="text-sm leading-6 text-neutral-700 md:text-base md:leading-7">
                 {campaign.description}
-              </p>
+              </ExpandableDescription>
             </div>
 
             <section className="surface-card">
@@ -125,11 +130,9 @@ export default async function CampaignDetailPage({
                 <h2 className="text-xl font-extrabold">Quién responde</h2>
                 <div className="grid gap-4 md:grid-cols-3">
                   <Info label="Responsable" value={campaign.responsible} />
-                  <Info
-                    label="Organización"
-                    value={campaign.organization ?? "Independiente"}
-                  />
-                  <Info label="Zona afectada" value={campaign.affectedArea} />
+                  {organization ? (
+                    <Info label="Organización" value={organization} />
+                  ) : null}
                 </div>
                 {campaign.instagramHandle ? (
                   <a
@@ -170,6 +173,12 @@ export default async function CampaignDetailPage({
                 <h2 className="text-xl font-extrabold">
                   Donaciones verificadas
                 </h2>
+                {campaign.donations.length === 0 ? (
+                  <EmptyState>
+                    Los aportes reportados aparecerán acá después de ser
+                    revisados.
+                  </EmptyState>
+                ) : null}
                 {campaign.donations.map((donation) => (
                   <div key={donation.code} className="space-y-1">
                     <div className="flex items-center justify-between gap-3">
@@ -195,6 +204,12 @@ export default async function CampaignDetailPage({
                 <h2 className="text-xl font-extrabold">
                   Uso de fondos confirmado
                 </h2>
+                {campaign.purchases.length === 0 ? (
+                  <EmptyState>
+                    Los gastos y avances se publicarán acá cuando haya
+                    comprobantes revisados.
+                  </EmptyState>
+                ) : null}
                 {campaign.purchases.map((purchase) => (
                   <div key={purchase.title} className="space-y-3">
                     {purchase.photoUrl ? (
@@ -211,9 +226,12 @@ export default async function CampaignDetailPage({
                         <p className="text-sm">{purchase.amount}</p>
                       </div>
                       {purchase.description ? (
-                        <p className="text-sm leading-6 text-neutral-700">
+                        <ExpandableDescription
+                          className="text-sm leading-6 text-neutral-700"
+                          fadeColor="#FEFEFE"
+                        >
                           {purchase.description}
-                        </p>
+                        </ExpandableDescription>
                       ) : null}
                       <p className="text-sm text-neutral-600">
                         {purchase.date} ·{" "}
@@ -235,6 +253,14 @@ export default async function CampaignDetailPage({
   );
 }
 
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="border-t border-neutral-200 pt-3 text-sm leading-6 text-neutral-500">
+      {children}
+    </p>
+  );
+}
+
 function PaymentMethodsCard({
   paymentMethods,
 }: {
@@ -245,7 +271,7 @@ function PaymentMethodsCard({
   return (
     <section className="surface-card overflow-hidden border-[#2D5D5E]/20 shadow-sm">
       <div className="flex flex-col gap-5 p-5 lg:p-6">
-        <h2 className="text-2xl font-black leading-tight">
+        <h2 className="text-lg font-extrabold">
           Métodos disponibles para recibir donaciones
         </h2>
         <div className="divide-y divide-neutral-200 pr-1">
@@ -264,10 +290,6 @@ function PaymentMethodsCard({
                 <div className="mt-4 grid gap-3">
                   <PaymentField label="Titular" value={method.accountHolder} />
                   <PaymentField
-                    label="Banco, plataforma o método"
-                    value={details.platform}
-                  />
-                  <PaymentField
                     copyValue={details.accountReference}
                     label="Cuenta, correo, wallet o ID"
                     value={details.accountReference}
@@ -275,7 +297,7 @@ function PaymentMethodsCard({
                   <PaymentField label="Moneda" value={method.currency} />
                   <PaymentField
                     multiline
-                    label="Instrucciones"
+                    label="Otros datos o instrucciones"
                     value={details.instructions}
                   />
                 </div>

@@ -710,7 +710,7 @@ function PaymentMethodPanel({
           />
           <div className="md:col-span-2">
             <PaymentTextAreaField
-              label="Instrucciones de transferencia (opcional)"
+              label="Otros datos o instrucciones (opcional)"
               value={method.transferInstructions}
               onChange={(value) => onUpdate("transferInstructions", value)}
             />

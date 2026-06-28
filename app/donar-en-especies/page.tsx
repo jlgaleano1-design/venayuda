@@ -34,7 +34,7 @@ export default async function DonateGoodsPage() {
         </div>
 
         <div className="max-w-4xl space-y-5">
-          <h1 className="text-4xl font-black leading-tight tracking-normal md:text-6xl">
+          <h1 className="text-[36px] font-black leading-tight tracking-normal">
             Centros de acopio
           </h1>
           <p className="max-w-3xl text-lg leading-8 text-neutral-700 md:text-xl">
