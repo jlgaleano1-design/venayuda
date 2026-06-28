@@ -1,4 +1,4 @@
-import { PackageCheck, Plus } from "lucide-react";
+import { HandHeart, PackageCheck, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { CampaignList } from "@/components/campaign-list";
@@ -32,7 +32,7 @@ export default async function HomePage() {
             comprobantes y actualizaciones de gastos para que puedas seguir cómo
             se utiliza tu aporte. Ayuda persona a persona.
           </p>
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
             <a className="btn-primary" href="#campanas">
               Donar ahora <span aria-hidden="true">&darr;</span>
             </a>
@@ -41,13 +41,22 @@ export default async function HomePage() {
               Crear campaña
             </Link>
             <a
-              className="btn-secondary"
+              className="btn-tertiary"
               href="https://centrosayudavenezuela.org/"
               rel="noreferrer"
               target="_blank"
             >
               <PackageCheck size={18} />
               Centros de acopio en el mundo
+            </a>
+            <a
+              className="btn-tertiary"
+              href="https://donaxvenezuela.org/"
+              rel="noreferrer"
+              target="_blank"
+            >
+              <HandHeart size={18} />
+              Fundaciones
             </a>
           </div>
         </div>

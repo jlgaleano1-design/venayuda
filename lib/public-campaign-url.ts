@@ -15,6 +15,10 @@ export function getPublicDonationReportPath(slug: string): Route {
   return `${getPublicCampaignPath(slug)}?reportar=aporte` as Route;
 }
 
+export function getPublicCampaignThumbnailPath(slug: string): Route {
+  return `/api/campaigns/${slug}/thumbnail` as Route;
+}
+
 export function getPublicCampaignUrl({
   siteUrl,
   slug,
@@ -23,4 +27,14 @@ export function getPublicCampaignUrl({
   slug: string;
 }) {
   return new URL(getPublicCampaignPath(slug), siteUrl).toString();
+}
+
+export function getPublicCampaignThumbnailUrl({
+  siteUrl,
+  slug,
+}: {
+  siteUrl: string;
+  slug: string;
+}) {
+  return new URL(getPublicCampaignThumbnailPath(slug), siteUrl).toString();
 }

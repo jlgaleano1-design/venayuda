@@ -7,7 +7,10 @@ import { DonationReportModal } from "@/components/donation-report-modal";
 import { ExpandableDescription } from "@/components/expandable-description";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
-import { getPublicCampaignPath } from "@/lib/public-campaign-url";
+import {
+  getPublicCampaignThumbnailUrl,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 
 const categoryLabels: Record<string, string> = {
   crypto: "Cripto",
@@ -39,18 +42,28 @@ export async function generateMetadata({
     };
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org";
+  const campaignUrl = getPublicCampaignUrl({
+    siteUrl,
+    slug: campaign.slug,
+  });
+  const thumbnailUrl = getPublicCampaignThumbnailUrl({
+    siteUrl,
+    slug: campaign.slug,
+  });
+
   return {
     title: campaign.title,
     description: campaign.description,
     openGraph: {
       title: campaign.title,
       description: campaign.description,
-      url: getPublicCampaignPath(campaign.slug),
+      url: campaignUrl,
       images: [
         {
-          url: "/vendonar-og-campanas.png",
-          width: 1672,
-          height: 941,
+          url: thumbnailUrl,
+          width: 1200,
+          height: 630,
           alt: campaign.title,
         },
       ],
@@ -59,7 +72,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: campaign.title,
       description: campaign.description,
-      images: ["/vendonar-og-campanas.png"],
+      images: [thumbnailUrl],
     },
   };
 }

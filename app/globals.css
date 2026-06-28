@@ -70,6 +70,10 @@
     @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm transition hover:-translate-y-0.5 hover:border-[#2D5D5E]/30 hover:bg-white hover:shadow-md;
   }
 
+  .btn-tertiary {
+    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap px-1 text-sm font-black text-[#2D5D5E] transition hover:-translate-y-0.5 hover:text-[#244B4C] hover:underline hover:underline-offset-4;
+  }
+
   .field {
     @apply h-11 w-full rounded-full border border-neutral-300 bg-[#FFFCF8] px-4 text-sm outline-none transition focus:border-[#2D5D5E];
   }
