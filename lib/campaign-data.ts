@@ -4,6 +4,7 @@ import {
   type Campaign,
   type ReceivingCategory,
 } from "@/lib/demo-data";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -241,7 +242,10 @@ async function createStorageSignedUrl(
   }
 
   try {
-    const { data } = await supabase.storage
+    const storageClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createAdminClient()
+      : supabase;
+    const { data } = await storageClient.storage
       .from(bucket)
       .createSignedUrl(path, 60 * 60);
 
