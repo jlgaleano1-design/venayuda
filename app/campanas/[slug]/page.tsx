@@ -145,83 +145,89 @@ export default async function CampaignDetailPage({
                 ) : null}
               </div>
             </section>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <section className="surface-card">
-                <div className="flex flex-col gap-4 p-5">
-                  <h2 className="text-xl font-extrabold">
-                    Donaciones verificadas
-                  </h2>
-                  {campaign.donations.map((donation) => (
-                    <div key={donation.code} className="space-y-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-bold">{donation.amount}</p>
-                        <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
-                          {donation.code}
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-600">
-                        {donation.donor} · {donation.date}
-                      </p>
-                      {donation.message ? (
-                        <p className="text-sm">{donation.message}</p>
-                      ) : null}
-                      <div className="h-px bg-neutral-200" />
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="surface-card">
-                <div className="flex flex-col gap-4 p-5">
-                  <h2 className="text-xl font-extrabold">
-                    Uso de fondos confirmado
-                  </h2>
-                  {campaign.purchases.map((purchase) => (
-                    <div key={purchase.title} className="space-y-3">
-                      {purchase.photoUrl ? (
-                        <div
-                          aria-label={`Foto de ${purchase.title}`}
-                          className="h-40 w-full rounded-[1.5rem] bg-cover bg-center"
-                          role="img"
-                          style={{ backgroundImage: `url(${purchase.photoUrl})` }}
-                        />
-                      ) : null}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-bold">{purchase.title}</p>
-                          <p className="text-sm">{purchase.amount}</p>
-                        </div>
-                        {purchase.description ? (
-                          <p className="text-sm leading-6 text-neutral-700">
-                            {purchase.description}
-                          </p>
-                        ) : null}
-                        <p className="text-sm text-neutral-600">
-                          {purchase.date} ·{" "}
-                          {purchase.invoicePublic
-                            ? "Comprobante publico"
-                            : "Comprobante privado"}
-                        </p>
-                      </div>
-                      <div className="h-px bg-neutral-200" />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
           </div>
 
-          <aside className="lg:sticky lg:top-6">
-            <div className="space-y-4">
-              <TransparencyCard
-                campaign={campaign}
-                defaultDonationReportOpen={shouldOpenDonationReport}
-              />
-              <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
-              <TransparencyLegend />
+          <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
+            <div className="flex flex-col gap-4">
+              <div className="order-2 lg:order-1">
+                <TransparencyCard
+                  campaign={campaign}
+                  defaultDonationReportOpen={shouldOpenDonationReport}
+                />
+              </div>
+              <div className="order-1 lg:order-2">
+                <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+              </div>
+              <div className="order-3">
+                <TransparencyLegend />
+              </div>
             </div>
           </aside>
+
+          <div className="grid gap-4 lg:col-start-1 lg:row-start-2 lg:grid-cols-2">
+            <section className="surface-card">
+              <div className="flex flex-col gap-4 p-5">
+                <h2 className="text-xl font-extrabold">
+                  Donaciones verificadas
+                </h2>
+                {campaign.donations.map((donation) => (
+                  <div key={donation.code} className="space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-bold">{donation.amount}</p>
+                      <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
+                        {donation.code}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-600">
+                      {donation.donor} · {donation.date}
+                    </p>
+                    {donation.message ? (
+                      <p className="text-sm">{donation.message}</p>
+                    ) : null}
+                    <div className="h-px bg-neutral-200" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="surface-card">
+              <div className="flex flex-col gap-4 p-5">
+                <h2 className="text-xl font-extrabold">
+                  Uso de fondos confirmado
+                </h2>
+                {campaign.purchases.map((purchase) => (
+                  <div key={purchase.title} className="space-y-3">
+                    {purchase.photoUrl ? (
+                      <div
+                        aria-label={`Foto de ${purchase.title}`}
+                        className="h-40 w-full rounded-[1.5rem] bg-cover bg-center"
+                        role="img"
+                        style={{ backgroundImage: `url(${purchase.photoUrl})` }}
+                      />
+                    ) : null}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-bold">{purchase.title}</p>
+                        <p className="text-sm">{purchase.amount}</p>
+                      </div>
+                      {purchase.description ? (
+                        <p className="text-sm leading-6 text-neutral-700">
+                          {purchase.description}
+                        </p>
+                      ) : null}
+                      <p className="text-sm text-neutral-600">
+                        {purchase.date} ·{" "}
+                        {purchase.invoicePublic
+                          ? "Comprobante publico"
+                          : "Comprobante privado"}
+                      </p>
+                    </div>
+                    <div className="h-px bg-neutral-200" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
       </section>
       <SiteFooter />
