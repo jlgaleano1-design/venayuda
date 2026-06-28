@@ -40,10 +40,15 @@ export default async function HomePage() {
               <Plus size={18} />
               Crear campaña
             </Link>
-            <Link className="btn-secondary" href="/donar-en-especies">
+            <a
+              className="btn-secondary"
+              href="https://centrosayudavenezuela.org/"
+              rel="noreferrer"
+              target="_blank"
+            >
               <PackageCheck size={18} />
               Centros de acopio en el mundo
-            </Link>
+            </a>
           </div>
         </div>
       </section>
