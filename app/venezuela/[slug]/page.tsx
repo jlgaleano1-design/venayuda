@@ -156,7 +156,7 @@ export default async function CampaignDetailPage({
                 />
               </div>
               <div className="order-1 lg:order-2">
-                <PaymentMethodsCard paymentMethods={campaign.paymentMethods} />
+                <PaymentMethodsCard campaign={campaign} />
               </div>
               <div className="order-3">
                 <TransparencyLegend />
@@ -259,20 +259,21 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 function PaymentMethodsCard({
-  paymentMethods,
+  campaign,
 }: {
-  paymentMethods: NonNullable<
-    Awaited<ReturnType<typeof getPublicCampaign>>
-  >["paymentMethods"];
+  campaign: NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
 }) {
   return (
-    <section className="surface-card overflow-hidden border-[#2D5D5E]/20 shadow-sm">
+    <section
+      id="metodos-donacion"
+      className="surface-card scroll-mt-6 overflow-hidden border-[#2D5D5E]/20 shadow-sm"
+    >
       <div className="flex flex-col gap-5 p-5 lg:p-6">
         <h2 className="text-lg font-extrabold">
-          Métodos disponibles para recibir donaciones
+          Métodos para recibir donaciones
         </h2>
         <div className="divide-y divide-neutral-200 pr-1">
-          {paymentMethods.map((method) => {
+          {campaign.paymentMethods.map((method) => {
             const details = parsePaymentDetails({
               instructions: method.instructions,
               notes: method.notes,
@@ -302,6 +303,7 @@ function PaymentMethodsCard({
             );
           })}
         </div>
+        <DonationReportModal campaign={campaign} />
       </div>
     </section>
   );
@@ -398,11 +400,13 @@ function TransparencyCard({
 }: {
   campaign: NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
 }) {
+  const hasNoDonations = campaign.totals.donated <= 0;
+
   return (
     <section className="surface-card">
       <div className="flex flex-col gap-4 p-5">
         <h2 className="text-lg font-extrabold">Transparencia</h2>
-        <div className="grid gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Metric
             label="Recaudados"
             value={formatCompactUsd(campaign.totals.donated)}
@@ -416,7 +420,14 @@ function TransparencyCard({
             value={formatCompactUsd(campaign.totals.balance)}
           />
         </div>
-        <DonationReportModal campaign={campaign} />
+        {hasNoDonations ? (
+          <a
+            className="w-fit text-xs font-extrabold text-[#2D5D5E] underline-offset-4 hover:underline"
+            href="#metodos-donacion"
+          >
+            Sé el primero en ayudar
+          </a>
+        ) : null}
       </div>
     </section>
   );
@@ -443,9 +454,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 border-b border-neutral-200 pb-3 last:border-b-0">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <p className="break-words text-lg font-extrabold leading-tight">{value}</p>
+    <div className="min-w-0 border-r border-neutral-200 pr-3 last:border-r-0">
+      <p className="truncate text-xs text-neutral-500 sm:text-sm">{label}</p>
+      <p className="break-words text-base font-extrabold leading-tight sm:text-lg">
+        {value}
+      </p>
     </div>
   );
 }
