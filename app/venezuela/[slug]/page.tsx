@@ -52,7 +52,7 @@ export async function generateMetadata({
       url: getPublicCampaignPath(campaign.slug),
       images: [
         {
-          url: "/opengraph-image.png",
+          url: "/vendonar-og-campanas.png",
           width: 1672,
           height: 941,
           alt: campaign.title,
@@ -63,7 +63,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: campaign.title,
       description: campaign.description,
-      images: ["/opengraph-image.png"],
+      images: ["/vendonar-og-campanas.png"],
     },
   };
 }
