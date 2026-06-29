@@ -413,19 +413,19 @@ function FloatingCampaignActions({
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-[#FFFCF8] via-[#FFFCF8]/95 to-[#FFFCF8]/0 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 md:hidden">
-      <div className="mx-auto grid w-full max-w-sm grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2">
-        <ShareCampaignButton
-          campaign={shareCampaign}
-          className="h-12 min-w-0 px-3 text-base shadow-[0_14px_34px_rgb(42_53_52_/_10%)]"
-          locale={locale}
-          variant="secondary"
-        />
+      <div className="mx-auto grid w-full max-w-sm grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-2">
         <a
           className="btn-primary flex h-12 min-w-0 px-3 text-base shadow-[0_14px_34px_rgb(45_93_94_/_22%)]"
           href="#metodos-donacion"
         >
           {locale === "en" ? "Donate" : "Donar"}
         </a>
+        <ShareCampaignButton
+          campaign={shareCampaign}
+          className="h-12 min-w-0 px-3 text-base shadow-[0_14px_34px_rgb(42_53_52_/_10%)]"
+          locale={locale}
+          variant="secondary"
+        />
       </div>
     </div>
   );
