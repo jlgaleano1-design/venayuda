@@ -316,7 +316,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     metadata: {
       siteTitle: "Vendonar | Direct aid with transparency",
       siteDescription:
-        "Direct aid campaigns with manual transparency, external donations, and public spending updates.",
+        "Direct aid campaigns with manual transparency, external donations, and updates on how funds are used.",
       ogAlt: "Vendonar - direct aid with transparency",
       ogLocale: "en_US",
     },
@@ -326,10 +326,10 @@ export const dictionaries: Record<Locale, Dictionary> = {
       english: "EN",
     },
     home: {
-      heroLine1: "Direct aid,",
-      heroLine2: "without intermediaries.",
+      heroLine1: "Direct aid for Venezuela,",
+      heroLine2: "with no middlemen.",
       heroBody:
-        "Campaigns created by people supporting affected communities in Venezuela. Each campaign shows direct payment methods, receipts, and spending updates so you can follow how your donation is used. Person-to-person aid.",
+        "Campaigns created by people helping on the ground in Venezuela's affected areas. Each campaign includes direct payment methods, receipts, and updates on how funds are used, so you can follow where your donation goes. Person-to-person aid.",
       donateNow: "Donate now",
       createCampaign: "Crear campaña",
       collectionCenters: "Collection centers worldwide",
