@@ -2,7 +2,7 @@
 
 import { ClipboardList, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Campaign, receivingFilters, ReceivingCategory } from "@/lib/demo-data";
 import { CampaignCard } from "./campaign-card";
 
@@ -11,71 +11,82 @@ type CampaignFilter = ReceivingCategory | "";
 export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
   const [filter, setFilter] = useState<CampaignFilter>("");
 
+  const availableReceivingFilters = useMemo(() => {
+    const availableCategories = new Set(
+      campaigns.flatMap((campaign) => campaign.receivingCategories),
+    );
+
+    return receivingFilters.filter((item) => availableCategories.has(item.key));
+  }, [campaigns]);
+
   const filteredCampaigns = filter
     ? campaigns.filter((campaign) => campaign.receivingCategories.includes(filter))
     : campaigns;
   const selectedFilterLabel =
     receivingFilters.find((item) => item.key === filter)?.label ?? "esta opción";
   const hasPublishedCampaigns = campaigns.length > 0;
+  const hasAvailableFilters = availableReceivingFilters.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-2 md:hidden">
-            <label
-              className="shrink-0 text-sm font-black text-neutral-600"
-              htmlFor="campaign-receiving-filter"
-            >
-              Donar desde / con:
-            </label>
-            <select
-              id="campaign-receiving-filter"
-              className="field pr-10 font-black text-[#2A3534]"
-              value={filter}
-              onChange={(event) =>
-                setFilter(event.target.value as CampaignFilter)
-              }
-            >
-              <option value="">Seleccionar método</option>
-              {receivingFilters.map((item) => (
-                <option key={item.key} value={item.key}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
+      {hasAvailableFilters ? (
+        <div className="sticky top-0 z-10 -mx-6 border-y border-neutral-200 bg-[#FFFCF8]/95 px-6 py-3 backdrop-blur">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col gap-2 md:hidden">
+              <label
+                className="shrink-0 text-sm font-black text-neutral-600"
+                htmlFor="campaign-receiving-filter"
+              >
+                Donar desde / con:
+              </label>
+              <select
+                id="campaign-receiving-filter"
+                className="field pr-10 font-black text-[#2A3534]"
+                value={filter}
+                onChange={(event) =>
+                  setFilter(event.target.value as CampaignFilter)
+                }
+              >
+                <option value="">Todos los métodos disponibles</option>
+                {availableReceivingFilters.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="no-scrollbar hidden items-center gap-2 overflow-x-auto md:flex">
-            <span className="shrink-0 text-sm font-black text-neutral-600">
-              Donar desde / con:
-            </span>
-            {receivingFilters.map((item) => {
-              const isSelected = filter === item.key;
+            <div className="no-scrollbar hidden items-center gap-2 overflow-x-auto md:flex">
+              <span className="shrink-0 text-sm font-black text-neutral-600">
+                Donar desde / con:
+              </span>
+              {availableReceivingFilters.map((item) => {
+                const isSelected = filter === item.key;
 
-              return (
-                <button
-                  key={item.key}
-                  aria-pressed={isSelected}
-                  className={
-                    isSelected
-                      ? "h-9 shrink-0 rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
-                      : "h-9 shrink-0 rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm"
-                  }
-                  type="button"
-                  onClick={() =>
-                    setFilter((currentFilter) =>
-                      currentFilter === item.key ? "" : item.key,
-                    )
-                  }
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={item.key}
+                    aria-pressed={isSelected}
+                    className={
+                      isSelected
+                        ? "h-9 shrink-0 rounded-full bg-[#2D5D5E] px-5 text-sm font-black text-[#FAE880]"
+                        : "h-9 shrink-0 rounded-full border border-neutral-200 bg-white px-5 text-sm font-black text-[#2A3534] shadow-sm"
+                    }
+                    type="button"
+                    onClick={() =>
+                      setFilter((currentFilter) =>
+                        currentFilter === item.key ? "" : item.key,
+                      )
+                    }
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {filteredCampaigns.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-3">
