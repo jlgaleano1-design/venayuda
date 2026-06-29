@@ -141,6 +141,12 @@ export async function PublicCampaignDetailPage({
             <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
               {campaign.location}
             </span>
+            {campaign.verifiedByVendonar ? (
+              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
+                <CheckCircle2 aria-hidden="true" size={14} />
+                {t.campaignDetail.vendonarConfirmed}
+              </span>
+            ) : null}
           </div>
           <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
             {campaignText.title}

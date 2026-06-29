@@ -65,7 +65,11 @@ function createEmptyPaymentMethod(id: number): PaymentMethodDraft {
   };
 }
 
-export function CreateCampaignForm() {
+export function CreateCampaignForm({
+  canPublishAsVerified = false,
+}: {
+  canPublishAsVerified?: boolean;
+}) {
   const shareInputRef = useRef<HTMLInputElement>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDraft[]>([
     createEmptyPaymentMethod(1),
@@ -77,6 +81,7 @@ export function CreateCampaignForm() {
   const [shareField, setShareField] = useState("");
   const [shareFieldError, setShareFieldError] = useState("");
   const [email, setEmail] = useState("");
+  const [publishAsVerified, setPublishAsVerified] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -212,6 +217,7 @@ export function CreateCampaignForm() {
           description: String(formData.get("description") ?? ""),
           coverImageName: coverImagePath,
           paymentMethods: paymentMethodsToSubmit.map(toPaymentMethodPayload),
+          publishAsVerified: canPublishAsVerified && publishAsVerified,
         }),
       });
       const result = await response.json();
@@ -407,6 +413,25 @@ export function CreateCampaignForm() {
           name="description"
           required
         />
+        {canPublishAsVerified ? (
+          <label className="flex items-start gap-3 rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-4 text-sm leading-6 text-neutral-700">
+            <input
+              checked={publishAsVerified}
+              className="mt-1 size-4 accent-[#2D5D5E]"
+              type="checkbox"
+              onChange={(event) => setPublishAsVerified(event.target.checked)}
+            />
+            <span>
+              <span className="block font-extrabold text-[#2A3534]">
+                Publicar ahora como verificada por Vendonar
+              </span>
+              <span>
+                Úsalo solo cuando ya confirmaste la información de esta campaña.
+                Si no lo marcas, queda en revisión.
+              </span>
+            </span>
+          </label>
+        ) : null}
         <label className="field-label">
           Imagen de portada
           <span className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-dashed border-neutral-300 bg-neutral-50 px-4 py-2.5 transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">

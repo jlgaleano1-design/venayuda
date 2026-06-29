@@ -30,10 +30,12 @@ type CampaignRow = {
 
 export async function publishCampaign({
   campaignId,
+  reviewedBy,
   siteUrl,
   supabase,
 }: {
   campaignId: string;
+  reviewedBy?: string;
   siteUrl: string;
   supabase: ReturnType<typeof createAdminClient>;
 }): Promise<CampaignPublicationResult> {
@@ -68,22 +70,40 @@ export async function publishCampaign({
   const creatorAccessTokenHash = createHash("sha256")
     .update(creatorAccessToken)
     .digest("hex");
+  const campaignUpdate: {
+    published_at: string;
+    reviewed_by?: string;
+    status: "active";
+    verification_status: "verified";
+  } = {
+    published_at: new Date().toISOString(),
+    status: "active",
+    verification_status: "verified",
+  };
+  const creatorAccessInsert: {
+    campaign_id: string;
+    created_by?: string;
+    label: string;
+    recipient_contact: string | null;
+    token_hash: string;
+  } = {
+    campaign_id: campaignId,
+    label: "Link privado del creador",
+    recipient_contact: extractEmail(campaignRow.contact_info),
+    token_hash: creatorAccessTokenHash,
+  };
+
+  if (reviewedBy) {
+    campaignUpdate.reviewed_by = reviewedBy;
+    creatorAccessInsert.created_by = reviewedBy;
+  }
 
   const [{ error: updateError }, { error: accessError }] = await Promise.all([
     supabase
       .from("campaigns")
-      .update({
-        published_at: new Date().toISOString(),
-        status: "active",
-        verification_status: "verified",
-      })
+      .update(campaignUpdate)
       .eq("id", campaignId),
-    supabase.from("campaign_creator_access_links").insert({
-      campaign_id: campaignId,
-      label: "Link privado del creador",
-      recipient_contact: extractEmail(campaignRow.contact_info),
-      token_hash: creatorAccessTokenHash,
-    }),
+    supabase.from("campaign_creator_access_links").insert(creatorAccessInsert),
   ]);
 
   if (updateError || accessError) {

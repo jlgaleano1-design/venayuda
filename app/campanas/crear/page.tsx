@@ -2,8 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CreateCampaignForm } from "@/components/create-campaign-form";
 import { SiteFooter } from "@/components/site-footer";
+import { getActiveAdminProfile } from "@/lib/admin-auth";
 
-export default function CreateCampaignPage() {
+export default async function CreateCampaignPage() {
+  const canPublishAsVerified = await getCanPublishAsVerified();
+
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
       <section className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
@@ -25,9 +28,19 @@ export default function CreateCampaignPage() {
           </p>
         </div>
 
-        <CreateCampaignForm />
+        <CreateCampaignForm canPublishAsVerified={canPublishAsVerified} />
       </section>
       <SiteFooter />
     </main>
   );
+}
+
+async function getCanPublishAsVerified() {
+  try {
+    const { profile } = await getActiveAdminProfile();
+
+    return Boolean(profile);
+  } catch {
+    return false;
+  }
 }

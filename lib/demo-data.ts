@@ -34,6 +34,7 @@ export type Campaign = {
   coverImageUrl?: string;
   location: string;
   affectedArea: string;
+  verifiedByVendonar?: boolean;
   status: "active" | "paused" | "completed";
   receivingCategories: ReceivingCategory[];
   totals: {

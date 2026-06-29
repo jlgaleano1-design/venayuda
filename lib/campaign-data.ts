@@ -168,6 +168,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       ),
       location: campaign.location ?? campaign.affected_area ?? "Sin zona",
       affectedArea: campaign.affected_area ?? "Sin zona",
+      verifiedByVendonar: true,
       status: campaign.status,
       receivingCategories: Array.from(
         new Set(paymentMethods.map((method) => method.receivingCategory)),
@@ -300,6 +301,7 @@ function toFallbackCampaign(campaign: PublicCampaignRow): Campaign {
     coverImageUrl: undefined,
     location: campaign.location ?? campaign.affected_area ?? "Sin zona",
     affectedArea: campaign.affected_area ?? "Sin zona",
+    verifiedByVendonar: true,
     status: campaign.status,
     receivingCategories: [],
     totals: {

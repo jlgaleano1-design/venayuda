@@ -36,6 +36,7 @@ type Dictionary = {
     unconfirmedDonation: string;
     verifiedDonation: string;
     status: Record<"active" | "completed" | "paused", string>;
+    vendonarConfirmed: string;
     verifiedDonations: string;
     whoResponds: string;
   };
@@ -248,6 +249,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       responsible: "Responsable",
       organization: "Organización",
       verifiedDonations: "Donaciones verificadas",
+      vendonarConfirmed: "Confirmada por Vendonar",
       reportedDonations: "Aportes reportados",
       verifiedDonation: "Confirmada",
       unconfirmedDonation: "Sin confirmar",
@@ -396,6 +398,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       responsible: "Organizer",
       organization: "Organization",
       verifiedDonations: "Verified donations",
+      vendonarConfirmed: "Confirmed by Vendonar",
       reportedDonations: "Reported donations",
       verifiedDonation: "Confirmed",
       unconfirmedDonation: "Unconfirmed",

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { publishCampaign } from "@/lib/campaign-publication";
 import { translateCampaignContent } from "@/lib/campaign-translation";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
+import { getActiveAdminProfile } from "@/lib/admin-auth";
 import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
 import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,8 +11,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
 const duplicateCampaignLimitMessage =
   "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.";
-const campaignPublicationFlow = process.env.CAMPAIGN_PUBLICATION_FLOW;
-const shouldPublishInstantly = campaignPublicationFlow !== "email_confirmation";
 
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
@@ -42,6 +41,7 @@ const campaignRequestSchema = z.object({
   instagramHandle: z.string().optional(),
   organization: z.string().optional(),
   paymentMethods: z.array(paymentMethodSchema).min(1),
+  publishAsVerified: z.boolean().optional(),
   responsibleName: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   title: z.string().min(1),
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
 
   const requestData = payload.data;
   const contactEmail = normalizeEmail(requestData.email);
+  const activeAdminProfile = await getRequestAdminProfile();
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ??
       request.headers.get("origin") ??
@@ -182,6 +183,10 @@ export async function POST(request: Request) {
           slug: requestData.slug,
         }),
         requestData,
+        reviewedBy:
+          requestData.publishAsVerified && activeAdminProfile
+            ? activeAdminProfile.user_id
+            : undefined,
         siteUrl,
         supabase,
       });
@@ -204,6 +209,10 @@ export async function POST(request: Request) {
       slug: requestData.slug,
     }),
     requestData,
+    reviewedBy:
+      requestData.publishAsVerified && activeAdminProfile
+        ? activeAdminProfile.user_id
+        : undefined,
     siteUrl,
     supabase,
   });
@@ -439,18 +448,25 @@ async function finalizeCampaignRequest({
   campaignId,
   publicCampaignUrl,
   requestData,
+  reviewedBy,
   siteUrl,
   supabase,
 }: {
   campaignId: string;
   publicCampaignUrl: string;
   requestData: z.infer<typeof campaignRequestSchema>;
+  reviewedBy?: string;
   siteUrl: string;
   supabase: ReturnType<typeof createAdminClient>;
 }) {
-  if (shouldPublishInstantly) {
+  const shouldPublishRequestInstantly = Boolean(
+    requestData.publishAsVerified && reviewedBy,
+  );
+
+  if (shouldPublishRequestInstantly) {
     const publicationResult = await publishCampaign({
       campaignId,
+      reviewedBy,
       siteUrl,
       supabase,
     });
@@ -558,4 +574,14 @@ function normalizeEmail(value: string) {
 
 function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
+}
+
+async function getRequestAdminProfile() {
+  try {
+    const { profile } = await getActiveAdminProfile();
+
+    return profile;
+  } catch {
+    return null;
+  }
 }
