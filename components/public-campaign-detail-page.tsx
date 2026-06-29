@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ExternalLink, Instagram } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  ExternalLink,
+  Instagram,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
@@ -202,7 +208,7 @@ export async function PublicCampaignDetailPage({
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">
-                  {t.campaignDetail.verifiedDonations}
+                  {t.campaignDetail.reportedDonations}
                 </h2>
                 {campaign.donations.length === 0 ? (
                   <EmptyState>{t.campaignDetail.emptyDonations}</EmptyState>
@@ -211,9 +217,27 @@ export async function PublicCampaignDetailPage({
                   <div key={donation.code} className="space-y-1">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-bold">{donation.amount}</p>
-                      <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
-                        {donation.code}
-                      </span>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <span
+                          className={
+                            donation.status === "verified"
+                              ? "inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
+                              : "inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800"
+                          }
+                        >
+                          {donation.status === "verified" ? (
+                            <CheckCircle2 aria-hidden="true" size={14} />
+                          ) : (
+                            <Clock3 aria-hidden="true" size={14} />
+                          )}
+                          {donation.status === "verified"
+                            ? t.campaignDetail.verifiedDonation
+                            : t.campaignDetail.unconfirmedDonation}
+                        </span>
+                        <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
+                          {donation.code}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-sm text-neutral-600">
                       {donation.donor} · {donation.date}

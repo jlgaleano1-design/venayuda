@@ -48,6 +48,7 @@ export type Campaign = {
     amount: string;
     message?: string;
     date: string;
+    status?: "pending" | "verified";
   }[];
   purchases: {
     title: string;

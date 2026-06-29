@@ -31,7 +31,10 @@ type Dictionary = {
     organization: string;
     privateInvoice: string;
     publicInvoice: string;
+    reportedDonations: string;
     responsible: string;
+    unconfirmedDonation: string;
+    verifiedDonation: string;
     status: Record<"active" | "completed" | "paused", string>;
     verifiedDonations: string;
     whoResponds: string;
@@ -245,8 +248,11 @@ export const dictionaries: Record<Locale, Dictionary> = {
       responsible: "Responsable",
       organization: "Organización",
       verifiedDonations: "Donaciones verificadas",
+      reportedDonations: "Aportes reportados",
+      verifiedDonation: "Confirmada",
+      unconfirmedDonation: "Sin confirmar",
       emptyDonations:
-        "Los aportes reportados aparecerán acá después de ser revisados.",
+        "Los aportes reportados aparecerán acá automáticamente.",
       confirmedUseOfFunds: "Uso de fondos confirmado",
       emptyPurchases:
         "Los gastos y avances se publicarán acá cuando haya comprobantes revisados.",
@@ -390,8 +396,11 @@ export const dictionaries: Record<Locale, Dictionary> = {
       responsible: "Organizer",
       organization: "Organization",
       verifiedDonations: "Verified donations",
+      reportedDonations: "Reported donations",
+      verifiedDonation: "Confirmed",
+      unconfirmedDonation: "Unconfirmed",
       emptyDonations:
-        "Reported donations will appear here after they are reviewed.",
+        "Reported donations will appear here automatically.",
       confirmedUseOfFunds: "Confirmed use of funds",
       emptyPurchases:
         "Expenses and progress updates will appear here after receipts are reviewed.",

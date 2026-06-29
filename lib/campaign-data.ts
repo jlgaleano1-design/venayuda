@@ -50,6 +50,7 @@ type PublicDonationRow = {
   campaign_id: string;
   public_code: string;
   donor_name: string;
+  status?: "pending" | "verified";
   amount_original: number | string;
   amount_usd_estimated: number | string | null;
   currency_original: string;
@@ -128,7 +129,11 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
         .from("public_campaign_payment_methods")
         .select("*")
         .in("campaign_id", campaignIds),
-      supabase.from("public_donations").select("*").in("campaign_id", campaignIds),
+      supabase
+        .from("public_donations")
+        .select("*")
+        .in("campaign_id", campaignIds)
+        .order("created_at", { ascending: false }),
       supabase.from("public_purchases").select("*").in("campaign_id", campaignIds),
     ]);
 
@@ -185,6 +190,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
           }),
           message: donation.public_message ?? undefined,
           date: formatDate(donation.verified_at ?? donation.created_at),
+          status: donation.status ?? "verified",
         })),
       purchases: await Promise.all(((purchaseRows ?? []) as PublicPurchaseRow[])
         .filter((purchase) => purchase.campaign_id === campaign.id)
