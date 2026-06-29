@@ -2,28 +2,29 @@ import { Card } from "@heroui/react";
 import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Campaign } from "@/lib/demo-data";
+import {
+  getCampaignText,
+  getDictionary,
+  getReceivingCategoryLabel,
+  type Locale,
+} from "@/lib/i18n";
 import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 
-const categoryLabels: Record<string, string> = {
-  crypto: "Cripto",
-  mexico: "México",
-  united_states: "Estados Unidos",
-  venezuela: "Venezuela",
-  spain: "España",
-  panama: "Panamá",
-  colombia: "Colombia",
-  chile: "Chile",
-  argentina: "Argentina",
-  international: "Otros países",
-};
+export function CampaignCard({
+  campaign,
+  locale = "es",
+}: {
+  campaign: Campaign;
+  locale?: Locale;
+}) {
+  const t = getDictionary(locale);
+  const campaignText = getCampaignText({
+    description: campaign.description,
+    locale,
+    slug: campaign.slug,
+    title: campaign.title,
+  });
 
-const statusLabels: Record<Campaign["status"], string> = {
-  active: "Activa",
-  paused: "Pausada",
-  completed: "Completada",
-};
-
-export function CampaignCard({ campaign }: { campaign: Campaign }) {
   return (
     <Card className="surface-card shadow-none">
       <Card.Content className="flex flex-col gap-5 p-5">
@@ -35,7 +36,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
                 : "status-pill bg-neutral-100 text-neutral-700"
             }
           >
-            {statusLabels[campaign.status]}
+            {t.campaignDetail.status[campaign.status]}
           </span>
           <div className="flex items-center gap-1 text-xs text-neutral-600">
             <MapPin size={14} />
@@ -44,11 +45,11 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
         </div>
         <div className="flex items-start justify-between gap-4">
           <h3 className="min-w-0 text-xl font-extrabold leading-tight tracking-normal">
-            {campaign.title}
+            {campaignText.title}
           </h3>
           {campaign.coverImageUrl ? (
             <div
-              aria-label={`Foto de ${campaign.title}`}
+              aria-label={t.campaignDetail.coverAlt(campaignText.title)}
               className="h-20 w-20 shrink-0 rounded-[1.25rem] bg-neutral-100 bg-cover bg-center"
               role="img"
               style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
@@ -57,7 +58,9 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <p>
-            <span className="text-neutral-500">Responsable:</span>{" "}
+            <span className="text-neutral-500">
+              {t.campaignList.responsible}
+            </span>{" "}
             {campaign.organization ?? campaign.responsible}
           </p>
           {campaign.instagramHandle ? (
@@ -78,12 +81,15 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
               key={category}
               className="tag-pill border border-neutral-300 bg-[#FFFCF8] text-neutral-700"
             >
-              {categoryLabels[category]}
+              {getReceivingCategoryLabel(category, locale)}
             </span>
           ))}
         </div>
-        <Link className="btn-primary" href={getPublicCampaignPath(campaign.slug)}>
-          Ver campaña
+        <Link
+          className="btn-primary"
+          href={getPublicCampaignPath(campaign.slug, locale)}
+        >
+          {t.campaignList.viewCampaign}
         </Link>
       </Card.Content>
     </Card>

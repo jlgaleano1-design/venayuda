@@ -5,18 +5,28 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { DonationReportForm } from "@/components/donation-report-form";
 import type { Campaign } from "@/lib/demo-data";
+import { getCampaignText, getDictionary, type Locale } from "@/lib/i18n";
 
 export function DonationReportModal({
   campaign,
   defaultOpen = false,
+  locale = "es",
 }: {
   campaign: Campaign;
   defaultOpen?: boolean;
+  locale?: Locale;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isMounted, setIsMounted] = useState(false);
   const titleId = useId();
   const descriptionId = useId();
+  const t = getDictionary(locale).donationReport;
+  const campaignText = getCampaignText({
+    description: campaign.description,
+    locale,
+    slug: campaign.slug,
+    title: campaign.title,
+  });
 
   useEffect(() => {
     setIsMounted(true);
@@ -57,7 +67,7 @@ export function DonationReportModal({
         type="button"
         onClick={() => setIsOpen(true)}
       >
-        Avisar que doné
+        {t.button}
         <Send size={16} />
       </button>
 
@@ -71,7 +81,7 @@ export function DonationReportModal({
               role="dialog"
             >
               <button
-                aria-label="Cerrar reporte de aporte"
+                aria-label={t.closeReport}
                 className="absolute inset-0 cursor-default"
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -79,23 +89,22 @@ export function DonationReportModal({
               <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-neutral-200 bg-[#FEFEFE] shadow-2xl">
                 <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-5 md:p-6">
                   <div className="space-y-2">
-                    <span className="soft-pill">Avisar que doné</span>
+                    <span className="soft-pill">{t.button}</span>
                     <h2
                       className="text-2xl font-black leading-tight tracking-normal"
                       id={titleId}
                     >
-                      Reporta tu aporte a {campaign.title}
+                      {t.modalTitle(campaignText.title)}
                     </h2>
                     <p
                       className="text-sm leading-6 text-neutral-700"
                       id={descriptionId}
                     >
-                      Este formulario no procesa pagos. Solo registra que
-                      donaste por un método externo para revisión manual.
+                      {t.modalDescription}
                     </p>
                   </div>
                   <button
-                    aria-label="Cerrar"
+                    aria-label={t.close}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white text-[#2A3534] shadow-sm hover:border-[#2D5D5E]/30"
                     type="button"
                     onClick={() => setIsOpen(false)}
@@ -103,7 +112,11 @@ export function DonationReportModal({
                     <X size={18} />
                   </button>
                 </div>
-                <DonationReportForm campaign={campaign} framed={false} />
+                <DonationReportForm
+                  campaign={campaign}
+                  framed={false}
+                  locale={locale}
+                />
               </div>
             </div>,
           document.body,

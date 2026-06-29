@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -18,7 +19,7 @@ type ErrorStateVariant =
   | "warning";
 
 type ErrorStateAction = {
-  href: "/" | "/#campanas";
+  href: Route;
   icon?: ReactNode;
   label: string;
   tone?: "primary" | "secondary";
@@ -69,6 +70,7 @@ export function ErrorState({
   actions,
   children,
   code,
+  codeLabel = "Código",
   eyebrow,
   message,
   title,
@@ -77,6 +79,7 @@ export function ErrorState({
   actions?: ErrorStateAction[];
   children?: ReactNode;
   code?: string;
+  codeLabel?: string;
   eyebrow?: string;
   message: string;
   title: string;
@@ -128,7 +131,9 @@ export function ErrorState({
         ) : null}
 
         {code ? (
-          <p className="text-xs font-bold text-neutral-500">Código: {code}</p>
+          <p className="text-xs font-bold text-neutral-500">
+            {codeLabel}: {code}
+          </p>
         ) : null}
       </div>
     </section>

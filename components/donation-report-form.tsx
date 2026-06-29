@@ -5,6 +5,7 @@ import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
+import { getCampaignText, getDictionary, type Locale } from "@/lib/i18n";
 import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import {
   buildCampaignDocumentPath,
@@ -16,9 +17,11 @@ import {
 export function DonationReportForm({
   campaign,
   framed = true,
+  locale = "es",
 }: {
   campaign: Campaign;
   framed?: boolean;
+  locale?: Locale;
 }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -27,8 +30,15 @@ export function DonationReportForm({
   const [proofFileName, setProofFileName] = useState("");
   const [proofFileStatus, setProofFileStatus] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const t = getDictionary(locale).donationReport;
+  const campaignText = getCampaignText({
+    description: campaign.description,
+    locale,
+    slug: campaign.slug,
+    title: campaign.title,
+  });
 
-  const publicCampaignPath = getPublicCampaignPath(campaign.slug);
+  const publicCampaignPath = getPublicCampaignPath(campaign.slug, locale);
   const publicCampaignUrl =
     typeof window === "undefined"
       ? publicCampaignPath
@@ -38,8 +48,8 @@ export function DonationReportForm({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: campaign.title,
-          text: `Gracias por apoyar a ${campaign.title}. Tu aporte ayuda a reconstruir Venezuela.`,
+          title: campaignText.title,
+          text: t.shareText(campaignText.title),
           url: publicCampaignUrl,
         });
       } else {
@@ -74,7 +84,7 @@ export function DonationReportForm({
           throw new Error(validationError);
         }
 
-        setProofFileStatus("Subiendo comprobante...");
+        setProofFileStatus(t.uploadStatus);
         proofFilePath = await uploadStorageFile({
           bucket: storageBuckets.donationProofs,
           file: proofFile,
@@ -84,14 +94,14 @@ export function DonationReportForm({
             slug: campaign.slug,
           }),
         });
-        setProofFileStatus("Comprobante subido.");
+        setProofFileStatus(t.uploadDone);
       }
     } catch (error) {
       setStatus("error");
       setStatusMessage(
         error instanceof Error
           ? error.message
-          : "No se pudo subir el comprobante.",
+          : t.uploadError,
       );
       return;
     }
@@ -116,7 +126,7 @@ export function DonationReportForm({
     if (!response.ok) {
       const errorMessage = await readResponseError(
         response,
-        "No se pudo enviar el aviso. Inténtalo de nuevo.",
+        t.submitError,
       );
       setStatus("error");
       setStatusMessage(errorMessage);
@@ -127,8 +137,8 @@ export function DonationReportForm({
     setStatus("sent");
     setStatusMessage(
       result.confirmationEmailSent
-        ? "Reporte enviado. Te mandamos un correo de confirmación."
-        : "Reporte recibido. Tu aporte quedó registrado para revisión; no pudimos enviar el correo de confirmación.",
+        ? t.sentWithEmail
+        : t.sentWithoutEmail,
     );
     event.currentTarget.reset();
     setProofFileName("");
@@ -141,7 +151,9 @@ export function DonationReportForm({
         <div className="overflow-hidden rounded-[1.75rem] bg-[#E8F2ED]">
           {campaign.coverImageUrl ? (
             <div
-              aria-label={`Foto de ${campaign.title}`}
+              aria-label={getDictionary(locale).campaignDetail.coverAlt(
+                campaignText.title,
+              )}
               className="aspect-[16/10] bg-cover bg-center"
               role="img"
               style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
@@ -152,14 +164,12 @@ export function DonationReportForm({
         </div>
 
         <div className="space-y-3">
-          <span className="soft-pill">Reporte enviado</span>
+          <span className="soft-pill">{t.sentPill}</span>
           <h3 className="text-2xl font-black leading-tight tracking-normal">
-            Gracias por apoyar a {campaign.title}
+            {t.thankYouTitle(campaignText.title)}
           </h3>
           <p className="text-sm leading-6 text-neutral-700">
-            Tu aporte ayuda a que reconstruir Venezuela sea más posible. Será
-            muy valioso que compartas esta campaña con tus amigos para que más
-            personas puedan sumarse.
+            {t.thankYouBody}
           </p>
         </div>
 
@@ -169,11 +179,11 @@ export function DonationReportForm({
           onClick={shareCampaign}
         >
           {shareCopied ? <Check size={18} /> : <Share2 size={18} />}
-          {shareCopied ? "Link copiado" : "Compartir campaña"}
+          {shareCopied ? t.copied : t.shareCampaign}
         </button>
 
         <p className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-          Revisaremos tu reporte antes de sumarlo al seguimiento público.
+          {t.reviewNotice}
         </p>
       </div>
     );
@@ -193,19 +203,19 @@ export function DonationReportForm({
     <form onSubmit={submitDonationReport}>
       <div className="flex flex-col gap-5 p-5 md:p-6">
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Tu nombre (opcional)" name="donorName" />
+          <TextField label={t.donorName} name="donorName" />
           <TextField
-            label="Correo electrónico (opcional)"
+            label={t.donorEmail}
             name="donorEmail"
             type="email"
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input name="isAnonymous" type="checkbox" />
-          Donar anónimamente en la vista pública
+          {t.anonymous}
         </label>
         <TextField
-          label="Monto en dólares"
+          label={t.amount}
           name="amount"
           prefix="USD"
           required
@@ -213,18 +223,19 @@ export function DonationReportForm({
           type="number"
         />
         <TextField
-          label="Método usado"
+          label={t.paymentMethod}
           name="paymentMethodUsed"
-          placeholder="Ej. Zelle, SPEI, Pago móvil, transferencia bancaria..."
+          placeholder={t.paymentMethodPlaceholder}
         />
         <TextField
-          label="Referencia / tracking number (opcional)"
+          label={t.transferReference}
           name="transferReference"
         />
         <FileField
           accept="image/png,image/jpeg,image/webp,application/pdf"
-          label="Comprobante o screenshot"
+          label={t.proof}
           name="proof"
+          selectLabel={t.selectFile}
           statusMessage={proofFileStatus || proofFileName}
           onChange={(file) => {
             const validationError = file
@@ -235,14 +246,14 @@ export function DonationReportForm({
             setProofFileStatus(validationError);
           }}
         />
-        <TextAreaField label="Mensaje público (opcional)" name="publicMessage" />
+        <TextAreaField label={t.publicMessage} name="publicMessage" />
         <Button
           className="min-h-14 w-fit !rounded-full bg-[#2D5D5E] px-6 py-3 font-black text-[#FAE880]"
           isDisabled={status === "sending"}
           type="submit"
           variant="primary"
         >
-          {status === "sending" ? "Enviando..." : "Enviar reporte"}
+          {status === "sending" ? t.sending : t.submit}
         </Button>
         {statusMessage ? (
           <p
@@ -256,9 +267,7 @@ export function DonationReportForm({
           </p>
         ) : null}
         <div className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-          Mostraremos tus aportes después de una verificación manual. Recibirás
-          un correo cuando el responsable de la campaña suba cualquier
-          actualización.
+          {t.manualReviewNote}
         </div>
       </div>
     </form>

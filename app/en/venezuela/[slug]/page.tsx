@@ -12,13 +12,13 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  return generateCampaignMetadata({ locale: "es", params });
+  return generateCampaignMetadata({ locale: "en", params });
 }
 
-export default async function CampaignDetailPage({
+export default async function EnglishCampaignDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  return <PublicCampaignDetailPage locale="es" params={params} />;
+  return <PublicCampaignDetailPage locale="en" params={params} />;
 }

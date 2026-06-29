@@ -7,6 +7,7 @@ export function FileField({
   label,
   name,
   required = false,
+  selectLabel = "Seleccionar archivo",
   statusMessage,
   onChange,
 }: {
@@ -14,6 +15,7 @@ export function FileField({
   label: string;
   name: string;
   required?: boolean;
+  selectLabel?: string;
   statusMessage?: string;
   onChange: (file: File | null) => void;
 }) {
@@ -27,7 +29,7 @@ export function FileField({
           <Upload size={17} />
         </span>
         <span className="min-w-0 truncate font-bold text-[#2A3534]">
-          {statusMessage && !hasError ? statusMessage : "Seleccionar archivo"}
+          {statusMessage && !hasError ? statusMessage : selectLabel}
         </span>
       </span>
       <input

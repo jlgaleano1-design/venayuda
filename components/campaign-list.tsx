@@ -4,12 +4,24 @@ import { ClipboardList, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Campaign, receivingFilters, ReceivingCategory } from "@/lib/demo-data";
+import {
+  getDictionary,
+  getReceivingCategoryLabel,
+  type Locale,
+} from "@/lib/i18n";
 import { CampaignCard } from "./campaign-card";
 
 type CampaignFilter = ReceivingCategory | "";
 
-export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
+export function CampaignList({
+  campaigns,
+  locale = "es",
+}: {
+  campaigns: Campaign[];
+  locale?: Locale;
+}) {
   const [filter, setFilter] = useState<CampaignFilter>("");
+  const t = getDictionary(locale).campaignList;
 
   const availableReceivingFilters = useMemo(() => {
     const availableCategories = new Set(
@@ -23,7 +35,9 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
     ? campaigns.filter((campaign) => campaign.receivingCategories.includes(filter))
     : campaigns;
   const selectedFilterLabel =
-    receivingFilters.find((item) => item.key === filter)?.label ?? "esta opción";
+    receivingFilters.find((item) => item.key === filter)
+      ? getReceivingCategoryLabel(filter, locale)
+      : t.fallbackFilter;
   const hasPublishedCampaigns = campaigns.length > 0;
   const hasAvailableFilters = availableReceivingFilters.length > 0;
 
@@ -37,7 +51,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                 className="shrink-0 text-sm font-black text-neutral-600"
                 htmlFor="campaign-receiving-filter"
               >
-                Donar desde / con:
+                {t.filterLabel}
               </label>
               <select
                 id="campaign-receiving-filter"
@@ -47,10 +61,10 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                   setFilter(event.target.value as CampaignFilter)
                 }
               >
-                <option value="">Todos los métodos disponibles</option>
+                <option value="">{t.allMethods}</option>
                 {availableReceivingFilters.map((item) => (
                   <option key={item.key} value={item.key}>
-                    {item.label}
+                    {getReceivingCategoryLabel(item.key, locale)}
                   </option>
                 ))}
               </select>
@@ -58,7 +72,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
 
             <div className="no-scrollbar hidden items-center gap-2 overflow-x-auto md:flex">
               <span className="shrink-0 text-sm font-black text-neutral-600">
-                Donar desde / con:
+                {t.filterLabel}
               </span>
               {availableReceivingFilters.map((item) => {
                 const isSelected = filter === item.key;
@@ -79,7 +93,7 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                       )
                     }
                   >
-                    {item.label}
+                    {getReceivingCategoryLabel(item.key, locale)}
                   </button>
                 );
               })}
@@ -91,7 +105,11 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
       {filteredCampaigns.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-3">
           {filteredCampaigns.map((campaign: Campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} />
+            <CampaignCard
+              key={campaign.slug}
+              campaign={campaign}
+              locale={locale}
+            />
           ))}
         </div>
       ) : (
@@ -103,19 +121,19 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
             <div className="space-y-2">
               <h3 className="text-xl font-extrabold">
                 {hasPublishedCampaigns
-                  ? `Todavía no hay campañas para ${selectedFilterLabel}`
-                  : "Todavía no hay campañas publicadas"}
+                  ? t.emptyForFilter(selectedFilterLabel)
+                  : t.emptyTitle}
               </h3>
               <p className="max-w-2xl text-sm leading-6 text-neutral-600">
                 {hasPublishedCampaigns
-                  ? "Prueba con otro origen de donación o vuelve más tarde."
-                  : "Las campañas aparecerán aquí cuando el equipo revise y publique las primeras solicitudes. Puedes crear la primera campaña para iniciar el flujo."}
+                  ? t.emptyFilterBody
+                  : t.emptyBody}
               </p>
             </div>
             {!hasPublishedCampaigns ? (
               <Link className="btn-primary" href="/campanas/crear">
                 <Plus size={18} />
-                Crear primera campaña
+                {t.createFirstCampaign}
               </Link>
             ) : null}
           </div>

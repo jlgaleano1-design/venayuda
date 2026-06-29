@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import { getDictionary } from "@/lib/i18n";
 import { Providers } from "./providers";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org";
 const siteName = "Vendonar";
-const siteDescription =
-  "Campañas de ayuda directa con transparencia manual, aportes externos y seguimiento público de compras.";
+const t = getDictionary("es");
+const siteDescription = t.metadata.siteDescription;
 const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: siteName,
   title: {
-    default: "Vendonar | Ayuda directa con transparencia",
+    default: t.metadata.siteTitle,
     template: "%s | Vendonar",
   },
   description: siteDescription,
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "Vendonar | Ayuda directa con transparencia",
+    title: t.metadata.siteTitle,
     description: siteDescription,
     url: "/",
     siteName,
@@ -39,15 +40,15 @@ export const metadata: Metadata = {
         url: "/vendonar-og-campanas.png",
         width: 1672,
         height: 941,
-        alt: "Vendonar - ayuda directa con transparencia",
+        alt: t.metadata.ogAlt,
       },
     ],
-    locale: "es_MX",
+    locale: t.metadata.ogLocale,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vendonar | Ayuda directa con transparencia",
+    title: t.metadata.siteTitle,
     description: siteDescription,
     images: ["/vendonar-og-campanas.png"],
   },
