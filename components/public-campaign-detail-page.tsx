@@ -163,9 +163,6 @@ export async function PublicCampaignDetailPage({
           <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
             {campaignText.title}
           </h1>
-          <div className="hidden sm:flex">
-            <ShareCampaignButton campaign={shareCampaign} locale={locale} />
-          </div>
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -219,6 +216,14 @@ export async function PublicCampaignDetailPage({
 
           <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
             <div className="flex flex-col gap-4">
+              <div className="hidden lg:flex">
+                <ShareCampaignButton
+                  campaign={shareCampaign}
+                  className="w-full justify-center"
+                  locale={locale}
+                  variant="secondary"
+                />
+              </div>
               <div>
                 <PaymentMethodsCard campaign={campaign} locale={locale} />
               </div>
