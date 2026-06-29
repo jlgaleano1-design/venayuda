@@ -456,10 +456,40 @@ export const dictionaries: Record<Locale, Dictionary> = {
       international: "Other countries",
     },
     campaignContent: {
+      eliaslopezvzla: {
+        title: "Tents for families affected by the earthquake",
+        description:
+          "We are raising funds to buy and deliver tents or tarps to people and families who are sleeping in plazas, parks, and other areas in and around Caracas. This effort is being led by Elias Lopez, a Venezuelan sports journalist, to support people who lost their shelter and need a safer place to spend the night.\n\nDonations will be used specifically to buy the tents that can be found, taking into account prices, available sizes, and the number of people in each family. Tent and tarp donations are also welcome. In his Instagram stories (@eliaslopezvzla), Elias has shown the first 7 tents already delivered, and the goal is to keep helping more families.",
+      },
+      equipostraumatologia: {
+        title: "Trauma medical equipment",
+        description:
+          "This campaign is raising funds to buy and deliver specialized medical equipment and supplies to hospitals in Venezuela, especially for trauma units where many patients urgently need care.\n\nDonations will be used to purchase equipment such as anesthesia machines, cannulated drills, and surgical instruments needed to perform procedures, respond to emergencies, and save lives. Each purchase and delivery will be documented with photos, receipts, and updates so donors can follow how their contribution is used.\n\nThe support will be managed directly by Arianna, who is coordinating the purchase of the equipment and its delivery to hospitals with a confirmed need.",
+      },
+      ferozzve: {
+        title: "Help us make blankets for affected families",
+        description:
+          "Ferozz is making its machinery and labor available to produce blankets for people affected by the emergency. They are raising funds exclusively to buy the fabric needed. Every contribution turns directly into warmth for those who need it most.",
+      },
+      gotasdeluz: {
+        title: "Direct aid for Caraballeda, Macuto, and the Central Coast",
+        description:
+          "Jessica and Paul are organizing a collection drive from San Antonio de los Altos for water, food, clothing, blankets, medical supplies, and rescue tools to bring direct aid to the most affected areas of La Guaira.\n\nYou can support with monetary donations or by bringing in-kind donations to the collection point at Altos Detailing, Urb. La Morita, Ruta 3, past Colegio Mater Dei, on the left. To coordinate deliveries or ask questions, contact 0422-1582869, 0414-1248789, or Instagram: @gotasdeluz.ve.",
+      },
       nelsonlaiton: {
         title: "Aid for Playa Grande Families Affected by the Emergency",
         description:
           "Nelson Leyton is from Playa Grande, La Guaira. During the emergency on June 24, he lost his home, but still decided to stay and help people affected near the landslide area, supporting aid distribution and helping those who need it most. I am publishing this campaign on his behalf because right now his priority is on the ground and his connectivity is very limited. The funds raised will be used to support both the relief work he is carrying out in Playa Grande and his own recovery, as well as his family's recovery, since they were also affected by the emergency. Any contribution, no matter how small, makes a difference.",
+      },
+      nutrilau: {
+        title: "Urgent supplies for affected families in Playa Verde",
+        description:
+          "Laura is collecting and delivering supplies for affected families. Right now, they need tarps, awnings, sheets, mattresses or sleeping pads, medication for chronic conditions such as Losartan for hypertension, as well as crayons, paints, and notebooks for children. Your support will help buy and deliver these materials directly to the people who need them.",
+      },
+      serbymichelle: {
+        title: "Support for families affected in Parque del Este",
+        description:
+          "This campaign supports people affected by the emergency who are staying in tents in Parque del Este. ser_by_michelle is going directly to the site to deliver in-kind aid, organize support groups, and accompany people going through this difficult moment, not only with supplies but also with listening, presence, and emotional support.\n\nDonations will help make this direct aid possible for people who need it, including basic support, accompaniment, and care for the animals that are also there. Beyond donating, anyone who wants to help or knows someone who needs support can write to her for information and to help organize the groups.",
       },
     },
   },
