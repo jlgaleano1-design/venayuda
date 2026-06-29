@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CampaignStatusPill } from "@/components/campaign-status-pill";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { DonationReportModal } from "@/components/donation-report-modal";
 import { ExpandableDescription } from "@/components/expandable-description";
@@ -131,7 +132,7 @@ export async function PublicCampaignDetailPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
+    <main className="min-h-screen bg-[#FFFCF8] pb-28 text-[#2A3534]">
       <LanguageSwitcher
         currentLocale={locale}
         paths={{
@@ -150,18 +151,10 @@ export async function PublicCampaignDetailPage({
 
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            <span className="status-pill bg-emerald-50 text-emerald-800">
-              {t.campaignDetail.status[campaign.status]}
-            </span>
+            <CampaignStatusPill campaign={campaign} locale={locale} />
             <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
               {campaign.location}
             </span>
-            {campaign.verifiedByVendonar ? (
-              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
-                <CheckCircle2 aria-hidden="true" size={14} />
-                {t.campaignDetail.vendonarConfirmed}
-              </span>
-            ) : null}
           </div>
           <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
             {campaignText.title}
@@ -321,6 +314,7 @@ export async function PublicCampaignDetailPage({
           </div>
         </div>
       </section>
+      <FloatingDonateButton locale={locale} />
       <SiteFooter locale={locale} />
     </main>
   );
@@ -346,7 +340,7 @@ function PaymentMethodsCard({
   return (
     <section
       id="metodos-donacion"
-      className="surface-card scroll-mt-6 overflow-hidden border-[#2D5D5E]/20 shadow-sm"
+      className="surface-card scroll-mt-24 overflow-hidden border-[#2D5D5E]/20 shadow-sm"
     >
       <div className="flex flex-col gap-5 p-5 lg:p-6">
         <h2 className="text-lg font-extrabold">
@@ -395,6 +389,19 @@ function PaymentMethodsCard({
         <DonationReportModal campaign={campaign} locale={locale} />
       </div>
     </section>
+  );
+}
+
+function FloatingDonateButton({ locale }: { locale: Locale }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-[#FFFCF8] via-[#FFFCF8]/95 to-[#FFFCF8]/0 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10">
+      <a
+        className="btn-primary mx-auto flex h-12 w-full max-w-sm text-base shadow-[0_14px_34px_rgb(45_93_94_/_22%)]"
+        href="#metodos-donacion"
+      >
+        {locale === "en" ? "Donate" : "Donar"}
+      </a>
+    </div>
   );
 }
 

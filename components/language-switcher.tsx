@@ -14,7 +14,7 @@ export function LanguageSwitcher({
   return (
     <nav
       aria-label={t.label}
-      className="fixed right-4 top-4 z-40 rounded-full border border-neutral-200 bg-[#FFFCF8]/95 p-1 text-xs font-black shadow-sm backdrop-blur"
+      className="absolute right-4 top-4 z-40 rounded-full border border-neutral-200 bg-[#FFFCF8]/95 p-1 text-xs font-black shadow-sm backdrop-blur"
     >
       <div className="flex items-center gap-1">
         <Link

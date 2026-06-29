@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
-import { getPublicCampaignPath } from "@/lib/public-campaign-url";
+import { getHomePath, getPublicCampaignPath } from "@/lib/public-campaign-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type CampaignPublicationResult =
@@ -74,11 +74,11 @@ export async function publishCampaign({
     published_at: string;
     reviewed_by?: string;
     status: "active";
-    verification_status: "verified";
+    verification_status: "pending" | "verified";
   } = {
     published_at: new Date().toISOString(),
     status: "active",
-    verification_status: "verified",
+    verification_status: reviewedBy ? "verified" : "pending",
   };
   const creatorAccessInsert: {
     campaign_id: string;
@@ -140,8 +140,10 @@ export async function publishCampaign({
 }
 
 export function revalidatePublishedCampaign(slug: string) {
-  revalidatePath("/");
-  revalidatePath(getPublicCampaignPath(slug));
+  revalidatePath(getHomePath("es"));
+  revalidatePath(getHomePath("en"));
+  revalidatePath(getPublicCampaignPath(slug, "es"));
+  revalidatePath(getPublicCampaignPath(slug, "en"));
 }
 
 export function extractEmail(contactInfo?: string | null) {

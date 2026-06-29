@@ -1,6 +1,7 @@
 import { Card } from "@heroui/react";
-import { CheckCircle2, Instagram, MapPin } from "lucide-react";
+import { Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
+import { CampaignStatusPill } from "@/components/campaign-status-pill";
 import { ShareCampaignButton } from "@/components/share-campaign-button";
 import { Campaign } from "@/lib/demo-data";
 import {
@@ -50,21 +51,7 @@ export function CampaignCard({
       <Card.Content className="flex flex-col gap-5 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            <span
-              className={
-                campaign.status === "active"
-                  ? "status-pill bg-emerald-50 text-emerald-800"
-                  : "status-pill bg-neutral-100 text-neutral-700"
-              }
-            >
-              {t.campaignDetail.status[campaign.status]}
-            </span>
-            {campaign.verifiedByVendonar ? (
-              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
-                <CheckCircle2 aria-hidden="true" size={14} />
-                {t.campaignDetail.vendonarConfirmed}
-              </span>
-            ) : null}
+            <CampaignStatusPill campaign={campaign} locale={locale} />
           </div>
           <div className="flex items-center gap-1 text-xs text-neutral-600">
             <MapPin size={14} />

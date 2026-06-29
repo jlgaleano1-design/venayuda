@@ -30,6 +30,9 @@ type PublicCampaignRow = {
   location: string | null;
   affected_area: string | null;
   status: "active" | "paused" | "completed";
+  verification_status?: "pending" | "unverified" | "verified" | "rejected";
+  created_by_admin?: boolean | null;
+  reviewed_by_admin?: boolean | null;
   total_verified_donations_usd: number | string | null;
   total_approved_purchases_usd: number | string | null;
   available_balance_usd: number | string | null;
@@ -168,7 +171,7 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       ),
       location: campaign.location ?? campaign.affected_area ?? "Sin zona",
       affectedArea: campaign.affected_area ?? "Sin zona",
-      verifiedByVendonar: true,
+      verifiedByVendonar: isAdminVerifiedCampaign(campaign),
       status: campaign.status,
       receivingCategories: Array.from(
         new Set(paymentMethods.map((method) => method.receivingCategory)),
@@ -243,6 +246,17 @@ function isSyntheticQaCampaign(campaign: PublicCampaignRow) {
   );
 }
 
+function isAdminVerifiedCampaign(campaign: PublicCampaignRow) {
+  if (campaign.verification_status === undefined) {
+    return true;
+  }
+
+  return (
+    campaign.verification_status === "verified" &&
+    (campaign.created_by_admin === true || campaign.reviewed_by_admin === true)
+  );
+}
+
 async function createStorageSignedUrl(
   supabase: SupabaseClient,
   bucket: "campaign-assets" | "purchase-documents",
@@ -301,7 +315,7 @@ function toFallbackCampaign(campaign: PublicCampaignRow): Campaign {
     coverImageUrl: undefined,
     location: campaign.location ?? campaign.affected_area ?? "Sin zona",
     affectedArea: campaign.affected_area ?? "Sin zona",
-    verifiedByVendonar: true,
+    verifiedByVendonar: isAdminVerifiedCampaign(campaign),
     status: campaign.status,
     receivingCategories: [],
     totals: {
