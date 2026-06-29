@@ -33,9 +33,11 @@ export function DonationReportForm({
   const t = getDictionary(locale).donationReport;
   const campaignText = getCampaignText({
     description: campaign.description,
+    descriptionEn: campaign.descriptionEn,
     locale,
     slug: campaign.slug,
     title: campaign.title,
+    titleEn: campaign.titleEn,
   });
 
   const publicCampaignPath = getPublicCampaignPath(campaign.slug, locale);

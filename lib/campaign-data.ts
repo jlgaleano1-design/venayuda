@@ -20,7 +20,9 @@ type PublicCampaignRow = {
   id: string;
   slug: string;
   title: string;
+  title_en: string | null;
   description: string;
+  description_en: string | null;
   responsible_person_name: string;
   responsible_organization: string | null;
   instagram_handle: string | null;
@@ -147,7 +149,9 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       slug: campaign.slug,
       creatorAccessCode: "",
       title: campaign.title,
+      titleEn: campaign.title_en ?? undefined,
       description: campaign.description,
+      descriptionEn: campaign.description_en ?? undefined,
       responsible: campaign.responsible_person_name,
       responsibleEmail: "",
       instagramHandle: campaign.instagram_handle ?? undefined,

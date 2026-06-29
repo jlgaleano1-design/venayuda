@@ -147,23 +147,50 @@ export function getReceivingCategoryLabel(
 
 export function getCampaignText({
   description,
+  descriptionEn,
   locale = defaultLocale,
   slug,
   title,
+  titleEn,
 }: {
   description: string;
+  descriptionEn?: string | null;
   locale?: Locale;
   slug: string;
   title: string;
+  titleEn?: string | null;
 }) {
   const translatedCampaign =
     dictionaries[locale].campaignContent[slug] ??
     dictionaries[defaultLocale].campaignContent[slug];
+  const translatedTitle =
+    translatedCampaign?.title ?? getUsableTranslatedText(titleEn, title);
+  const translatedDescription =
+    translatedCampaign?.description ??
+    getUsableTranslatedText(descriptionEn, description);
 
   return {
-    description: translatedCampaign?.description ?? description,
-    title: translatedCampaign?.title ?? title,
+    description:
+      locale === "en" ? translatedDescription ?? description : description,
+    title: locale === "en" ? translatedTitle ?? title : title,
   };
+}
+
+function getUsableTranslatedText(
+  translatedValue: string | null | undefined,
+  originalValue: string,
+) {
+  const normalizedTranslation = translatedValue?.trim();
+
+  if (
+    !normalizedTranslation ||
+    normalizedTranslation.toLocaleLowerCase("es-MX") ===
+      originalValue.trim().toLocaleLowerCase("es-MX")
+  ) {
+    return undefined;
+  }
+
+  return normalizedTranslation;
 }
 
 export const dictionaries: Record<Locale, Dictionary> = {
@@ -475,6 +502,11 @@ export const dictionaries: Record<Locale, Dictionary> = {
         title: "Direct aid for Caraballeda, Macuto, and the Central Coast",
         description:
           "Jessica and Paul are organizing a collection drive from San Antonio de los Altos for water, food, clothing, blankets, medical supplies, and rescue tools to bring direct aid to the most affected areas of La Guaira.\n\nYou can support with monetary donations or by bringing in-kind donations to the collection point at Altos Detailing, Urb. La Morita, Ruta 3, past Colegio Mater Dei, on the left. To coordinate deliveries or ask questions, contact 0422-1582869, 0414-1248789, or Instagram: @gotasdeluz.ve.",
+      },
+      kuizz: {
+        title: "Supplies and tools for aid in La Guaira",
+        description:
+          'We are transporting donated supplies, tents, sleeping pads, and tools to support people affected in La Guaira, including buildings such as Caraballeda, Los Corales, Rita Sol Palace, and Edificio Tahiti.\n\nThe campaign is also asking for machinery support, volunteers, and help spreading the word, noting that there may still be people alive in Edificio Tahiti. Zelle donations will be received by a friend and converted to bolivars so Luis can personally buy the needed items. Please include the reference "kuizz" and send a screenshot of the transaction.',
       },
       nelsonlaiton: {
         title: "Aid for Playa Grande Families Affected by the Emergency",

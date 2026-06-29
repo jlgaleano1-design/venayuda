@@ -24,7 +24,9 @@ export type Campaign = {
   slug: string;
   creatorAccessCode: string;
   title: string;
+  titleEn?: string;
   description: string;
+  descriptionEn?: string;
   responsible: string;
   responsibleEmail: string;
   instagramHandle?: string;

@@ -40,9 +40,11 @@ export async function generateCampaignMetadata({
 
   const campaignText = getCampaignText({
     description: campaign.description,
+    descriptionEn: campaign.descriptionEn,
     locale,
     slug: campaign.slug,
     title: campaign.title,
+    titleEn: campaign.titleEn,
   });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org";
@@ -100,9 +102,11 @@ export async function PublicCampaignDetailPage({
   const organization = campaign.organization?.trim();
   const campaignText = getCampaignText({
     description: campaign.description,
+    descriptionEn: campaign.descriptionEn,
     locale,
     slug: campaign.slug,
     title: campaign.title,
+    titleEn: campaign.titleEn,
   });
 
   return (

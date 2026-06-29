@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { publishCampaign } from "@/lib/campaign-publication";
+import { translateCampaignContent } from "@/lib/campaign-translation";
 import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
 import { createCampaignReviewToken } from "@/lib/review-token";
@@ -102,12 +103,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const translation = await translateCampaignContent({
+    description: requestData.description,
+    title: requestData.title,
+  });
   const campaignInsert = {
     affected_area: requestData.affectedArea,
     contact_email: contactEmail,
     contact_info: `Correo: ${contactEmail}`,
     cover_image_path: requestData.coverImageName || null,
     description: requestData.description,
+    description_en: translation.descriptionEn,
     instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
     location: requestData.affectedArea,
     responsible_organization: requestData.organization || null,
@@ -115,6 +121,7 @@ export async function POST(request: Request) {
     slug: requestData.slug,
     status: "pending_review" as const,
     title: requestData.title,
+    title_en: translation.titleEn,
     verification_status: "pending" as const,
   };
   const { data: campaign, error: campaignError } = await insertCampaign(
@@ -292,6 +299,7 @@ async function insertCampaign(
     contact_info: string;
     cover_image_path: string | null;
     description: string;
+    description_en: string | null;
     instagram_handle: string | null;
     location: string;
     responsible_organization: string | null;
@@ -299,20 +307,94 @@ async function insertCampaign(
     slug: string;
     status: "pending_review";
     title: string;
+    title_en: string | null;
     verification_status: "pending";
   },
 ) {
-  const insertResult = await supabase
+  const insertResult = await tryInsertCampaign(supabase, campaignInsert);
+
+  if (!insertResult.error) {
+    return insertResult;
+  }
+
+  const shouldRemoveContactEmail = isMissingContactEmailSchema(
+    insertResult.error,
+  );
+  const shouldRemoveTranslations = isMissingCampaignTranslationSchema(
+    insertResult.error,
+  );
+
+  if (!shouldRemoveContactEmail && !shouldRemoveTranslations) {
+    return insertResult;
+  }
+
+  const fallbackCampaignInsert = toSchemaCompatibleCampaignInsert(
+    campaignInsert,
+    {
+      includeContactEmail: !shouldRemoveContactEmail,
+      includeTranslations: !shouldRemoveTranslations,
+    },
+  );
+  const fallbackInsertResult = await tryInsertCampaign(
+    supabase,
+    fallbackCampaignInsert,
+  );
+
+  if (
+    !fallbackInsertResult.error ||
+    (!isMissingContactEmailSchema(fallbackInsertResult.error) &&
+      !isMissingCampaignTranslationSchema(fallbackInsertResult.error))
+  ) {
+    return fallbackInsertResult;
+  }
+
+  return tryInsertCampaign(
+    supabase,
+    toSchemaCompatibleCampaignInsert(campaignInsert, {
+      includeContactEmail: false,
+      includeTranslations: false,
+    }),
+  );
+}
+
+function tryInsertCampaign(
+  supabase: ReturnType<typeof createAdminClient>,
+  campaignInsert: Record<string, string | null>,
+) {
+  return supabase
     .from("campaigns")
     .insert(campaignInsert)
     .select("id, title")
     .single();
+}
 
-  if (!isMissingContactEmailSchema(insertResult.error)) {
-    return insertResult;
-  }
-
-  const legacyCampaignInsert: Omit<typeof campaignInsert, "contact_email"> = {
+function toSchemaCompatibleCampaignInsert(
+  campaignInsert: {
+    affected_area: string;
+    contact_email: string;
+    contact_info: string;
+    cover_image_path: string | null;
+    description: string;
+    description_en: string | null;
+    instagram_handle: string | null;
+    location: string;
+    responsible_organization: string | null;
+    responsible_person_name: string;
+    slug: string;
+    status: "pending_review";
+    title: string;
+    title_en: string | null;
+    verification_status: "pending";
+  },
+  {
+    includeContactEmail,
+    includeTranslations,
+  }: {
+    includeContactEmail: boolean;
+    includeTranslations: boolean;
+  },
+) {
+  const compatibleInsert: Record<string, string | null> = {
     affected_area: campaignInsert.affected_area,
     contact_info: campaignInsert.contact_info,
     cover_image_path: campaignInsert.cover_image_path,
@@ -327,15 +409,26 @@ async function insertCampaign(
     verification_status: campaignInsert.verification_status,
   };
 
-  return supabase
-    .from("campaigns")
-    .insert(legacyCampaignInsert)
-    .select("id, title")
-    .single();
+  if (includeContactEmail) {
+    compatibleInsert.contact_email = campaignInsert.contact_email;
+  }
+
+  if (includeTranslations) {
+    compatibleInsert.description_en = campaignInsert.description_en;
+    compatibleInsert.title_en = campaignInsert.title_en;
+  }
+
+  return compatibleInsert;
 }
 
 function isMissingContactEmailSchema(error?: { message?: string } | null) {
   return /contact_email|schema cache/i.test(error?.message ?? "");
+}
+
+function isMissingCampaignTranslationSchema(
+  error?: { message?: string } | null,
+) {
+  return /description_en|title_en|schema cache/i.test(error?.message ?? "");
 }
 
 function escapeLikePattern(value: string) {
