@@ -13,7 +13,7 @@ const categoryLabels: Record<string, string> = {
   chile: "Chile",
   colombia: "Colombia",
   crypto: "Cripto",
-  international: "Internacional / otro",
+  international: "Internacional",
   mexico: "México",
   other: "Otro",
   panama: "Panamá",

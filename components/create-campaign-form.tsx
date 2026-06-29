@@ -18,6 +18,7 @@ import {
   uploadStorageFile,
   validateStorageFile,
 } from "@/lib/storage-upload";
+import { FreshHomeLink } from "./fresh-home-link";
 
 const categories = [
   ["crypto", "Cripto"],
@@ -29,7 +30,7 @@ const categories = [
   ["colombia", "Colombia"],
   ["chile", "Chile"],
   ["argentina", "Argentina"],
-  ["international", "Otros países"],
+  ["international", "Internacional"],
 ];
 
 const affectedZones = [
@@ -339,6 +340,12 @@ export function CreateCampaignForm({
                 cuando uses las donaciones.
               </p>
             </div>
+          ) : null}
+
+          {isPublished ? (
+            <FreshHomeLink className="btn-primary w-fit">
+              Volver al inicio
+            </FreshHomeLink>
           ) : null}
         </Card.Content>
       </Card>

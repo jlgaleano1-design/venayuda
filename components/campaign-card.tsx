@@ -108,6 +108,7 @@ export function CampaignCard({
             campaign={shareCampaign}
             className="justify-center"
             locale={locale}
+            variant="secondary"
           />
         </div>
       </Card.Content>

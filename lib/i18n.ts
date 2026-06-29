@@ -345,7 +345,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       colombia: "Colombia",
       chile: "Chile",
       argentina: "Argentina",
-      international: "Otros países",
+      international: "Internacional",
     },
     campaignContent: {},
   },

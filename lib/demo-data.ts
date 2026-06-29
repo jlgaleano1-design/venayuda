@@ -71,7 +71,7 @@ export const receivingFilters: { key: ReceivingCategory; label: string }[] = [
   { key: "colombia", label: "Colombia" },
   { key: "chile", label: "Chile" },
   { key: "argentina", label: "Argentina" },
-  { key: "international", label: "Otros países" },
+  { key: "international", label: "Internacional" },
 ];
 
 export const campaigns: Campaign[] = [];

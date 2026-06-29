@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { CreateCampaignForm } from "@/components/create-campaign-form";
+import { FreshHomeLink } from "@/components/fresh-home-link";
 import { SiteFooter } from "@/components/site-footer";
 import { getActiveAdminProfile } from "@/lib/admin-auth";
 
@@ -10,10 +10,10 @@ export default async function CreateCampaignPage() {
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
       <section className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
-        <Link className="inline-flex w-fit items-center gap-2 text-sm" href="/">
+        <FreshHomeLink className="inline-flex w-fit items-center gap-2 text-sm">
           <ArrowLeft size={18} />
           Volver
-        </Link>
+        </FreshHomeLink>
 
         <div className="space-y-3">
           <span className="soft-pill">
