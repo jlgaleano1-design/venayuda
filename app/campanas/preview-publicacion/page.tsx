@@ -7,6 +7,14 @@ export default function PublishedCampaignPreviewPage() {
   const publicCampaignUrl = "https://vendonar.org/venezuela/nelsonlaiton";
   const displayCampaignUrl = publicCampaignUrl.replace(/^https?:\/\//, "");
   const coverImageUrl = "/preview-campaign-cover-2.png";
+  const shareCampaign = {
+    affectedArea: "La Guaira / Litoral Central",
+    coverImageUrl,
+    publicUrl: publicCampaignUrl,
+    responsible: "Nelson Augusto Laiton La Corte",
+    slug: "nelsonlaiton",
+    title: "Ayuda urgente en Playa Grande",
+  };
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] px-2 pb-28 pt-4 text-[#2A3534] sm:px-6 sm:py-10">
@@ -41,6 +49,7 @@ export default function PublishedCampaignPreviewPage() {
             <PublishedCampaignActions
               campaignPath={campaignPath}
               publicCampaignUrl={publicCampaignUrl}
+              shareCampaign={shareCampaign}
               variant="inline"
             />
 
@@ -60,6 +69,7 @@ export default function PublishedCampaignPreviewPage() {
       <PublishedCampaignActions
         campaignPath={campaignPath}
         publicCampaignUrl={publicCampaignUrl}
+        shareCampaign={shareCampaign}
         variant="fixed"
       />
     </main>

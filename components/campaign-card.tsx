@@ -1,6 +1,7 @@
 import { Card } from "@heroui/react";
 import { CheckCircle2, Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
+import { ShareCampaignButton } from "@/components/share-campaign-button";
 import { Campaign } from "@/lib/demo-data";
 import {
   getCampaignText,
@@ -8,7 +9,10 @@ import {
   getReceivingCategoryLabel,
   type Locale,
 } from "@/lib/i18n";
-import { getPublicCampaignPath } from "@/lib/public-campaign-url";
+import {
+  getPublicCampaignPath,
+  getPublicCampaignUrl,
+} from "@/lib/public-campaign-url";
 
 export function CampaignCard({
   campaign,
@@ -26,6 +30,20 @@ export function CampaignCard({
     title: campaign.title,
     titleEn: campaign.titleEn,
   });
+  const campaignPath = getPublicCampaignPath(campaign.slug, locale);
+  const publicCampaignUrl = getPublicCampaignUrl({
+    locale,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org",
+    slug: campaign.slug,
+  });
+  const shareCampaign = {
+    affectedArea: campaign.affectedArea || campaign.location,
+    coverImageUrl: campaign.coverImageUrl,
+    publicUrl: publicCampaignUrl,
+    responsible: campaign.responsible,
+    slug: campaign.slug,
+    title: campaignText.title,
+  };
 
   return (
     <Card className="surface-card shadow-none">
@@ -95,12 +113,16 @@ export function CampaignCard({
             </span>
           ))}
         </div>
-        <Link
-          className="btn-primary"
-          href={getPublicCampaignPath(campaign.slug, locale)}
-        >
-          {t.campaignList.viewCampaign}
-        </Link>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Link className="btn-primary justify-center" href={campaignPath}>
+            {t.campaignList.viewCampaign}
+          </Link>
+          <ShareCampaignButton
+            campaign={shareCampaign}
+            className="justify-center"
+            locale={locale}
+          />
+        </div>
       </Card.Content>
     </Card>
   );

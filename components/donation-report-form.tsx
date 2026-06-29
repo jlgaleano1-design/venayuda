@@ -1,9 +1,9 @@
 "use client";
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
-import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 import { FileField } from "@/components/file-field";
+import { ShareCampaignButton } from "@/components/share-campaign-button";
 import type { Campaign } from "@/lib/demo-data";
 import { getCampaignText, getDictionary, type Locale } from "@/lib/i18n";
 import { getPublicCampaignPath } from "@/lib/public-campaign-url";
@@ -29,7 +29,6 @@ export function DonationReportForm({
   const [statusMessage, setStatusMessage] = useState("");
   const [proofFileName, setProofFileName] = useState("");
   const [proofFileStatus, setProofFileStatus] = useState("");
-  const [shareCopied, setShareCopied] = useState(false);
   const t = getDictionary(locale).donationReport;
   const campaignText = getCampaignText({
     description: campaign.description,
@@ -45,25 +44,14 @@ export function DonationReportForm({
     typeof window === "undefined"
       ? publicCampaignPath
       : new URL(publicCampaignPath, window.location.origin).toString();
-
-  async function shareCampaign() {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: campaignText.title,
-          text: t.shareText(campaignText.title),
-          url: publicCampaignUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(publicCampaignUrl);
-      }
-
-      setShareCopied(true);
-      window.setTimeout(() => setShareCopied(false), 2200);
-    } catch {
-      setShareCopied(false);
-    }
-  }
+  const shareCampaign = {
+    affectedArea: campaign.affectedArea || campaign.location,
+    coverImageUrl: campaign.coverImageUrl,
+    publicUrl: publicCampaignUrl,
+    responsible: campaign.responsible,
+    slug: campaign.slug,
+    title: campaignText.title,
+  };
 
   async function submitDonationReport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -175,14 +163,11 @@ export function DonationReportForm({
           </p>
         </div>
 
-        <button
-          className="btn-primary w-full justify-center"
-          type="button"
-          onClick={shareCampaign}
-        >
-          {shareCopied ? <Check size={18} /> : <Share2 size={18} />}
-          {shareCopied ? t.copied : t.shareCampaign}
-        </button>
+        <ShareCampaignButton
+          campaign={shareCampaign}
+          className="w-full justify-center"
+          locale={locale}
+        />
 
         <p className="rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
           {t.reviewNotice}

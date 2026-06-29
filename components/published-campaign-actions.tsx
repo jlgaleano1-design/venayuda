@@ -2,14 +2,21 @@
 
 import { Check, ExternalLink, Share2 } from "lucide-react";
 import { useState } from "react";
+import { ShareCampaignButton } from "@/components/share-campaign-button";
+import type { Locale } from "@/lib/i18n";
+import type { ShareCampaignData } from "@/lib/share-campaign";
 
 export function PublishedCampaignActions({
   campaignPath,
+  locale = "es",
   publicCampaignUrl,
+  shareCampaign,
   variant = "inline",
 }: {
   campaignPath: string;
+  locale?: Locale;
   publicCampaignUrl: string;
+  shareCampaign?: ShareCampaignData;
   variant?: "fixed" | "inline";
 }) {
   const [copied, setCopied] = useState(false);
@@ -42,7 +49,9 @@ export function PublishedCampaignActions({
       <ActionButtons
         campaignPath={campaignPath}
         copied={copied}
+        locale={locale}
         onShare={sharePublicLink}
+        shareCampaign={shareCampaign}
       />
     </div>
   );
@@ -51,18 +60,34 @@ export function PublishedCampaignActions({
 function ActionButtons({
   campaignPath,
   copied,
+  locale,
   onShare,
+  shareCampaign,
 }: {
   campaignPath: string;
   copied: boolean;
+  locale: Locale;
   onShare: () => void;
+  shareCampaign?: ShareCampaignData;
 }) {
   return (
     <>
-      <button className="btn-primary min-w-0 flex-1 px-3 sm:w-auto sm:flex-none sm:px-5" type="button" onClick={onShare}>
-        {copied ? <Check size={18} /> : <Share2 size={18} />}
-        {copied ? "Link copiado" : "Compartir"}
-      </button>
+      {shareCampaign ? (
+        <ShareCampaignButton
+          campaign={shareCampaign}
+          className="min-w-0 flex-1 px-3 sm:w-auto sm:flex-none sm:px-5"
+          locale={locale}
+        />
+      ) : (
+        <button
+          className="btn-primary min-w-0 flex-1 px-3 sm:w-auto sm:flex-none sm:px-5"
+          type="button"
+          onClick={onShare}
+        >
+          {copied ? <Check size={18} /> : <Share2 size={18} />}
+          {copied ? "Link copiado" : "Compartir"}
+        </button>
+      )}
       <a className="btn-secondary min-w-0 flex-1 px-3 sm:w-auto sm:flex-none sm:px-5" href={campaignPath}>
         <ExternalLink size={18} />
         Ver campaña

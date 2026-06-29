@@ -12,6 +12,7 @@ import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { DonationReportModal } from "@/components/donation-report-modal";
 import { ExpandableDescription } from "@/components/expandable-description";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ShareCampaignButton } from "@/components/share-campaign-button";
 import { SiteFooter } from "@/components/site-footer";
 import { getPublicCampaign } from "@/lib/campaign-data";
 import {
@@ -114,6 +115,20 @@ export async function PublicCampaignDetailPage({
     title: campaign.title,
     titleEn: campaign.titleEn,
   });
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vendonar.org";
+  const campaignUrl = getPublicCampaignUrl({
+    locale,
+    siteUrl,
+    slug: campaign.slug,
+  });
+  const shareCampaign = {
+    affectedArea: campaign.affectedArea || campaign.location,
+    coverImageUrl: campaign.coverImageUrl,
+    publicUrl: campaignUrl,
+    responsible: campaign.responsible,
+    slug: campaign.slug,
+    title: campaignText.title,
+  };
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
@@ -151,6 +166,9 @@ export async function PublicCampaignDetailPage({
           <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
             {campaignText.title}
           </h1>
+          <div className="flex">
+            <ShareCampaignButton campaign={shareCampaign} locale={locale} />
+          </div>
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">

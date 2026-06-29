@@ -87,6 +87,14 @@ export default async function CampaignReviewPage({
       supabase,
       campaign.cover_image_path,
     );
+    const shareCampaign = {
+      affectedArea: campaign.affected_area || campaign.location || "Venezuela",
+      coverImageUrl: coverImageUrl ?? undefined,
+      publicUrl: publicCampaignUrl,
+      responsible: campaign.responsible_person_name,
+      slug: campaign.slug,
+      title: campaign.title,
+    };
 
     return (
       <main className="min-h-screen bg-[#FFFCF8] px-2 pb-28 pt-4 text-[#2A3534] sm:px-6 sm:py-10">
@@ -125,6 +133,7 @@ export default async function CampaignReviewPage({
               <PublishedCampaignActions
                 campaignPath={campaignPath}
                 publicCampaignUrl={publicCampaignUrl}
+                shareCampaign={shareCampaign}
                 variant="inline"
               />
 
@@ -144,6 +153,7 @@ export default async function CampaignReviewPage({
         <PublishedCampaignActions
           campaignPath={campaignPath}
           publicCampaignUrl={publicCampaignUrl}
+          shareCampaign={shareCampaign}
           variant="fixed"
         />
       </main>
