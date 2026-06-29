@@ -80,13 +80,12 @@ export function generateShareMessage({
   locale?: Locale;
 }) {
   const copy = getShareCopy(locale);
-  const affectedZone = campaign.affectedArea?.trim() || copy.fallbackZone;
   const publicUrl = getCampaignPublicUrl(campaign);
   const linkLine = includeUrl && publicUrl ? `\n\n${publicUrl}` : "";
 
   return `${copy.messageIntro}
 
-${copy.messageBody(affectedZone)}
+${copy.messageBody}
 
 ${copy.messageClose}${linkLine}`;
 }
@@ -99,15 +98,15 @@ const spanishShareCopy = {
   copyLink: "Copiar enlace",
   email: "Email",
   error: "No pudimos completar la acción.",
-  fallbackZone: "Venezuela",
   facebook: "Facebook",
   generating: "Generando imagen...",
   intro:
     "Puedes compartir el link o guardar una imagen lista para subir a tus redes.",
-  messageBody: (affectedZone: string) =>
-    `Busca apoyar a personas afectadas en ${affectedZone}, por el terremoto. Vendonar no procesa pagos ni cobra comisiones, es ayuda directa, persona a persona.`,
-  messageClose: "Puedes ayudar desde el enlace o compartiendo la campaña.",
-  messageIntro: "Hola! Te comparto esta campaña de Vendonar.",
+  messageBody:
+    "Vendonar no procesa pagos ni cobra comisiones: es ayuda directa.",
+  messageClose: "Se puede ayudar desde el enlace o compartiendo.",
+  messageIntro:
+    "Hola! Comparto esta campaña de Vendonar para apoyar a personas afectadas por el terremoto en Venezuela.",
   more: "Compartir",
   saveImage: "Guardar imagen",
   shareCampaign: "Comparte esta campaña",
@@ -129,14 +128,14 @@ const englishShareCopy = {
   copyLink: "Copy link",
   email: "Email",
   error: "We could not complete this action.",
-  fallbackZone: "Venezuela",
   facebook: "Facebook",
   generating: "Generating image...",
   intro: "You can share the link or save an image ready for your social posts.",
-  messageBody: (affectedZone: string) =>
-    `It helps support people affected in ${affectedZone} by the earthquake. Vendonar does not process payments or charge fees; it is direct, person-to-person aid.`,
-  messageClose: "You can help from the link or by sharing the campaign.",
-  messageIntro: "Hi! I'm sharing this Vendonar campaign with you.",
+  messageBody:
+    "Vendonar does not process payments or charge fees: it is direct aid.",
+  messageClose: "You can help from the link or by sharing.",
+  messageIntro:
+    "Hi! I'm sharing this Vendonar campaign to support people affected by the earthquake in Venezuela.",
   more: "Share",
   saveImage: "Save image",
   shareCampaign: "Share this campaign",
