@@ -65,12 +65,16 @@ export async function generateCampaignMetadata({
     siteUrl,
     slug: campaign.slug,
   });
+  const campaignMetaTitle =
+    locale === "en"
+      ? `Direct donations for Venezuela: ${campaignText.title}`
+      : `Donaciones directas para Venezuela: ${campaignText.title}`;
 
   return {
-    title: campaignText.title,
+    title: campaignMetaTitle,
     description: campaignText.description,
     openGraph: {
-      title: campaignText.title,
+      title: campaignMetaTitle,
       description: campaignText.description,
       url: campaignUrl,
       locale: t.metadata.ogLocale,
@@ -85,7 +89,7 @@ export async function generateCampaignMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: campaignText.title,
+      title: campaignMetaTitle,
       description: campaignText.description,
       images: [thumbnailUrl],
     },
@@ -132,7 +136,7 @@ export async function PublicCampaignDetailPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#FFFCF8] pb-28 text-[#2A3534]">
+    <main className="min-h-screen bg-[#FFFCF8] pb-28 text-[#2A3534] md:pb-0">
       <LanguageSwitcher
         currentLocale={locale}
         paths={{
@@ -159,7 +163,7 @@ export async function PublicCampaignDetailPage({
           <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
             {campaignText.title}
           </h1>
-          <div className="flex">
+          <div className="hidden sm:flex">
             <ShareCampaignButton campaign={shareCampaign} locale={locale} />
           </div>
         </div>
@@ -314,7 +318,10 @@ export async function PublicCampaignDetailPage({
           </div>
         </div>
       </section>
-      <FloatingDonateButton locale={locale} />
+      <FloatingCampaignActions
+        locale={locale}
+        shareCampaign={shareCampaign}
+      />
       <SiteFooter locale={locale} />
     </main>
   );
@@ -340,7 +347,7 @@ function PaymentMethodsCard({
   return (
     <section
       id="metodos-donacion"
-      className="surface-card scroll-mt-24 overflow-hidden border-[#2D5D5E]/20 shadow-sm"
+      className="surface-card scroll-mt-24 overflow-hidden border-[#2D5D5E]/20 shadow-sm md:scroll-mt-6"
     >
       <div className="flex flex-col gap-5 p-5 lg:p-6">
         <h2 className="text-lg font-extrabold">
@@ -392,15 +399,29 @@ function PaymentMethodsCard({
   );
 }
 
-function FloatingDonateButton({ locale }: { locale: Locale }) {
+function FloatingCampaignActions({
+  locale,
+  shareCampaign,
+}: {
+  locale: Locale;
+  shareCampaign: Parameters<typeof ShareCampaignButton>[0]["campaign"];
+}) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-[#FFFCF8] via-[#FFFCF8]/95 to-[#FFFCF8]/0 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10">
-      <a
-        className="btn-primary mx-auto flex h-12 w-full max-w-sm text-base shadow-[0_14px_34px_rgb(45_93_94_/_22%)]"
-        href="#metodos-donacion"
-      >
-        {locale === "en" ? "Donate" : "Donar"}
-      </a>
+    <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-[#FFFCF8] via-[#FFFCF8]/95 to-[#FFFCF8]/0 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 md:hidden">
+      <div className="mx-auto grid w-full max-w-sm grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2">
+        <ShareCampaignButton
+          campaign={shareCampaign}
+          className="h-12 min-w-0 px-3 text-base shadow-[0_14px_34px_rgb(42_53_52_/_10%)]"
+          locale={locale}
+          variant="secondary"
+        />
+        <a
+          className="btn-primary flex h-12 min-w-0 px-3 text-base shadow-[0_14px_34px_rgb(45_93_94_/_22%)]"
+          href="#metodos-donacion"
+        >
+          {locale === "en" ? "Donate" : "Donar"}
+        </a>
+      </div>
     </div>
   );
 }

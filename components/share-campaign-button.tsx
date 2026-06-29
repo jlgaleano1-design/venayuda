@@ -4,7 +4,6 @@ import {
   Check,
   Copy,
   Download,
-  Facebook,
   Mail,
   MessageCircle,
   MoreHorizontal,
@@ -39,18 +38,21 @@ export function ShareCampaignButton({
   campaign,
   className = "",
   locale = "es",
+  variant = "primary",
 }: {
   campaign: ShareCampaignData;
   className?: string;
   locale?: Locale;
+  variant?: "primary" | "secondary";
 }) {
   const [open, setOpen] = useState(false);
   const mounted = useMounted();
+  const buttonClassName = variant === "secondary" ? "btn-secondary" : "btn-primary";
 
   return (
     <>
       <button
-        className={`btn-primary ${className}`}
+        className={`${buttonClassName} ${className}`}
         type="button"
         onClick={() => setOpen(true)}
       >
@@ -254,7 +256,7 @@ function ShareCampaignDialog({
 
         <div className="mt-5 grid grid-cols-4 gap-x-3 gap-y-5">
           <ShareOption
-            icon={<Facebook size={30} />}
+            icon={<FacebookGlyph />}
             label={copy.facebook}
             tone="bg-[#1877F2] text-white"
             onClick={() => openShareUrl("facebook")}
@@ -343,6 +345,17 @@ function ShareOption({
       </span>
       <span className="leading-tight">{label}</span>
     </button>
+  );
+}
+
+function FacebookGlyph() {
+  return (
+    <span
+      aria-hidden="true"
+      className="font-sans text-[2rem] font-black leading-none text-white"
+    >
+      f
+    </span>
   );
 }
 
