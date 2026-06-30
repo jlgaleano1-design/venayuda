@@ -91,25 +91,12 @@ await step("Crear campaña sintética con imagen real en Storage", async () => {
     .eq("slug", slug)
     .single();
 
-  assert(campaign?.status === "pending_review", "campaña no quedó pending_review");
-  context.campaignId = campaign.id;
-});
-
-await step("Aprobar campaña y extraer link privado del creador", async () => {
-  const token = createReviewToken("campaign", context.campaignId);
-  const response = await fetchUrl(
-    `/api/campaign-requests/${context.campaignId}/review?token=${token}&decision=approve`,
-    { redirect: "manual" },
-  );
-  assert([200, 302, 303].includes(response.status), `aprobación respondió ${response.status}`);
-
-  const { data: campaign } = await adminSupabase
-    .from("campaigns")
-    .select("status, verification_status")
-    .eq("id", context.campaignId)
-    .single();
   assert(campaign?.status === "active", "campaña no quedó active");
-  assert(campaign?.verification_status === "verified", "campaña no quedó verified");
+  assert(
+    campaign?.verification_status === "pending",
+    "campaña no quedó pendiente de verificación",
+  );
+  context.campaignId = campaign.id;
 
   const { data: event } = await adminSupabase
     .from("email_events")

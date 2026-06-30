@@ -23,9 +23,11 @@ type CampaignPublicationResult =
 type CampaignRow = {
   contact_info: string | null;
   id: string;
+  reviewed_by?: string | null;
   slug: string;
   status: string;
   title: string;
+  verification_status?: string | null;
 };
 
 export async function publishCampaign({
@@ -41,7 +43,7 @@ export async function publishCampaign({
 }): Promise<CampaignPublicationResult> {
   const { data: campaign, error: campaignError } = await supabase
     .from("campaigns")
-    .select("id, contact_info, slug, status, title")
+    .select("id, contact_info, reviewed_by, slug, status, title, verification_status")
     .eq("id", campaignId)
     .single();
 
@@ -56,6 +58,20 @@ export async function publishCampaign({
   ).toString();
 
   if (campaignRow.status === "active") {
+    if (reviewedBy && campaignRow.verification_status !== "verified") {
+      const { error: verificationError } = await supabase
+        .from("campaigns")
+        .update({
+          reviewed_by: reviewedBy,
+          verification_status: "verified",
+        })
+        .eq("id", campaignId);
+
+      if (verificationError) {
+        return { error: "No se pudo verificar la campaña." };
+      }
+    }
+
     revalidatePublishedCampaign(campaignRow.slug);
 
     return {

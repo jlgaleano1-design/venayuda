@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ImageIcon,
   Plus,
+  Share2,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -87,11 +88,12 @@ export function CreateCampaignForm({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [shareFeedback, setShareFeedback] = useState("");
   const [submissionResult, setSubmissionResult] = useState<{
     confirmationRecipientEmail: string;
     creatorAccessLink?: string | null;
     publicCampaignUrl: string;
-    publicationFlow: "email_confirmation" | "instant";
+    publicationFlow: "instant";
     published: boolean;
   } | null>(null);
 
@@ -244,10 +246,7 @@ export function CreateCampaignForm({
             ? result.creatorAccessLink
             : null,
         publicCampaignUrl: result.publicCampaignUrl ?? publicCampaignLink,
-        publicationFlow:
-          result.publicationFlow === "email_confirmation"
-            ? "email_confirmation"
-            : "instant",
+        publicationFlow: "instant",
         published: result.published !== false,
       });
       setIsSubmitted(true);
@@ -273,8 +272,31 @@ export function CreateCampaignForm({
     shareInputRef.current?.focus({ preventScroll: true });
   }
 
+  async function shareSubmittedCampaign() {
+    const url = submissionResult?.publicCampaignUrl ?? publicCampaignLink;
+    const shareData = {
+      text: "Te comparto esta campaña en Vendonar.",
+      title: "Campaña en Vendonar",
+      url,
+    };
+
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        setShareFeedback("");
+        return;
+      }
+
+      await navigator.clipboard.writeText(url);
+      setShareFeedback("Link copiado.");
+    } catch {
+      setShareFeedback("No pudimos compartirlo. Puedes abrir el link abajo.");
+    }
+  }
+
   if (isSubmitted) {
-    const isPublished = submissionResult?.published ?? true;
+    const submittedPublicLink =
+      submissionResult?.publicCampaignUrl ?? publicCampaignLink;
 
     return (
       <Card className="surface-card shadow-none">
@@ -283,31 +305,16 @@ export function CreateCampaignForm({
             <CheckCircle2 className="mt-1 shrink-0 text-[#2D5D5E]" size={26} />
             <div>
               <h2 className="text-xl font-extrabold">
-                {isPublished
-                  ? "Tu campaña ya está publicada"
-                  : "Revisa tu correo"}
+                Tu campaña ya está publicada
               </h2>
               <p className="mt-2 leading-7 text-neutral-700">
-                {isPublished ? (
-                  <>
-                    Ya puedes compartirla con el link de abajo. Guarda también
-                    el enlace privado para subir comprobantes y avances. Si el
-                    correo está disponible, también lo enviaremos a{" "}
-                    <span className="font-extrabold text-[#2A3534]">
-                      {submissionResult?.confirmationRecipientEmail ?? email}
-                    </span>
-                    .
-                  </>
-                ) : (
-                  <>
-                    Te enviamos un enlace al correo{" "}
-                    <span className="font-extrabold text-[#2A3534]">
-                      {submissionResult?.confirmationRecipientEmail ?? email}
-                    </span>{" "}
-                    para confirmar y publicar esta campaña. Puede tardar unos
-                    minutos; si no lo ves, puedes buscar en Spam.
-                  </>
-                )}
+                Ya puedes compartirla con el link de abajo. Guarda también el
+                enlace privado para subir comprobantes y avances. Si el correo
+                está disponible, también lo enviaremos a{" "}
+                <span className="font-extrabold text-[#2A3534]">
+                  {submissionResult?.confirmationRecipientEmail ?? email}
+                </span>
+                .
               </p>
             </div>
           </div>
@@ -316,25 +323,43 @@ export function CreateCampaignForm({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-neutral-500">
-                  Link solicitado
+                  Tu link
                 </p>
-                <p className="mt-2 break-all font-extrabold text-[#2D5D5E]">
-                  {submissionResult?.publicCampaignUrl ?? publicCampaignLink}
-                </p>
+                <a
+                  className="mt-2 block break-all font-extrabold text-[#2D5D5E] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#2D5D5E]/30"
+                  href={submittedPublicLink}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {submittedPublicLink}
+                </a>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
-                <CheckCircle2 size={15} />
-                Coincide con tu link personalizado
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-[#2D5D5E]/10 px-3 py-1 text-xs font-extrabold text-[#2D5D5E]">
+                  <CheckCircle2 size={15} />
+                  Coincide con tu link personalizado
+                </span>
+                <Button
+                  className="btn-secondary h-9 px-3 text-sm"
+                  type="button"
+                  onPress={shareSubmittedCampaign}
+                >
+                  <Share2 size={16} />
+                  Compartir
+                </Button>
+              </div>
             </div>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              {isPublished
-                ? "Este enlace ya está activo y listo para compartir."
-                : "Este enlace se activa cuando confirmas desde tu correo."}
+              Este enlace ya está activo y listo para compartir.
             </p>
+            {shareFeedback ? (
+              <p className="mt-2 text-sm font-bold text-[#2D5D5E]">
+                {shareFeedback}
+              </p>
+            ) : null}
           </div>
 
-          {isPublished && submissionResult?.creatorAccessLink ? (
+          {submissionResult?.creatorAccessLink ? (
             <div className="rounded-[1.5rem] border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 p-4">
               <p className="text-sm font-bold text-neutral-500">
                 Link privado para gestionar la campaña
@@ -349,11 +374,9 @@ export function CreateCampaignForm({
             </div>
           ) : null}
 
-          {isPublished ? (
-            <FreshHomeLink className="btn-primary w-fit">
-              Volver al inicio
-            </FreshHomeLink>
-          ) : null}
+          <FreshHomeLink className="btn-primary w-fit">
+            Volver al inicio
+          </FreshHomeLink>
         </Card.Content>
       </Card>
     );

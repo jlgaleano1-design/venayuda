@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { publishCampaign } from "@/lib/campaign-publication";
 import { translateCampaignContent } from "@/lib/campaign-translation";
-import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { getActiveAdminProfile } from "@/lib/admin-auth";
-import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
-import { createCampaignReviewToken } from "@/lib/review-token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
@@ -178,10 +175,6 @@ export async function POST(request: Request) {
     if (!fallbackMethodsError) {
       return await finalizeCampaignRequest({
         campaignId: campaign.id,
-        publicCampaignUrl: getPublicCampaignUrl({
-          siteUrl,
-          slug: requestData.slug,
-        }),
         requestData,
         reviewedBy:
           requestData.publishAsVerified && activeAdminProfile
@@ -204,10 +197,6 @@ export async function POST(request: Request) {
 
   return await finalizeCampaignRequest({
     campaignId: campaign.id,
-    publicCampaignUrl: getPublicCampaignUrl({
-      siteUrl,
-      slug: requestData.slug,
-    }),
     requestData,
     reviewedBy:
       requestData.publishAsVerified && activeAdminProfile
@@ -446,121 +435,43 @@ function escapeLikePattern(value: string) {
 
 async function finalizeCampaignRequest({
   campaignId,
-  publicCampaignUrl,
   requestData,
   reviewedBy,
   siteUrl,
   supabase,
 }: {
   campaignId: string;
-  publicCampaignUrl: string;
   requestData: z.infer<typeof campaignRequestSchema>;
   reviewedBy?: string;
   siteUrl: string;
   supabase: ReturnType<typeof createAdminClient>;
 }) {
-  const shouldPublishRequestInstantly = Boolean(
-    requestData.publishAsVerified && reviewedBy,
-  );
+  const publicationResult = await publishCampaign({
+    campaignId,
+    reviewedBy,
+    siteUrl,
+    supabase,
+  });
 
-  if (shouldPublishRequestInstantly) {
-    const publicationResult = await publishCampaign({
-      campaignId,
-      reviewedBy,
-      siteUrl,
-      supabase,
-    });
-
-    if (publicationResult.error) {
-      return NextResponse.json(
-        { error: publicationResult.error },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      approvalEmailQueued: false,
-      approvalEmailSent: false,
-      confirmationEmailQueued: false,
-      confirmationEmailSent: false,
-      confirmationRecipientEmail: requestData.email,
-      creatorAccessLink: publicationResult.creatorAccessUrl,
-      publicCampaignUrl: publicationResult.publicCampaignUrl,
-      publicationFlow: "instant",
-      published: true,
-      reason: null,
-    });
-  }
-
-  let confirmationEmailResult: {
-    queued: boolean;
-    reason?: string;
-    sent: boolean;
-  } = {
-    queued: false,
-    reason: "el servicio de correo no está disponible",
-    sent: false,
-  };
-
-  if (!process.env.CAMPAIGN_REVIEW_SECRET) {
-    confirmationEmailResult = {
-      queued: false,
-      reason: "el enlace de confirmación necesita configuración interna",
-      sent: false,
-    };
-  } else {
-    const reviewToken = createCampaignReviewToken(campaignId);
-    const confirmationUrl = new URL(
-      `/api/campaign-requests/${campaignId}/review`,
-      siteUrl,
+  if (publicationResult.error) {
+    return NextResponse.json(
+      { error: publicationResult.error },
+      { status: 500 },
     );
-    confirmationUrl.searchParams.set("token", reviewToken);
-    confirmationUrl.searchParams.set("decision", "approve");
-    const reviewUrl = new URL(`/revisar/campana/${campaignId}`, siteUrl);
-    reviewUrl.searchParams.set("token", reviewToken);
-
-    try {
-      confirmationEmailResult = await queueOrSendEmailEvent(
-        supabase,
-        "campaign_review",
-        {
-          affectedArea: requestData.affectedArea,
-          approvalUrl: confirmationUrl.toString(),
-          contactEmail: requestData.email,
-          description: requestData.description,
-          instagramHandle: requestData.instagramHandle,
-          organization: requestData.organization,
-          paymentMethods: requestData.paymentMethods,
-          publicCampaignUrl,
-          recipientEmail: requestData.email,
-          reviewUrl: reviewUrl.toString(),
-          responsibleName: requestData.responsibleName,
-          slug: requestData.slug,
-          title: requestData.title,
-        },
-      );
-    } catch {
-      confirmationEmailResult = {
-        queued: false,
-        reason: "No se pudo poner en cola el correo de confirmación",
-        sent: false,
-      };
-    }
   }
 
   return NextResponse.json({
     ok: true,
-    approvalEmailQueued: confirmationEmailResult.queued,
-    approvalEmailSent: confirmationEmailResult.sent,
-    confirmationEmailQueued: confirmationEmailResult.queued,
-    confirmationEmailSent: confirmationEmailResult.sent,
+    approvalEmailQueued: false,
+    approvalEmailSent: false,
+    confirmationEmailQueued: false,
+    confirmationEmailSent: false,
     confirmationRecipientEmail: requestData.email,
-    creatorAccessLink: null,
-    publicCampaignUrl,
-    publicationFlow: "email_confirmation",
-    published: false,
-    reason: confirmationEmailResult.reason,
+    creatorAccessLink: publicationResult.creatorAccessUrl,
+    publicCampaignUrl: publicationResult.publicCampaignUrl,
+    publicationFlow: "instant",
+    published: true,
+    reason: null,
   });
 }
 
