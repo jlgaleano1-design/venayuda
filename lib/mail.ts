@@ -61,6 +61,18 @@ export type CampaignApprovedEmail = {
   recipientEmail: string;
 };
 
+export type CampaignSpamAlertEmail = {
+  adminUrl: string;
+  campaignId: string;
+  contactEmail: string;
+  publicCampaignUrl: string;
+  recipientEmail: string;
+  responsibleName: string;
+  riskFlags: string[];
+  slug: string;
+  title: string;
+};
+
 export type PurchaseReviewEmail = {
   approvalUrl: string;
   amount: string;
@@ -310,6 +322,57 @@ export async function sendCampaignApprovedEmail(email: CampaignApprovedEmail) {
             `<p style="margin:12px 0 0;color:#626866;font-size:13px;">${creatorAccessInstructions}</p>`,
           ].join(""),
         ),
+      ].join(""),
+    }),
+  });
+
+  return { sent: true };
+}
+
+export async function sendCampaignSpamAlertEmail(email: CampaignSpamAlertEmail) {
+  const mailer = createMailer();
+
+  if (!mailer) {
+    return { sent: false, reason: "Email no configurado" };
+  }
+
+  await sendMail(mailer, {
+    from: mailer.from,
+    to: email.recipientEmail,
+    subject: `Revisar campaña sospechosa: ${email.title}`,
+    text: [
+      "Nueva campaña marcada como sospechosa en Vendonar.",
+      "",
+      `Campaña: ${email.title}`,
+      `Responsable: ${email.responsibleName}`,
+      `Correo: ${email.contactEmail}`,
+      `Slug: ${email.slug}`,
+      `ID: ${email.campaignId}`,
+      "",
+      "Señales:",
+      ...email.riskFlags.map((flag) => `- ${flag}`),
+      "",
+      "Ver campaña:",
+      email.publicCampaignUrl,
+      "",
+      "Revisar en admin:",
+      email.adminUrl,
+    ].join("\n"),
+    html: renderBrandEmail({
+      preview: `Revisar campaña sospechosa: ${email.title}`,
+      title: "Campaña sospechosa",
+      children: [
+        `<p>Vendonar publicó una campaña con señales de posible spam.</p>`,
+        renderInfoList([
+          { label: "Campaña", value: email.title },
+          { label: "Responsable", value: email.responsibleName },
+          { label: "Correo", value: email.contactEmail },
+          { label: "Slug", value: email.slug },
+          { label: "ID", value: email.campaignId },
+          { label: "Señales", value: email.riskFlags.join(", ") },
+        ]),
+        `<p style="margin-top:24px;">${renderEmailButton("Abrir admin", email.adminUrl)}</p>`,
+        `<p style="margin-top:14px;font-size:13px;">También puedes ${renderSecondaryLink("ver la campaña pública", email.publicCampaignUrl)}.</p>`,
       ].join(""),
     }),
   });

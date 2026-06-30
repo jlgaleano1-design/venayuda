@@ -2,12 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type CampaignApprovedEmail,
   type CampaignReviewEmail,
+  type CampaignSpamAlertEmail,
   type DonationConfirmationEmail,
   type DonationReportEmail,
   type PurchaseImpactEmail,
   type PurchaseReviewEmail,
   sendCampaignApprovedEmail,
   sendCampaignReviewEmail,
+  sendCampaignSpamAlertEmail,
   sendDonationConfirmationEmail,
   sendDonationReportEmail,
   sendPurchaseImpactEmail,
@@ -17,6 +19,7 @@ import {
 export type EmailEventType =
   | "campaign_approved"
   | "campaign_review"
+  | "campaign_spam_alert"
   | "donation_confirmation"
   | "donation_report"
   | "purchase_impact"
@@ -25,6 +28,7 @@ export type EmailEventType =
 export type EmailEventPayloadMap = {
   campaign_approved: CampaignApprovedEmail;
   campaign_review: CampaignReviewEmail;
+  campaign_spam_alert: CampaignSpamAlertEmail;
   donation_confirmation: DonationConfirmationEmail;
   donation_report: DonationReportEmail;
   purchase_impact: PurchaseImpactEmail;
@@ -234,6 +238,10 @@ async function deliverEmailEvent(event: EmailEventRow) {
     case "campaign_review":
       return sendCampaignReviewEmail(
         event.payload as EmailEventPayloadMap["campaign_review"],
+      );
+    case "campaign_spam_alert":
+      return sendCampaignSpamAlertEmail(
+        event.payload as EmailEventPayloadMap["campaign_spam_alert"],
       );
     case "donation_confirmation":
       return sendDonationConfirmationEmail(

@@ -10,7 +10,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { campaigns } from "@/lib/demo-data";
 import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import {
@@ -54,6 +54,26 @@ type PaymentMethodDraft = {
   transferInstructions: string;
 };
 
+declare global {
+  interface Window {
+    turnstile?: {
+      remove: (widgetId: string) => void;
+      render: (
+        container: HTMLElement,
+        options: {
+          appearance?: "always" | "execute" | "interaction-only";
+          callback: (token: string) => void;
+          "error-callback": () => void;
+          "expired-callback": () => void;
+          sitekey: string;
+          theme?: "auto" | "dark" | "light";
+        },
+      ) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
+
 function createEmptyPaymentMethod(id: number): PaymentMethodDraft {
   return {
     id,
@@ -84,11 +104,13 @@ export function CreateCampaignForm({
   const [shareField, setShareField] = useState("");
   const [shareFieldError, setShareFieldError] = useState("");
   const [email, setEmail] = useState("");
+  const [formStartedAt] = useState(() => Date.now());
   const [publishAsVerified, setPublishAsVerified] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [shareFeedback, setShareFeedback] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [submissionResult, setSubmissionResult] = useState<{
     confirmationRecipientEmail: string;
     creatorAccessLink?: string | null;
@@ -101,6 +123,8 @@ export function CreateCampaignForm({
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   );
   const siteHost = siteUrl.replace(/^https?:\/\//, "");
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+  const needsTurnstile = Boolean(turnstileSiteKey);
   const shareSlug = normalizeShareField(shareField);
   const isShareFieldTaken = campaigns.some(
     (campaign) => campaign.slug === shareSlug,
@@ -122,16 +146,19 @@ export function CreateCampaignForm({
     isEmailValid &&
     hasInstagramHandle &&
     hasCoverImage &&
-    arePaymentMethodsComplete;
+    arePaymentMethodsComplete &&
+    (!needsTurnstile || Boolean(turnstileToken));
   const submitBlockReason = getSubmitBlockReason({
     hasCoverImage,
     hasLinkError: Boolean(shareFieldError),
     hasEmail,
     hasInstagramHandle,
     hasPaymentMethod: paymentMethodsToSubmit.length > 0,
+    hasTurnstileToken: Boolean(turnstileToken),
     incompletePaymentMethodIndex,
     isEmailValid,
     isShareFieldTaken,
+    needsTurnstile,
     shareSlug,
   });
   const lastPaymentMethod = paymentMethods[paymentMethods.length - 1];
@@ -143,6 +170,11 @@ export function CreateCampaignForm({
   const formHelpText = shareFieldError || (!canSubmit ? submitBlockReason : "");
   const shouldFocusShareField =
     Boolean(shareFieldError) || (!shareSlug && Boolean(formHelpText));
+  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
+  const handleTurnstileVerify = useCallback(
+    (token: string) => setTurnstileToken(token),
+    [],
+  );
 
   function addPaymentMethod() {
     if (!canAddPaymentMethod) {
@@ -226,8 +258,11 @@ export function CreateCampaignForm({
           slug: shareSlug,
           description: String(formData.get("description") ?? ""),
           coverImageName: coverImagePath,
+          formStartedAt,
+          honeypot: String(formData.get("companyWebsite") ?? ""),
           paymentMethods: paymentMethodsToSubmit.map(toPaymentMethodPayload),
           publishAsVerified: canPublishAsVerified && publishAsVerified,
+          turnstileToken,
         }),
       });
       const result = await response.json();
@@ -259,6 +294,7 @@ export function CreateCampaignForm({
       } else {
         setSubmitError(normalizedError);
       }
+      setTurnstileToken("");
     } finally {
       setIsSubmitting(false);
     }
@@ -386,6 +422,13 @@ export function CreateCampaignForm({
     <Card className="surface-card shadow-none">
       <form onSubmit={submitCampaignRequest}>
         <Card.Content className="flex flex-col gap-5 p-5 md:p-6">
+        <input
+          autoComplete="off"
+          className="hidden"
+          name="companyWebsite"
+          tabIndex={-1}
+          type="text"
+        />
         <div className="grid gap-4 md:grid-cols-2">
           <TextField label="Título de la campaña" name="title" required />
           <TextField
@@ -588,6 +631,14 @@ export function CreateCampaignForm({
           </p>
         ) : null}
 
+        {needsTurnstile ? (
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onExpire={handleTurnstileReset}
+            onVerify={handleTurnstileVerify}
+          />
+        ) : null}
+
         {formHelpText ? (
           shouldFocusShareField ? (
             <button
@@ -613,6 +664,82 @@ export function CreateCampaignForm({
         </Card.Content>
       </form>
     </Card>
+  );
+}
+
+function TurnstileWidget({
+  onExpire,
+  onVerify,
+  siteKey,
+}: {
+  onExpire: () => void;
+  onVerify: (token: string) => void;
+  siteKey: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!siteKey) {
+      return;
+    }
+
+    let isMounted = true;
+
+    function renderTurnstile() {
+      if (
+        !isMounted ||
+        !containerRef.current ||
+        !window.turnstile ||
+        widgetIdRef.current
+      ) {
+        return;
+      }
+
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        appearance: "interaction-only",
+        callback: onVerify,
+        "error-callback": onExpire,
+        "expired-callback": onExpire,
+        sitekey: siteKey,
+        theme: "light",
+      });
+    }
+
+    if (window.turnstile) {
+      renderTurnstile();
+    } else {
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        'script[src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"]',
+      );
+
+      if (existingScript) {
+        existingScript.addEventListener("load", renderTurnstile, { once: true });
+      } else {
+        const script = document.createElement("script");
+        script.async = true;
+        script.defer = true;
+        script.src =
+          "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.addEventListener("load", renderTurnstile, { once: true });
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      isMounted = false;
+
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, [onExpire, onVerify, siteKey]);
+
+  return (
+    <div className="min-h-0">
+      <div ref={containerRef} />
+    </div>
   );
 }
 
@@ -673,9 +800,11 @@ function getSubmitBlockReason({
   hasEmail,
   hasInstagramHandle,
   hasPaymentMethod,
+  hasTurnstileToken,
   incompletePaymentMethodIndex,
   isEmailValid,
   isShareFieldTaken,
+  needsTurnstile,
   shareSlug,
 }: {
   hasCoverImage: boolean;
@@ -683,9 +812,11 @@ function getSubmitBlockReason({
   hasEmail: boolean;
   hasInstagramHandle: boolean;
   hasPaymentMethod: boolean;
+  hasTurnstileToken: boolean;
   incompletePaymentMethodIndex: number;
   isEmailValid: boolean;
   isShareFieldTaken: boolean;
+  needsTurnstile: boolean;
   shareSlug: string;
 }) {
   if (hasLinkError) {
@@ -722,6 +853,10 @@ function getSubmitBlockReason({
 
   if (incompletePaymentMethodIndex >= 0) {
     return `Completa los campos obligatorios del método ${incompletePaymentMethodIndex + 1} o déjalo totalmente vacío.`;
+  }
+
+  if (needsTurnstile && !hasTurnstileToken) {
+    return "Espera unos segundos mientras validamos que la solicitud es legítima.";
   }
 
   return "";

@@ -208,7 +208,24 @@ NEXT_PUBLIC_SITE_URL=https://tu-dominio.com
 
 La app usa este valor para construir links publicos de campana como `https://tu-dominio.com/ayuda-la-guaira`.
 
-### 3. Configurar correo transaccional
+### 3. Configurar proteccion anti-spam
+
+Vendonar puede validar la creacion de campanas con Cloudflare Turnstile cuando
+las llaves estan configuradas. Si no hay llaves, la app conserva las demas
+capas anti-spam: auditoria privada, honeypot, tiempo de llenado, rate limit y
+reglas obvias contra texto basura.
+
+```bash
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=tu-site-key-publica
+TURNSTILE_SECRET_KEY=tu-secret-key
+```
+
+El backend tambien usa auditoria privada, honeypot, tiempo de llenado, rate
+limit y reglas obvias contra textos basura como `asd`, `qwer`, `zxc` o `12345`.
+Las campanas sospechosas se publican, pero se marcan en el panel admin y envian
+alerta por correo a admins activos.
+
+### 4. Configurar correo transaccional
 
 Vendonar encola correos en Supabase y los envia desde el worker
 `/api/internal/email-worker`. Sender es el proveedor SMTP unico para correos
@@ -227,7 +244,7 @@ La app no usa fallback de Resend. Si falta una variable SMTP o `EMAIL_PROVIDER`
 no es `smtp`, los correos quedan sin enviar y la cola permite reintentar cuando
 la configuracion este completa.
 
-### 4. Iniciar Supabase local
+### 5. Iniciar Supabase local
 
 Con Supabase CLI instalado:
 
@@ -238,7 +255,7 @@ supabase db reset
 
 `db reset` aplica la migracion `supabase/migrations/0001_initial_transparency_ledger.sql`.
 
-### 5. Crear el primer admin
+### 6. Crear el primer admin
 
 1. Crea un usuario en Supabase Auth.
 2. Copia su `user_id`.

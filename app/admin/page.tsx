@@ -91,6 +91,24 @@ type DonationStatusRow = {
   status: "pending" | "verified" | "rejected";
 };
 
+type CampaignRequestAuditRow = {
+  block_reason: string | null;
+  campaign: {
+    id: string;
+    slug: string;
+    status: string;
+    title: string;
+    verification_status: string;
+  } | null;
+  campaign_id: string | null;
+  contact_email: string | null;
+  created_at: string;
+  id: string;
+  instagram_handle: string | null;
+  risk_flags: string[] | null;
+  slug: string | null;
+};
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const { profile, supabase } = await requireActiveAdminProfile();
   const params = await searchParams;
@@ -102,6 +120,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     { data: publicCampaigns },
     { data: engagementEvents },
     { data: donationStatuses },
+    { data: suspiciousCampaignAudits },
   ] = await Promise.all([
     supabase
       .from("campaigns")
@@ -146,6 +165,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       .from("donations")
       .select("campaign_id, created_at, status")
       .returns<DonationStatusRow[]>(),
+    supabase
+      .from("campaign_request_audit_events")
+      .select(
+        "block_reason, campaign_id, contact_email, created_at, id, instagram_handle, risk_flags, slug, campaign:campaigns(id, slug, status, title, verification_status)",
+      )
+      .eq("event_type", "suspicious")
+      .order("created_at", { ascending: false })
+      .limit(12)
+      .returns<CampaignRequestAuditRow[]>(),
   ]);
 
   const campaigns = pendingCampaigns ?? [];
@@ -248,6 +276,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div className="grid gap-3 lg:grid-cols-2">
                 {campaignActivity.map((campaign) => (
                   <ActivityItem campaign={campaign} key={campaign.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Campañas sospechosas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Solicitudes publicadas con señales obvias de basura para revisar
+                y archivar rápido si hace falta.
+              </p>
+            </div>
+            {(suspiciousCampaignAudits ?? []).length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {(suspiciousCampaignAudits ?? []).map((audit) => (
+                  <SuspiciousCampaignItem audit={audit} key={audit.id} />
                 ))}
               </div>
             ) : (
@@ -599,6 +650,62 @@ function ActivityMetric({
   );
 }
 
+function SuspiciousCampaignItem({ audit }: { audit: CampaignRequestAuditRow }) {
+  const campaign = audit.campaign;
+  const title = campaign?.title ?? audit.slug ?? "Campaña sin título";
+  const slug = campaign?.slug ?? audit.slug;
+  const canArchive = campaign?.id && campaign.status !== "archived";
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold">{title}</p>
+          <p className="mt-1 text-sm leading-6 text-neutral-600">
+            {[audit.contact_email, audit.instagram_handle ? `@${audit.instagram_handle}` : null]
+              .filter(Boolean)
+              .join(" · ") || "Sin contacto registrado"}
+          </p>
+          {slug ? (
+            <Link
+              className="mt-1 inline-flex text-sm font-bold text-[#2D5D5E]"
+              href={`/campanas/${slug}`}
+            >
+              /campanas/{slug}
+            </Link>
+          ) : null}
+        </div>
+        {canArchive ? (
+          <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
+            <input name="decision" type="hidden" value="reject" />
+            <button
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
+              type="submit"
+            >
+              <ArchiveX size={16} />
+              Archivar
+            </button>
+          </form>
+        ) : (
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-neutral-700">
+            Archivada
+          </span>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-neutral-700">
+        {(audit.risk_flags ?? []).map((flag) => (
+          <span className="rounded-full bg-white px-3 py-1" key={flag}>
+            {formatRiskFlag(flag)}
+          </span>
+        ))}
+        <span className="rounded-full bg-white px-3 py-1">
+          {formatDate(audit.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function PublicCampaignModerationItem({
   campaign,
 }: {
@@ -892,6 +999,14 @@ function formatVerificationStatus(status: PublicCampaignRow["verification_status
       verified: "verificada",
     }[status] ?? status
   );
+}
+
+function formatRiskFlag(flag: string) {
+  return flag
+    .replace(/_/g, " ")
+    .replace("looks like gibberish", "parece basura")
+    .replace("low information", "poca información")
+    .replace("fast submission", "envío rápido");
 }
 
 function formatMoney(amount: string | number, currency: string) {

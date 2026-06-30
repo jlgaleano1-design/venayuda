@@ -1,9 +1,14 @@
-import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  assessCampaignSpam,
+  createStableHash,
+  type CampaignSpamAssessment,
+} from "@/lib/campaign-spam";
 import { publishCampaign } from "@/lib/campaign-publication";
 import { translateCampaignContent } from "@/lib/campaign-translation";
 import { getActiveAdminProfile } from "@/lib/admin-auth";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
@@ -11,6 +16,8 @@ const duplicateCampaignLimitMessage =
   "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.";
 const blockedCampaignRequestMessage =
   "No pudimos recibir esta solicitud. Si crees que es un error, escríbenos para revisarla.";
+const turnstileVerificationUrl =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
@@ -38,6 +45,8 @@ const campaignRequestSchema = z.object({
   coverImageName: z.string().min(1),
   description: z.string().min(1),
   email: z.string().email(),
+  formStartedAt: z.number().optional(),
+  honeypot: z.string().optional(),
   instagramHandle: z.string().min(1),
   organization: z.string().optional(),
   paymentMethods: z.array(paymentMethodSchema).min(1),
@@ -45,6 +54,7 @@ const campaignRequestSchema = z.object({
   responsibleName: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   title: z.string().min(1),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -60,12 +70,24 @@ export async function POST(request: Request) {
   const requestData = payload.data;
   const contactEmail = normalizeEmail(requestData.email);
   const requestMetadata = getRequestMetadata(request);
+  const spamAssessment = assessCampaignSpam({
+    description: requestData.description,
+    email: contactEmail,
+    formStartedAt: requestData.formStartedAt,
+    honeypot: requestData.honeypot,
+    instagramHandle: requestData.instagramHandle,
+    organization: requestData.organization,
+    responsibleName: requestData.responsibleName,
+    slug: requestData.slug,
+    title: requestData.title,
+  });
   const activeAdminProfile = await getRequestAdminProfile();
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ??
       request.headers.get("origin") ??
       "https://vendonar.com",
   );
+  const isLocalRequest = isLocalUrl(request.url) || isLocalUrl(siteUrl);
 
   let supabase;
 
@@ -78,6 +100,86 @@ export async function POST(request: Request) {
           "No pudimos recibir la solicitud en este momento. Inténtalo de nuevo en unos minutos.",
       },
       { status: 503 },
+    );
+  }
+
+  const turnstileResult = await verifyTurnstileToken({
+    ip: requestMetadata.ip,
+    isLocalRequest,
+    token: requestData.turnstileToken,
+  });
+
+  if (!turnstileResult.ok) {
+    await recordCampaignRequestAuditEvent({
+      blockReason: turnstileResult.reason,
+      campaignId: null,
+      contactEmail,
+      eventType: "blocked",
+      requestData,
+      requestMetadata,
+      riskFlags: spamAssessment.riskFlags,
+      supabase,
+      turnstileOutcome: turnstileResult.reason,
+    });
+
+    return NextResponse.json(
+      {
+        error:
+          turnstileResult.status === 503
+            ? "No pudimos validar la solicitud en este momento. Inténtalo de nuevo en unos minutos."
+            : blockedCampaignRequestMessage,
+      },
+      { status: turnstileResult.status },
+    );
+  }
+
+  if (spamAssessment.blockReasons.length > 0) {
+    await recordCampaignRequestAuditEvent({
+      blockReason: spamAssessment.blockReasons.join(","),
+      campaignId: null,
+      contactEmail,
+      eventType: "blocked",
+      requestData,
+      requestMetadata,
+      riskFlags: spamAssessment.riskFlags,
+      supabase,
+      turnstileOutcome: turnstileResult.reason,
+    });
+
+    return NextResponse.json(
+      {
+        error: spamAssessment.blockReasons.some((reason) =>
+          /garbage|low_information/i.test(reason),
+        )
+          ? "La solicitud parece contener datos de prueba o información insuficiente. Revisa el título, responsable, correo, Instagram y link antes de enviarla."
+          : blockedCampaignRequestMessage,
+      },
+      { status: 403 },
+    );
+  }
+
+  const rateLimitResult = await enforceCampaignRequestRateLimits({
+    contactEmail,
+    requestMetadata,
+    supabase,
+  });
+
+  if (rateLimitResult.blocked) {
+    await recordCampaignRequestAuditEvent({
+      blockReason: rateLimitResult.reason,
+      campaignId: null,
+      contactEmail,
+      eventType: "blocked",
+      requestData,
+      requestMetadata,
+      riskFlags: spamAssessment.riskFlags,
+      supabase,
+      turnstileOutcome: turnstileResult.reason,
+    });
+
+    return NextResponse.json(
+      { error: blockedCampaignRequestMessage },
+      { status: 429 },
     );
   }
 
@@ -96,7 +198,9 @@ export async function POST(request: Request) {
       eventType: "blocked",
       requestData,
       requestMetadata,
+      riskFlags: spamAssessment.riskFlags,
       supabase,
+      turnstileOutcome: turnstileResult.reason,
     });
 
     return NextResponse.json(
@@ -177,15 +281,6 @@ export async function POST(request: Request) {
     );
   }
 
-  await recordCampaignRequestAuditEvent({
-    campaignId: campaign.id,
-    contactEmail,
-    eventType: "created",
-    requestData,
-    requestMetadata,
-    supabase,
-  });
-
   const methodRows = requestData.paymentMethods.map((method) =>
     toPaymentMethodRow({
       campaignId: campaign.id,
@@ -213,12 +308,15 @@ export async function POST(request: Request) {
       return await finalizeCampaignRequest({
         campaignId: campaign.id,
         requestData,
+        requestMetadata,
         reviewedBy:
           requestData.publishAsVerified && activeAdminProfile
             ? activeAdminProfile.user_id
             : undefined,
         siteUrl,
+        spamAssessment,
         supabase,
+        turnstileOutcome: turnstileResult.reason,
       });
     }
   }
@@ -235,12 +333,15 @@ export async function POST(request: Request) {
   return await finalizeCampaignRequest({
     campaignId: campaign.id,
     requestData,
+    requestMetadata,
     reviewedBy:
       requestData.publishAsVerified && activeAdminProfile
         ? activeAdminProfile.user_id
         : undefined,
     siteUrl,
+    spamAssessment,
     supabase,
+    turnstileOutcome: turnstileResult.reason,
   });
 }
 
@@ -473,15 +574,21 @@ function escapeLikePattern(value: string) {
 async function finalizeCampaignRequest({
   campaignId,
   requestData,
+  requestMetadata,
   reviewedBy,
   siteUrl,
+  spamAssessment,
   supabase,
+  turnstileOutcome,
 }: {
   campaignId: string;
   requestData: z.infer<typeof campaignRequestSchema>;
+  requestMetadata: RequestMetadata;
   reviewedBy?: string;
   siteUrl: string;
+  spamAssessment: CampaignSpamAssessment;
   supabase: ReturnType<typeof createAdminClient>;
+  turnstileOutcome: string;
 }) {
   const publicationResult = await publishCampaign({
     campaignId,
@@ -497,6 +604,34 @@ async function finalizeCampaignRequest({
     );
   }
 
+  const publicCampaignUrl =
+    publicationResult.publicCampaignUrl ??
+    new URL(`/campanas/${requestData.slug}`, siteUrl).toString();
+  const eventType =
+    spamAssessment.riskFlags.length > 0 ? "suspicious" : "created";
+
+  await recordCampaignRequestAuditEvent({
+    campaignId,
+    contactEmail: normalizeEmail(requestData.email),
+    eventType,
+    requestData,
+    requestMetadata,
+    riskFlags: spamAssessment.riskFlags,
+    supabase,
+    turnstileOutcome,
+  });
+
+  if (spamAssessment.riskFlags.length > 0) {
+    await notifyCampaignSpamAlert({
+      campaignId,
+      publicCampaignUrl,
+      requestData,
+      riskFlags: spamAssessment.riskFlags,
+      siteUrl,
+      supabase,
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     approvalEmailQueued: false,
@@ -505,11 +640,206 @@ async function finalizeCampaignRequest({
     confirmationEmailSent: false,
     confirmationRecipientEmail: requestData.email,
     creatorAccessLink: publicationResult.creatorAccessUrl,
-    publicCampaignUrl: publicationResult.publicCampaignUrl,
+    publicCampaignUrl,
     publicationFlow: "instant",
     published: true,
     reason: null,
   });
+}
+
+async function verifyTurnstileToken({
+  ip,
+  isLocalRequest,
+  token,
+}: {
+  ip: string | null;
+  isLocalRequest: boolean;
+  token?: string;
+}) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const requiresTurnstile = !isLocalRequest && Boolean(secret);
+
+  if (!requiresTurnstile) {
+    return { ok: true, reason: "skipped_dev" };
+  }
+
+  if (!secret) {
+    return { ok: false, reason: "turnstile_not_configured", status: 503 };
+  }
+
+  if (!token) {
+    return { ok: false, reason: "turnstile_token_missing", status: 403 };
+  }
+
+  try {
+    const body = new URLSearchParams({
+      response: token,
+      secret,
+    });
+
+    if (ip) {
+      body.set("remoteip", ip);
+    }
+
+    const response = await fetch(turnstileVerificationUrl, {
+      body,
+      method: "POST",
+      signal: AbortSignal.timeout(8_000),
+    });
+    const result = (await response.json()) as {
+      success?: boolean;
+      "error-codes"?: string[];
+    };
+
+    if (!response.ok || !result.success) {
+      return {
+        ok: false,
+        reason: `turnstile_failed:${(result["error-codes"] ?? []).join("|")}`,
+        status: 403,
+      };
+    }
+
+    return { ok: true, reason: "verified" };
+  } catch {
+    return { ok: false, reason: "turnstile_unavailable", status: 503 };
+  }
+}
+
+async function enforceCampaignRequestRateLimits({
+  contactEmail,
+  requestMetadata,
+  supabase,
+}: {
+  contactEmail: string;
+  requestMetadata: RequestMetadata;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
+  const rateLimitSalt = getRequestHashSalt();
+  const checks = [
+    requestMetadata.ipHash
+      ? {
+          action: "campaign_create_ip",
+          bucketKey: requestMetadata.ipHash,
+          maxAttempts: 5,
+          windowMs: 30 * 60 * 1000,
+        }
+      : null,
+    {
+      action: "campaign_create_email",
+      bucketKey: createStableHash(contactEmail, rateLimitSalt),
+      maxAttempts: 3,
+      windowMs: 60 * 60 * 1000,
+    },
+  ].filter(
+    (check): check is {
+      action: string;
+      bucketKey: string;
+      maxAttempts: number;
+      windowMs: number;
+    } => Boolean(check),
+  );
+
+  for (const check of checks) {
+    const result = await recordRateLimitAttempt({ ...check, supabase });
+
+    if (result.blocked) {
+      return result;
+    }
+  }
+
+  return { blocked: false };
+}
+
+async function recordRateLimitAttempt({
+  action,
+  bucketKey,
+  maxAttempts,
+  supabase,
+  windowMs,
+}: {
+  action: string;
+  bucketKey: string;
+  maxAttempts: number;
+  supabase: ReturnType<typeof createAdminClient>;
+  windowMs: number;
+}) {
+  const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs)
+    .toISOString();
+
+  try {
+    const { data } = await supabase
+      .from("campaign_request_rate_limits")
+      .select("attempt_count")
+      .eq("action", action)
+      .eq("bucket_key", bucketKey)
+      .eq("window_start", windowStart)
+      .maybeSingle<{ attempt_count: number }>();
+
+    if (!data) {
+      await supabase.from("campaign_request_rate_limits").insert({
+        action,
+        bucket_key: bucketKey,
+        window_start: windowStart,
+      });
+
+      return { blocked: false };
+    }
+
+    const nextAttemptCount = data.attempt_count + 1;
+    await supabase
+      .from("campaign_request_rate_limits")
+      .update({
+        attempt_count: nextAttemptCount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("action", action)
+      .eq("bucket_key", bucketKey)
+      .eq("window_start", windowStart);
+
+    return nextAttemptCount > maxAttempts
+      ? { blocked: true, reason: `rate_limited:${action}` }
+      : { blocked: false };
+  } catch {
+    return { blocked: false };
+  }
+}
+
+async function notifyCampaignSpamAlert({
+  campaignId,
+  publicCampaignUrl,
+  requestData,
+  riskFlags,
+  siteUrl,
+  supabase,
+}: {
+  campaignId: string;
+  publicCampaignUrl: string;
+  requestData: z.infer<typeof campaignRequestSchema>;
+  riskFlags: string[];
+  siteUrl: string;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
+  const { data: admins } = await supabase
+    .from("admin_profiles")
+    .select("email")
+    .eq("active", true)
+    .returns<{ email: string }[]>();
+
+  await Promise.all(
+    (admins ?? []).map((admin) =>
+      queueOrSendEmailEvent(supabase, "campaign_spam_alert", {
+        adminUrl: new URL("/admin", siteUrl).toString(),
+        campaignId,
+        contactEmail: requestData.email,
+        publicCampaignUrl,
+        recipientEmail: admin.email,
+        responsibleName: requestData.responsibleName,
+        riskFlags,
+        slug: requestData.slug,
+        title: requestData.title,
+      }),
+    ),
+  );
 }
 
 async function findCampaignRequestBlock({
@@ -627,15 +957,19 @@ async function recordCampaignRequestAuditEvent({
   eventType,
   requestData,
   requestMetadata,
+  riskFlags = [],
   supabase,
+  turnstileOutcome,
 }: {
   blockReason?: string;
   campaignId: string | null;
   contactEmail: string;
-  eventType: "blocked" | "created";
+  eventType: "blocked" | "created" | "suspicious";
   requestData: z.infer<typeof campaignRequestSchema>;
   requestMetadata: RequestMetadata;
+  riskFlags?: string[];
   supabase: ReturnType<typeof createAdminClient>;
+  turnstileOutcome?: string;
 }) {
   try {
     await supabase.from("campaign_request_audit_events").insert({
@@ -646,7 +980,10 @@ async function recordCampaignRequestAuditEvent({
       instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
       ip_address: requestMetadata.ip,
       ip_hash: requestMetadata.ipHash,
+      rate_limit_key: requestMetadata.ipHash,
+      risk_flags: riskFlags,
       slug: requestData.slug,
+      turnstile_outcome: turnstileOutcome ?? null,
       user_agent: requestMetadata.userAgent,
     });
   } catch {
@@ -681,16 +1018,15 @@ function getRequestIp(request: Request) {
 }
 
 function createRequestIpHash(ip: string) {
-  return createHash("sha256")
-    .update(
-      [
-        ip,
-        process.env.CAMPAIGN_REVIEW_SECRET ??
-          process.env.SUPABASE_SERVICE_ROLE_KEY ??
-          "vendonar",
-      ].join("|"),
-    )
-    .digest("hex");
+  return createStableHash(ip, getRequestHashSalt());
+}
+
+function getRequestHashSalt() {
+  return (
+    process.env.CAMPAIGN_REVIEW_SECRET ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    "vendonar"
+  );
 }
 
 function normalizeInstagramHandle(value?: string) {
@@ -703,6 +1039,16 @@ function normalizeEmail(value: string) {
 
 function normalizeSiteUrl(value: string) {
   return value.replace(/\/+$/g, "");
+}
+
+function isLocalUrl(value: string) {
+  try {
+    const hostname = new URL(value).hostname;
+
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
 }
 
 async function getRequestAdminProfile() {
