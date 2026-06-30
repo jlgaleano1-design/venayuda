@@ -119,8 +119,12 @@ function ShareCampaignDialog({
       return;
     }
 
-    await navigator.clipboard.writeText(publicUrl);
-    setFeedback("link");
+    try {
+      await copyTextToClipboard(publicUrl);
+      setFeedback("link");
+    } catch {
+      setFeedback("error");
+    }
   }
 
   async function nativeShare() {
@@ -147,10 +151,18 @@ function ShareCampaignDialog({
       await document.fonts.ready;
       const canvas = await createStoryCanvas(campaign, locale);
       const blob = await canvasToBlob(canvas, "image/jpeg", 0.94);
-      downloadBlob(blob, createShareFilename(campaign));
+      const filename = createShareFilename(campaign);
+      const shared = await shareImageFileOnMobile(blob, filename, campaign.title);
+
+      if (!shared) {
+        downloadBlob(blob, filename);
+      }
+
       setFeedback("asset");
-    } catch {
-      setFeedback("error");
+    } catch (error) {
+      if (!isShareAbort(error)) {
+        setFeedback("error");
+      }
     } finally {
       setBusy(null);
     }
@@ -399,6 +411,36 @@ function useMounted() {
   }, []);
 
   return mounted;
+}
+
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Some mobile browsers expose Clipboard API but reject writes in modals.
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  textArea.style.top = "0";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, text.length);
+
+  const copied = document.execCommand("copy");
+  textArea.remove();
+
+  if (!copied) {
+    throw new Error("Copy command failed.");
+  }
 }
 
 async function createStoryCanvas(campaign: ShareCampaignData, locale: Locale) {
@@ -654,6 +696,42 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number)
       quality,
     );
   });
+}
+
+async function shareImageFileOnMobile(
+  blob: Blob,
+  filename: string,
+  title: string,
+) {
+  if (!prefersNativeImageShare()) {
+    return false;
+  }
+
+  const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+  const shareData: ShareData = {
+    files: [file],
+    title,
+  };
+
+  if (!navigator.share || !navigator.canShare?.(shareData)) {
+    return false;
+  }
+
+  await navigator.share(shareData);
+  return true;
+}
+
+function prefersNativeImageShare() {
+  const userAgent = navigator.userAgent;
+
+  return (
+    /Android|iPad|iPhone|iPod/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isShareAbort(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function downloadBlob(blob: Blob, filename: string) {
