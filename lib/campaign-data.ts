@@ -296,10 +296,7 @@ function isAdminVerifiedCampaign(campaign: PublicCampaignRow) {
     return true;
   }
 
-  return (
-    campaign.verification_status === "verified" &&
-    (campaign.created_by_admin === true || campaign.reviewed_by_admin === true)
-  );
+  return campaign.verification_status === "verified";
 }
 
 async function createStorageSignedUrl(
