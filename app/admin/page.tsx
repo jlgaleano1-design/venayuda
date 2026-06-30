@@ -76,6 +76,7 @@ type PublicCampaignRow = {
   title: string;
   total_approved_purchases_usd: string | number;
   total_verified_donations_usd: string | number;
+  verification_status: "pending" | "unverified" | "verified" | "rejected";
 };
 
 type CampaignEngagementRow = {
@@ -132,7 +133,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     supabase
       .from("public_campaigns")
       .select(
-        "available_balance_usd, id, slug, title, total_approved_purchases_usd, total_verified_donations_usd",
+        "available_balance_usd, id, slug, title, total_approved_purchases_usd, total_verified_donations_usd, verification_status",
       )
       .returns<PublicCampaignRow[]>(),
     supabase
@@ -262,7 +263,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 Campañas públicas
               </h2>
               <p className="mt-1 text-sm leading-6 text-neutral-600">
-                Archivo rápido para campañas que no deben seguir visibles.
+                Verifica campañas públicas o archiva las que no deben seguir
+                visibles.
               </p>
             </div>
             {(publicCampaigns ?? []).length > 0 ? (
@@ -614,18 +616,40 @@ function PublicCampaignModerationItem({
             /campanas/{campaign.slug}
           </Link>
         </div>
-        <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
-          <input name="decision" type="hidden" value="reject" />
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
-            type="submit"
-          >
-            <ArchiveX size={16} />
-            Archivar
-          </button>
-        </form>
+        <div className="flex flex-wrap justify-end gap-2">
+          {campaign.verification_status === "verified" ? (
+            <span className="inline-flex h-9 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-extrabold text-emerald-800">
+              <CheckCircle2 size={16} />
+              Verificada
+            </span>
+          ) : (
+            <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
+              <input name="decision" type="hidden" value="approve" />
+              <button
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-[#2D5D5E]/20 bg-white px-4 text-sm font-extrabold text-[#2D5D5E] transition hover:bg-[#2D5D5E]/5"
+                type="submit"
+              >
+                <CheckCircle2 size={16} />
+                Verificar
+              </button>
+            </form>
+          )}
+          <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
+            <input name="decision" type="hidden" value="reject" />
+            <button
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
+              type="submit"
+            >
+              <ArchiveX size={16} />
+              Archivar
+            </button>
+          </form>
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-neutral-600">
+        <span className="rounded-full bg-white px-3 py-1">
+          Estado: {formatVerificationStatus(campaign.verification_status)}
+        </span>
         <span className="rounded-full bg-white px-3 py-1">
           Donado: {formatUsdAprox(Number(campaign.total_verified_donations_usd ?? 0))}
         </span>
@@ -840,7 +864,7 @@ function EmptyQueue() {
 function ReviewNotice({ status }: { status: string }) {
   const message =
     {
-      "campaign-approved": "Campaña aprobada y publicada.",
+      "campaign-approved": "Campaña aprobada o verificada.",
       "campaign-rejected": "Campaña rechazada.",
       currency: "Agrega el equivalente aproximado en USD antes de aprobar.",
       "donation-approved": "Donación verificada.",
@@ -856,6 +880,17 @@ function ReviewNotice({ status }: { status: string }) {
     <div className="rounded-2xl border border-[#2D5D5E]/20 bg-[#2D5D5E]/5 px-4 py-3 text-sm font-bold text-[#2D5D5E]">
       {message}
     </div>
+  );
+}
+
+function formatVerificationStatus(status: PublicCampaignRow["verification_status"]) {
+  return (
+    {
+      pending: "pendiente",
+      rejected: "rechazada",
+      unverified: "sin verificar",
+      verified: "verificada",
+    }[status] ?? status
   );
 }
 

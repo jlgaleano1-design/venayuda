@@ -126,7 +126,11 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
 
   const campaignIds = campaignRows.map((campaign) => campaign.id);
   const supabase = await createServerSupabaseClient();
-  const [{ data: paymentRows }, { data: donationRows }, { data: purchaseRows }] =
+  const [
+    { data: publicPaymentRows },
+    { data: donationRows },
+    { data: purchaseRows },
+  ] =
     await Promise.all([
       supabase
         .from("public_campaign_payment_methods")
@@ -139,6 +143,10 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
         .order("created_at", { ascending: false }),
       supabase.from("public_purchases").select("*").in("campaign_id", campaignIds),
     ]);
+  const paymentRows = await completePaymentRows(
+    (publicPaymentRows ?? []) as PublicPaymentMethodRow[],
+    campaignRows,
+  );
 
   const hydratedCampaigns = await Promise.allSettled(campaignRows.map(async (campaign): Promise<Campaign> => {
     const paymentMethods = ((paymentRows ?? []) as PublicPaymentMethodRow[])
@@ -224,6 +232,43 @@ async function hydrateCampaignRows(campaignRows: PublicCampaignRow[]) {
       ? result.value
       : toFallbackCampaign(campaignRows[index]),
   );
+}
+
+async function completePaymentRows(
+  publicPaymentRows: PublicPaymentMethodRow[],
+  campaignRows: PublicCampaignRow[],
+) {
+  const campaignIdsWithPublicMethods = new Set(
+    publicPaymentRows.map((method) => method.campaign_id),
+  );
+  const campaignIdsMissingMethods = campaignRows
+    .filter((campaign) => !campaignIdsWithPublicMethods.has(campaign.id))
+    .map((campaign) => campaign.id);
+
+  if (
+    campaignIdsMissingMethods.length === 0 ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    return publicPaymentRows;
+  }
+
+  try {
+    const adminSupabase = createAdminClient();
+    const { data } = await adminSupabase
+      .from("campaign_payment_methods")
+      .select(
+        "id, campaign_id, receiving_category, method_name, currency, account_holder, transfer_instructions, notes",
+      )
+      .in("campaign_id", campaignIdsMissingMethods)
+      .eq("is_active", true);
+
+    return [
+      ...publicPaymentRows,
+      ...((data ?? []) as PublicPaymentMethodRow[]),
+    ];
+  } catch {
+    return publicPaymentRows;
+  }
 }
 
 function normalizeReceivingCategory(method: PublicPaymentMethodRow) {
