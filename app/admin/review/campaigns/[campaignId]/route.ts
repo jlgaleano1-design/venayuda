@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireActiveAdminProfile } from "@/lib/admin-auth";
 import { publishCampaign } from "@/lib/campaign-publication";
+import { getHomePath, getPublicCampaignPath } from "@/lib/public-campaign-url";
 
 const reviewSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -26,16 +27,26 @@ export async function POST(
   const { profile, supabase } = await requireActiveAdminProfile();
 
   if (payload.data.decision === "reject") {
-    const { error } = await supabase
+    const { data: campaign, error } = await supabase
       .from("campaigns")
       .update({
         reviewed_by: profile.user_id,
         status: "archived",
         verification_status: "rejected",
       })
-      .eq("id", campaignId);
+      .eq("id", campaignId)
+      .select("slug")
+      .maybeSingle<{ slug: string }>();
 
     revalidatePath("/admin");
+    revalidatePath(getHomePath("es"));
+    revalidatePath(getHomePath("en"));
+
+    if (campaign?.slug) {
+      revalidatePath(getPublicCampaignPath(campaign.slug, "es"));
+      revalidatePath(getPublicCampaignPath(campaign.slug, "en"));
+    }
+
     return redirectToAdmin(requestUrl, error ? "error" : "campaign-rejected");
   }
 

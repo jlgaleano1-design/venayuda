@@ -30,7 +30,7 @@ export async function getCreatorAccessRecord(token: string) {
     .select("id, responsible_person_name, slug, title")
     .eq("id", access.campaign_id)
     .eq("status", "active")
-    .eq("verification_status", "verified")
+    .in("verification_status", ["pending", "unverified", "verified"])
     .maybeSingle();
 
   if (!campaign) {

@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  ArchiveX,
   CheckCircle2,
   CircleDollarSign,
   Eye,
@@ -246,6 +247,31 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div className="grid gap-3 lg:grid-cols-2">
                 {campaignActivity.map((campaign) => (
                   <ActivityItem campaign={campaign} key={campaign.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Campañas públicas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Archivo rápido para campañas que no deben seguir visibles.
+              </p>
+            </div>
+            {(publicCampaigns ?? []).length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {(publicCampaigns ?? []).map((campaign) => (
+                  <PublicCampaignModerationItem
+                    campaign={campaign}
+                    key={campaign.id}
+                  />
                 ))}
               </div>
             ) : (
@@ -567,6 +593,46 @@ function ActivityMetric({
         <p className="text-xs font-bold">{label}</p>
       </div>
       <p className="mt-2 text-xl font-extrabold">{formatCount(value)}</p>
+    </div>
+  );
+}
+
+function PublicCampaignModerationItem({
+  campaign,
+}: {
+  campaign: PublicCampaignRow;
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold">{campaign.title}</p>
+          <Link
+            className="mt-1 inline-flex text-sm font-bold text-[#2D5D5E]"
+            href={`/campanas/${campaign.slug}`}
+          >
+            /campanas/{campaign.slug}
+          </Link>
+        </div>
+        <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
+          <input name="decision" type="hidden" value="reject" />
+          <button
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
+            type="submit"
+          >
+            <ArchiveX size={16} />
+            Archivar
+          </button>
+        </form>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-neutral-600">
+        <span className="rounded-full bg-white px-3 py-1">
+          Donado: {formatUsdAprox(Number(campaign.total_verified_donations_usd ?? 0))}
+        </span>
+        <span className="rounded-full bg-white px-3 py-1">
+          Usado: {formatUsdAprox(Number(campaign.total_approved_purchases_usd ?? 0))}
+        </span>
+      </div>
     </div>
   );
 }

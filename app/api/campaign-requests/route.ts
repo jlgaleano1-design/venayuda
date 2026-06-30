@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { publishCampaign } from "@/lib/campaign-publication";
@@ -8,6 +9,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const cryptoCategoryMarker = "Categoría de recepción: Cripto";
 const duplicateCampaignLimitMessage =
   "Este correo ya tiene una campaña registrada. Para evitar spam, solo se puede crear una campaña por correo.";
+const blockedCampaignRequestMessage =
+  "No pudimos recibir esta solicitud. Si crees que es un error, escríbenos para revisarla.";
 
 const paymentMethodSchema = z.object({
   accountHolder: z.string().min(1),
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
 
   const requestData = payload.data;
   const contactEmail = normalizeEmail(requestData.email);
+  const requestMetadata = getRequestMetadata(request);
   const activeAdminProfile = await getRequestAdminProfile();
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -74,6 +78,30 @@ export async function POST(request: Request) {
           "No pudimos recibir la solicitud en este momento. Inténtalo de nuevo en unos minutos.",
       },
       { status: 503 },
+    );
+  }
+
+  const blockResult = await findCampaignRequestBlock({
+    contactEmail,
+    requestData,
+    requestMetadata,
+    supabase,
+  });
+
+  if (blockResult.blocked) {
+    await recordCampaignRequestAuditEvent({
+      blockReason: blockResult.reason,
+      campaignId: null,
+      contactEmail,
+      eventType: "blocked",
+      requestData,
+      requestMetadata,
+      supabase,
+    });
+
+    return NextResponse.json(
+      { error: blockedCampaignRequestMessage },
+      { status: 403 },
     );
   }
 
@@ -148,6 +176,15 @@ export async function POST(request: Request) {
       { status: duplicateSlug || duplicateEmail ? 409 : 500 },
     );
   }
+
+  await recordCampaignRequestAuditEvent({
+    campaignId: campaign.id,
+    contactEmail,
+    eventType: "created",
+    requestData,
+    requestMetadata,
+    supabase,
+  });
 
   const methodRows = requestData.paymentMethods.map((method) =>
     toPaymentMethodRow({
@@ -475,8 +512,189 @@ async function finalizeCampaignRequest({
   });
 }
 
+async function findCampaignRequestBlock({
+  contactEmail,
+  requestData,
+  requestMetadata,
+  supabase,
+}: {
+  contactEmail: string;
+  requestData: z.infer<typeof campaignRequestSchema>;
+  requestMetadata: RequestMetadata;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
+  const normalizedInstagramHandle = normalizeInstagramHandle(
+    requestData.instagramHandle,
+  );
+  const blockCandidates = [
+    requestMetadata.ip
+      ? { block_type: "ip", block_value: requestMetadata.ip }
+      : null,
+    { block_type: "email", block_value: contactEmail },
+    {
+      block_type: "email_domain",
+      block_value: contactEmail.split("@").at(1) ?? "",
+    },
+    { block_type: "slug", block_value: requestData.slug },
+    normalizedInstagramHandle
+      ? { block_type: "instagram_handle", block_value: normalizedInstagramHandle }
+      : null,
+  ].filter(
+    (candidate): candidate is { block_type: string; block_value: string } =>
+      Boolean(candidate?.block_value),
+  );
+
+  const envBlock = findEnvironmentBlock(blockCandidates);
+
+  if (envBlock) {
+    return { blocked: true, reason: envBlock };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("campaign_request_blocks")
+      .select("block_type, block_value, reason")
+      .eq("is_active", true)
+      .in(
+        "block_type",
+        Array.from(new Set(blockCandidates.map((candidate) => candidate.block_type))),
+      );
+
+    if (error || !data) {
+      return { blocked: false };
+    }
+
+    const matchingBlock = data.find((block) =>
+      blockCandidates.some(
+        (candidate) =>
+          candidate.block_type === block.block_type &&
+          candidate.block_value === normalizeBlockValue(block.block_value),
+      ),
+    );
+
+    return matchingBlock
+      ? {
+          blocked: true,
+          reason:
+            matchingBlock.reason ??
+            `${matchingBlock.block_type}:${matchingBlock.block_value}`,
+        }
+      : { blocked: false };
+  } catch {
+    return { blocked: false };
+  }
+}
+
+function findEnvironmentBlock(
+  blockCandidates: { block_type: string; block_value: string }[],
+) {
+  const envByType: Record<string, string | undefined> = {
+    email: process.env.CAMPAIGN_BLOCKED_EMAILS,
+    email_domain: process.env.CAMPAIGN_BLOCKED_EMAIL_DOMAINS,
+    instagram_handle: process.env.CAMPAIGN_BLOCKED_INSTAGRAM_HANDLES,
+    ip: process.env.CAMPAIGN_BLOCKED_IPS,
+    slug: process.env.CAMPAIGN_BLOCKED_SLUGS,
+  };
+
+  for (const candidate of blockCandidates) {
+    const blockedValues = parseBlockedValues(envByType[candidate.block_type]);
+
+    if (blockedValues.has(candidate.block_value)) {
+      return `env:${candidate.block_type}:${candidate.block_value}`;
+    }
+  }
+
+  return null;
+}
+
+function parseBlockedValues(value?: string) {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map(normalizeBlockValue)
+      .filter(Boolean),
+  );
+}
+
+function normalizeBlockValue(value: string) {
+  return value.trim().replace(/^@/, "").toLowerCase();
+}
+
+async function recordCampaignRequestAuditEvent({
+  blockReason,
+  campaignId,
+  contactEmail,
+  eventType,
+  requestData,
+  requestMetadata,
+  supabase,
+}: {
+  blockReason?: string;
+  campaignId: string | null;
+  contactEmail: string;
+  eventType: "blocked" | "created";
+  requestData: z.infer<typeof campaignRequestSchema>;
+  requestMetadata: RequestMetadata;
+  supabase: ReturnType<typeof createAdminClient>;
+}) {
+  try {
+    await supabase.from("campaign_request_audit_events").insert({
+      block_reason: blockReason ?? null,
+      campaign_id: campaignId,
+      contact_email: contactEmail,
+      event_type: eventType,
+      instagram_handle: normalizeInstagramHandle(requestData.instagramHandle),
+      ip_address: requestMetadata.ip,
+      ip_hash: requestMetadata.ipHash,
+      slug: requestData.slug,
+      user_agent: requestMetadata.userAgent,
+    });
+  } catch {
+    // Spam controls should never prevent the core submission flow if the
+    // migration has not reached the database yet.
+  }
+}
+
+type RequestMetadata = {
+  ip: string | null;
+  ipHash: string | null;
+  userAgent: string | null;
+};
+
+function getRequestMetadata(request: Request): RequestMetadata {
+  const ip = getRequestIp(request);
+  const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null;
+
+  return {
+    ip,
+    ipHash: ip ? createRequestIpHash(ip) : null,
+    userAgent,
+  };
+}
+
+function getRequestIp(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip")?.trim() ??
+    null
+  );
+}
+
+function createRequestIpHash(ip: string) {
+  return createHash("sha256")
+    .update(
+      [
+        ip,
+        process.env.CAMPAIGN_REVIEW_SECRET ??
+          process.env.SUPABASE_SERVICE_ROLE_KEY ??
+          "vendonar",
+      ].join("|"),
+    )
+    .digest("hex");
+}
+
 function normalizeInstagramHandle(value?: string) {
-  return value?.replace(/^@/, "").trim() || null;
+  return value?.replace(/^@/, "").trim().toLowerCase() || null;
 }
 
 function normalizeEmail(value: string) {

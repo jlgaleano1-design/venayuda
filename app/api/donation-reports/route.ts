@@ -201,7 +201,7 @@ async function getPublishedCampaignForReport(
       .select("id, slug, title, contact_info")
       .eq("slug", slug)
       .eq("status", "active")
-      .eq("verification_status", "verified")
+      .in("verification_status", ["pending", "unverified", "verified"])
       .single();
 
     if (!data) {
