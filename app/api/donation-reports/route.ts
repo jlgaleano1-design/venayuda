@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { enqueueEmailEvent } from "@/lib/email-queue";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
 import { getPublicCampaignUrl } from "@/lib/public-campaign-url";
 import { createDonationReviewToken } from "@/lib/review-token";
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
   const [reportResult, confirmationResult] = await Promise.all([
     safeQueueEmail(
       campaign.responsibleEmail
-        ? enqueueEmailEvent(supabase, "donation_report", {
+        ? queueOrSendEmailEvent(supabase, "donation_report", {
             campaignTitle: campaign.title,
             recipientEmail: campaign.responsibleEmail,
             donorName: report.donorName,
@@ -158,12 +158,13 @@ export async function POST(request: Request) {
           })
         : Promise.resolve({
             queued: false,
+            sent: false,
             reason: "La campaña no tiene correo de responsable.",
           }),
     ),
     report.donorEmail
       ? safeQueueEmail(
-          enqueueEmailEvent(supabase, "donation_confirmation", {
+          queueOrSendEmailEvent(supabase, "donation_confirmation", {
             campaignTitle: campaign.title,
             campaignUrl,
             recipientEmail: report.donorEmail,
@@ -171,6 +172,7 @@ export async function POST(request: Request) {
         )
       : Promise.resolve({
           queued: false,
+          sent: false,
           reason: "El reporte no incluyó correo de contacto.",
         }),
   ]);
@@ -180,8 +182,8 @@ export async function POST(request: Request) {
     publicCode: donation.public_code,
     emailQueued: reportResult.queued,
     confirmationEmailQueued: confirmationResult.queued,
-    emailSent: reportResult.queued,
-    confirmationEmailSent: confirmationResult.queued,
+    emailSent: reportResult.sent,
+    confirmationEmailSent: confirmationResult.sent,
     reason:
       "reason" in reportResult
         ? reportResult.reason
@@ -248,7 +250,7 @@ function normalizeOptionalText(value?: string) {
 }
 
 async function safeQueueEmail(
-  emailPromise: Promise<{ queued: boolean; reason?: string }>,
+  emailPromise: Promise<{ queued: boolean; reason?: string; sent: boolean }>,
 ) {
   try {
     return await emailPromise;
@@ -257,6 +259,7 @@ async function safeQueueEmail(
       queued: false,
       reason:
         "El reporte quedó registrado, pero no se pudo poner el correo en cola.",
+      sent: false,
     };
   }
 }

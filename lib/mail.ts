@@ -140,7 +140,6 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
   const lines = [
     `Campaña: ${report.campaignTitle}`,
     `Donante: ${donorName}`,
-    report.donorEmail ? `Correo electrónico privado: ${report.donorEmail}` : null,
     `Monto reportado: ${report.amount} ${report.currency}`,
     report.transferDate ? `Fecha: ${report.transferDate}` : null,
     report.paymentMethod ? `Método usado: ${report.paymentMethod}` : null,
@@ -150,6 +149,8 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
     report.proofFileName ? `Comprobante adjunto en formulario: ${report.proofFileName}` : null,
     report.publicMessage ? `Mensaje público: ${report.publicMessage}` : null,
     report.reviewUrl ? `Revisar: ${report.reviewUrl}` : null,
+  ].filter(Boolean);
+  const actionLines = [
     report.approvalUrl ? `Aprobar donación: ${report.approvalUrl}` : null,
     report.rejectionUrl ? `Rechazar donación: ${report.rejectionUrl}` : null,
   ].filter(Boolean);
@@ -165,7 +166,9 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
       "",
       ...lines,
       "",
-      "Este correo es solo una notificación. La donación se hizo por fuera de Vendonar y debe revisarse manualmente.",
+      "Este correo es solo una notificación. La donación se hizo por fuera de Vendonar y debe revisarse manualmente para que la apruebes.",
+      "",
+      ...actionLines,
     ].join("\n"),
     html: renderBrandEmail({
       preview: `Nuevo aviso de donación para ${report.campaignTitle}`,
@@ -174,7 +177,6 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
         `<p>Alguien avisó que donó a <strong>${escapeHtml(report.campaignTitle)}</strong>.</p>`,
         renderInfoList([
           { label: "Donante", value: donorName },
-          { label: "Correo privado", value: report.donorEmail },
           { label: "Monto", value: `${report.amount} ${report.currency}` },
           { label: "Fecha", value: report.transferDate },
           { label: "Método", value: report.paymentMethod },
@@ -182,7 +184,7 @@ export async function sendDonationReportEmail(report: DonationReportEmail) {
           { label: "Comprobante", value: report.proofFileName },
           { label: "Mensaje público", value: report.publicMessage },
         ]),
-        "<p>La donación se hizo por fuera de Vendonar y debe revisarse manualmente.</p>",
+        "<p>Este correo es solo una notificación. La donación se hizo por fuera de Vendonar y debe revisarse manualmente para que la apruebes.</p>",
         report.approvalUrl
           ? `<p style="margin-top:24px;">${renderEmailButton("Aprobar donación", report.approvalUrl)}</p>`
           : "",
@@ -208,27 +210,33 @@ export async function sendDonationConfirmationEmail(
   await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
-    subject: "Recibimos tu reporte de aporte",
+    subject: "Tu ayuda ya está en camino",
     text: [
       "Hola,",
       "",
-      `Tu reporte de aporte para ${email.campaignTitle} fue enviado correctamente.`,
+      `Recibimos tu reporte de aporte para ${email.campaignTitle}.`,
       "",
-      "Más adelante podrás seguir los updates de lo que se está realizando con tu dinero en el link de la campaña:",
+      "Gracias por ayudar a Venezuela de forma directa. En estos días, cada aporte puede significar comida, medicinas, refugio o apoyo urgente para alguien que lo necesita.",
+      "",
+      "Puedes seguir las actualizaciones de la campaña aquí:",
       email.campaignUrl,
       "",
-      "También puedes compartir Vendonar en tus redes:",
+      "También puedes compartir Vendonar para que más personas puedan ayudar:",
       "https://vendonar.com",
       "",
-      "Gracias por ayudar directo.",
+      "Gracias por estar cerca.",
+      "Vendonar",
     ].join("\n"),
     html: renderBrandEmail({
-      preview: `Recibimos tu reporte de aporte para ${email.campaignTitle}`,
-      title: "Recibimos tu reporte",
+      preview: `Tu ayuda ya está en camino para ${email.campaignTitle}`,
+      title: "Tu ayuda ya está en camino",
       children: [
-        `<p>Tu reporte de aporte para <strong>${escapeHtml(email.campaignTitle)}</strong> fue enviado correctamente.</p>`,
-        "<p>Más adelante podrás seguir los updates de lo que se está realizando con tu dinero en el link de la campaña.</p>",
+        `<p>Recibimos tu reporte de aporte para <strong>${escapeHtml(email.campaignTitle)}</strong>.</p>`,
+        "<p>Gracias por ayudar a Venezuela de forma directa. En estos días, cada aporte puede significar comida, medicinas, refugio o apoyo urgente para alguien que lo necesita.</p>",
+        "<p>Puedes seguir las actualizaciones de la campaña aquí:</p>",
         `<p>${renderEmailButton("Ver campaña", email.campaignUrl)}</p>`,
+        `<p>También puedes compartir ${renderSecondaryLink("Vendonar", "https://vendonar.com")} para que más personas puedan ayudar.</p>`,
+        "<p>Gracias por estar cerca.<br />Vendonar</p>",
       ].join(""),
     }),
   });
