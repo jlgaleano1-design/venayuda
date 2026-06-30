@@ -35,10 +35,10 @@ const paymentMethodSchema = z.object({
 
 const campaignRequestSchema = z.object({
   affectedArea: z.string().min(1),
-  coverImageName: z.string().optional(),
+  coverImageName: z.string().min(1),
   description: z.string().min(1),
   email: z.string().email(),
-  instagramHandle: z.string().optional(),
+  instagramHandle: z.string().min(1),
   organization: z.string().optional(),
   paymentMethods: z.array(paymentMethodSchema).min(1),
   publishAsVerified: z.boolean().optional(),

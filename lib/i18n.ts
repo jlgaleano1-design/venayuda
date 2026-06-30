@@ -99,7 +99,10 @@ type Dictionary = {
     system: string;
   };
   footer: {
+    avatarAlt: string;
     close: string;
+    contactSeparator: string;
+    intro: string;
     more: string;
     paragraphs: [string, string, string, string];
     summary: string;
@@ -313,12 +316,16 @@ export const dictionaries: Record<Locale, Dictionary> = {
         "Vendonar facilita campañas de ayuda directa y seguimiento público. No recibimos, retenemos ni procesamos donaciones; cada aporte se realiza directamente con la persona responsable.",
       more: "Más sobre Vendonar",
       close: "Cerrar",
-      title: "Sobre este proyecto",
+      title: "Más sobre Vendonar",
+      avatarAlt: "Avatar de Jos",
+      contactSeparator: "o a",
+      intro:
+        "Hola, soy Jos. Venezolano viviendo en México, creé Vendonar porque no supe qué hacer con las ganas de estar allá, ayudando en la calle.",
       paragraphs: [
-        "Vendonar es un proyecto independiente y no cobra comisiones ni procesa donaciones. Mantenerlo funcionando implica cubrir costos como hosting, dominio, base de datos, almacenamiento, autenticación y envío de correos transaccionales, usando herramientas como Supabase y proveedores de correo.",
-        "También ha requerido costos de desarrollo y mantenimiento, incluyendo créditos de OpenAI/Codex para construir, revisar y mejorar la plataforma.",
-        "Si quieres apoyar con costos operativos, ayudar a revisar campañas, proponer mejoras o involucrarte de alguna forma, estos son los contactos:",
-        "Cualquier ayuda suma y se agradece muchísimo.",
+        "Vendonar es un proyecto independiente para compartir campañas de ayuda directa. No procesa pagos, no cobra comisiones y no se queda con ningún porcentaje de las donaciones.",
+        "Mantenerlo funcionando implica tiempo y costos como hosting, base de datos, almacenamiento, correos de la plataforma, entre otros.",
+        "Si quieres apoyar, puedes compartir campañas, proponer mejoras, construir la red social, sumarte con tiempo o apoyar con parte de los costos operativos.",
+        "Puedes escribirme a",
       ],
     },
     errors: {
@@ -464,11 +471,15 @@ export const dictionaries: Record<Locale, Dictionary> = {
       more: "More about Vendonar",
       close: "Close",
       title: "About this project",
+      avatarAlt: "Jos avatar",
+      contactSeparator: "or",
+      intro:
+        "Hi, I'm Jos. I'm Venezuelan and living in Mexico. I created Vendonar because I did not know what to do with the feeling of wanting to be there, helping in the streets.",
       paragraphs: [
-        "Vendonar is an independent project and does not charge commissions or process donations. Keeping it running means covering costs such as hosting, domain, database, storage, authentication, and transactional email providers.",
-        "It has also required development and maintenance costs, including OpenAI/Codex credits to build, review, and improve the platform.",
-        "If you want to support operating costs, help review campaigns, suggest improvements, or get involved in some way, these are the contact options:",
-        "Every bit of help matters and is deeply appreciated.",
+        "Vendonar is an independent project for sharing direct-aid campaigns. It does not process payments, charge commissions, or keep any percentage of donations.",
+        "Keeping it running takes time and costs such as hosting, database, storage, platform emails, and other operational needs.",
+        "If you want to help, you can share campaigns, suggest improvements, build the social network, contribute time, or support part of the operating costs.",
+        "You can write to me at",
       ],
     },
     errors: {

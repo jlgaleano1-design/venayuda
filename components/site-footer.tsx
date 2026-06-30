@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useId, useState } from "react";
 import { X } from "lucide-react";
 import { getDictionary, type Locale } from "@/lib/i18n";
@@ -53,10 +54,23 @@ export function SiteFooter({ locale = "es" }: { locale?: Locale }) {
               {t.title}
             </h2>
             <div className="mt-4 space-y-4 text-sm leading-6 text-neutral-700">
+              <div className="flex items-start gap-3 rounded-[1.25rem] border border-[#2D5D5E]/15 bg-white/60 p-3">
+                <Image
+                  alt={t.avatarAlt}
+                  className="size-14 shrink-0 rounded-full border border-neutral-200 bg-white object-cover"
+                  height={56}
+                  src="/jos-avatar.png"
+                  width={56}
+                />
+                <p className="font-semibold leading-6 text-[#2A3534]">
+                  {t.intro}
+                </p>
+              </div>
               <p>{t.paragraphs[0]}</p>
               <p>{t.paragraphs[1]}</p>
+              <p>{t.paragraphs[2]}</p>
               <p>
-                {t.paragraphs[2]}{" "}
+                {t.paragraphs[3]}{" "}
                 <a
                   className="font-bold text-[#2D5D5E] underline-offset-4 hover:underline"
                   href="https://www.instagram.com/jos.galeano"
@@ -65,7 +79,7 @@ export function SiteFooter({ locale = "es" }: { locale?: Locale }) {
                 >
                   @jos.galeano
                 </a>{" "}
-                /{" "}
+                {t.contactSeparator}{" "}
                 <a
                   className="font-bold text-[#2D5D5E] underline-offset-4 hover:underline"
                   href="mailto:jl.galeano1@gmail.com"
@@ -73,7 +87,6 @@ export function SiteFooter({ locale = "es" }: { locale?: Locale }) {
                   jl.galeano1@gmail.com
                 </a>
               </p>
-              <p>{t.paragraphs[3]}</p>
             </div>
           </div>
         </div>

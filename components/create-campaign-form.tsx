@@ -79,6 +79,7 @@ export function CreateCampaignForm({
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverImageName, setCoverImageName] = useState("");
   const [coverImageStatus, setCoverImageStatus] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
   const [shareField, setShareField] = useState("");
   const [shareFieldError, setShareFieldError] = useState("");
   const [email, setEmail] = useState("");
@@ -104,6 +105,8 @@ export function CreateCampaignForm({
   );
   const hasEmail = email.trim().length > 0;
   const isEmailValid = isValidEmail(email);
+  const hasInstagramHandle = instagramHandle.trim().length > 0;
+  const hasCoverImage = Boolean(coverImageFile);
   const paymentMethodsToSubmit = paymentMethods.filter(isPaymentMethodStarted);
   const incompletePaymentMethodIndex = paymentMethods.findIndex(
     (method) => isPaymentMethodStarted(method) && !isPaymentMethodComplete(method),
@@ -115,10 +118,14 @@ export function CreateCampaignForm({
     !isShareFieldTaken &&
     !shareFieldError &&
     isEmailValid &&
+    hasInstagramHandle &&
+    hasCoverImage &&
     arePaymentMethodsComplete;
   const submitBlockReason = getSubmitBlockReason({
+    hasCoverImage,
     hasLinkError: Boolean(shareFieldError),
     hasEmail,
+    hasInstagramHandle,
     hasPaymentMethod: paymentMethodsToSubmit.length > 0,
     incompletePaymentMethodIndex,
     isEmailValid,
@@ -211,7 +218,7 @@ export function CreateCampaignForm({
           title: String(formData.get("title") ?? ""),
           responsibleName: String(formData.get("responsiblePersonName") ?? ""),
           organization: String(formData.get("responsibleOrganization") ?? ""),
-          instagramHandle: String(formData.get("instagramHandle") ?? ""),
+          instagramHandle,
           email,
           affectedArea: String(formData.get("affectedArea") ?? ""),
           slug: shareSlug,
@@ -364,7 +371,11 @@ export function CreateCampaignForm({
             required
           />
           <TextField label="Organización (opcional)" name="responsibleOrganization" />
-          <TextField label="@ de Instagram (opcional)" name="instagramHandle" />
+          <InstagramField
+            showError={!hasInstagramHandle && formHelpText.includes("Instagram")}
+            value={instagramHandle}
+            onChange={setInstagramHandle}
+          />
           <EmailField
             isInvalid={hasEmail && !isEmailValid}
             value={email}
@@ -441,7 +452,13 @@ export function CreateCampaignForm({
         ) : null}
         <label className="field-label">
           Imagen de portada
-          <span className="flex cursor-pointer items-center justify-between gap-3 rounded-full border border-dashed border-neutral-300 bg-neutral-50 px-4 py-2.5 transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8]">
+          <span
+            className={`flex cursor-pointer items-center justify-between gap-3 rounded-full border border-dashed bg-neutral-50 px-4 py-2.5 transition hover:border-[#2D5D5E] hover:bg-[#FFFCF8] ${
+              !hasCoverImage && formHelpText.includes("imagen")
+                ? "border-red-300"
+                : "border-neutral-300"
+            }`}
+          >
             <span className="flex min-w-0 items-center gap-3">
               <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#FFFCF8] text-[#2D5D5E]">
                 <ImageIcon size={16} />
@@ -463,6 +480,7 @@ export function CreateCampaignForm({
           <input
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
+            required
             type="file"
             onChange={(event) => {
               const file = event.target.files?.[0] ?? null;
@@ -484,6 +502,11 @@ export function CreateCampaignForm({
               }`}
             >
               {coverImageStatus}
+            </span>
+          ) : null}
+          {!hasCoverImage && formHelpText.includes("imagen") ? (
+            <span className="text-xs font-bold text-red-700">
+              La imagen de portada es obligatoria.
             </span>
           ) : null}
         </label>
@@ -589,7 +612,7 @@ function normalizeSubmissionError(error: unknown) {
     error instanceof Error ? error.message : "No pudimos enviar la solicitud.";
 
   if (/Invalid Compact JWS/i.test(message)) {
-    return "No pudimos conectar con el almacenamiento de imágenes. Revisa la llave pública de Supabase o intenta enviar la solicitud sin imagen por ahora.";
+    return "No pudimos conectar con el almacenamiento de imágenes. Revisa la llave pública de Supabase o intenta subir la imagen de nuevo.";
   }
 
   return message;
@@ -622,16 +645,20 @@ function isPaymentMethodStarted(method: PaymentMethodDraft) {
 }
 
 function getSubmitBlockReason({
+  hasCoverImage,
   hasLinkError,
   hasEmail,
+  hasInstagramHandle,
   hasPaymentMethod,
   incompletePaymentMethodIndex,
   isEmailValid,
   isShareFieldTaken,
   shareSlug,
 }: {
+  hasCoverImage: boolean;
   hasLinkError: boolean;
   hasEmail: boolean;
+  hasInstagramHandle: boolean;
   hasPaymentMethod: boolean;
   incompletePaymentMethodIndex: number;
   isEmailValid: boolean;
@@ -656,6 +683,14 @@ function getSubmitBlockReason({
 
   if (!isEmailValid) {
     return "Corrige el correo electrónico para poder enviar la solicitud.";
+  }
+
+  if (!hasInstagramHandle) {
+    return "Agrega el Instagram de la campaña para poder enviarla.";
+  }
+
+  if (!hasCoverImage) {
+    return "Sube una imagen de portada para poder enviar la campaña.";
   }
 
   if (!hasPaymentMethod) {
@@ -872,6 +907,37 @@ function TextField({
     <label className="field-label">
       {label}
       <input className="field" name={name} required={required} type={type} />
+    </label>
+  );
+}
+
+function InstagramField({
+  showError,
+  value,
+  onChange,
+}: {
+  showError: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field-label">
+      @ de Instagram
+      <input
+        aria-invalid={showError}
+        className={`field ${showError ? "border-red-300 focus:border-red-600" : ""}`}
+        name="instagramHandle"
+        placeholder="@usuario"
+        required
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {showError ? (
+        <span className="text-xs font-bold text-red-700">
+          El Instagram de la campaña es obligatorio.
+        </span>
+      ) : null}
     </label>
   );
 }
