@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CampaignEngagementTracker } from "@/components/campaign-engagement-tracker";
 import { CampaignStatusPill } from "@/components/campaign-status-pill";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { DonationReportModal } from "@/components/donation-report-modal";
@@ -137,6 +138,7 @@ export async function PublicCampaignDetailPage({
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] pb-28 text-[#2A3534] md:pb-0">
+      <CampaignEngagementTracker locale={locale} slug={campaign.slug} />
       <LanguageSwitcher
         currentLocale={locale}
         paths={{
@@ -382,6 +384,9 @@ function PaymentMethodsCard({
                   <PaymentField
                     copyValue={details.accountReference}
                     label={t.campaignDetail.accountReference}
+                    locale={locale}
+                    paymentMethodId={method.id}
+                    slug={campaign.slug}
                     value={details.accountReference}
                   />
                   <PaymentField
@@ -434,12 +439,18 @@ function FloatingCampaignActions({
 function PaymentField({
   copyValue,
   label,
+  locale = "es",
   multiline = false,
+  paymentMethodId,
+  slug,
   value,
 }: {
   copyValue?: string;
   label: string;
+  locale?: Locale;
   multiline?: boolean;
+  paymentMethodId?: string;
+  slug?: string;
   value: string;
 }) {
   if (!value.trim()) {
@@ -461,7 +472,14 @@ function PaymentField({
         >
           {value}
         </p>
-        {copyValue ? <CopyPaymentValueButton value={copyValue} /> : null}
+        {copyValue ? (
+          <CopyPaymentValueButton
+            locale={locale}
+            paymentMethodId={paymentMethodId}
+            slug={slug}
+            value={copyValue}
+          />
+        ) : null}
       </div>
     </div>
   );

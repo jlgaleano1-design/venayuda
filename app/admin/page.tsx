@@ -2,9 +2,12 @@ import {
   ArrowLeft,
   CheckCircle2,
   CircleDollarSign,
+  Eye,
   FileClock,
   Inbox,
   LogOut,
+  MousePointerClick,
+  Send,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -68,8 +71,22 @@ type PurchaseRow = {
 type PublicCampaignRow = {
   available_balance_usd: string | number;
   id: string;
+  slug: string;
+  title: string;
   total_approved_purchases_usd: string | number;
   total_verified_donations_usd: string | number;
+};
+
+type CampaignEngagementRow = {
+  campaign_id: string;
+  created_at: string;
+  event_type: "campaign_view" | "payment_method_copy";
+};
+
+type DonationStatusRow = {
+  campaign_id: string;
+  created_at: string;
+  status: "pending" | "verified" | "rejected";
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
@@ -81,6 +98,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     { data: pendingDonations },
     { data: pendingPurchases },
     { data: publicCampaigns },
+    { data: engagementEvents },
+    { data: donationStatuses },
   ] = await Promise.all([
     supabase
       .from("campaigns")
@@ -112,14 +131,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     supabase
       .from("public_campaigns")
       .select(
-        "available_balance_usd, id, total_approved_purchases_usd, total_verified_donations_usd",
+        "available_balance_usd, id, slug, title, total_approved_purchases_usd, total_verified_donations_usd",
       )
       .returns<PublicCampaignRow[]>(),
+    supabase
+      .from("campaign_engagement_events")
+      .select("campaign_id, created_at, event_type")
+      .order("created_at", { ascending: false })
+      .limit(5000)
+      .returns<CampaignEngagementRow[]>(),
+    supabase
+      .from("donations")
+      .select("campaign_id, created_at, status")
+      .returns<DonationStatusRow[]>(),
   ]);
 
   const campaigns = pendingCampaigns ?? [];
   const donations = pendingDonations ?? [];
   const purchases = pendingPurchases ?? [];
+  const campaignActivity = buildCampaignActivity({
+    donationStatuses: donationStatuses ?? [],
+    engagementEvents: engagementEvents ?? [],
+    publicCampaigns: publicCampaigns ?? [],
+  });
   const fileUrls = await buildAdminFileUrls({
     campaigns,
     donations,
@@ -196,6 +230,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             value={formatUsdAprox(totals.availableBalance)}
           />
         </div>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Actividad de campañas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Señales internas de intención: visitas, copias de métodos de
+                donación, avisos recibidos y donaciones verificadas.
+              </p>
+            </div>
+            {campaignActivity.length > 0 ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {campaignActivity.map((campaign) => (
+                  <ActivityItem campaign={campaign} key={campaign.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <QueueCard title="Solicitudes de campaña">
@@ -346,6 +403,171 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </section>
     </main>
+  );
+}
+
+type CampaignActivity = {
+  id: string;
+  intentionRate7d: number;
+  slug: string;
+  title: string;
+  totalCopies: number;
+  totalReports: number;
+  totalVerified: number;
+  totalViews: number;
+  views7d: number;
+  copies7d: number;
+  reports7d: number;
+  verified7d: number;
+};
+
+function buildCampaignActivity({
+  donationStatuses,
+  engagementEvents,
+  publicCampaigns,
+}: {
+  donationStatuses: DonationStatusRow[];
+  engagementEvents: CampaignEngagementRow[];
+  publicCampaigns: PublicCampaignRow[];
+}) {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+  return publicCampaigns
+    .map((campaign): CampaignActivity => {
+      const campaignEvents = engagementEvents.filter(
+        (event) => event.campaign_id === campaign.id,
+      );
+      const recentEvents = campaignEvents.filter(
+        (event) => new Date(event.created_at).getTime() >= sevenDaysAgo,
+      );
+      const campaignDonations = donationStatuses.filter(
+        (donation) => donation.campaign_id === campaign.id,
+      );
+      const recentDonations = campaignDonations.filter(
+        (donation) => new Date(donation.created_at).getTime() >= sevenDaysAgo,
+      );
+
+      const totalViews = countEvents(campaignEvents, "campaign_view");
+      const copies7d = countEvents(recentEvents, "payment_method_copy");
+      const views7d = countEvents(recentEvents, "campaign_view");
+      const reports7d = recentDonations.length;
+      const verified7d = recentDonations.filter(
+        (donation) => donation.status === "verified",
+      ).length;
+
+      return {
+        copies7d,
+        id: campaign.id,
+        intentionRate7d: views7d > 0 ? copies7d / views7d : 0,
+        reports7d,
+        slug: campaign.slug,
+        title: campaign.title,
+        totalCopies: countEvents(campaignEvents, "payment_method_copy"),
+        totalReports: campaignDonations.length,
+        totalVerified: campaignDonations.filter(
+          (donation) => donation.status === "verified",
+        ).length,
+        totalViews,
+        verified7d,
+        views7d,
+      };
+    })
+    .filter(
+      (campaign) =>
+        campaign.totalViews > 0 ||
+        campaign.totalCopies > 0 ||
+        campaign.totalReports > 0 ||
+        campaign.totalVerified > 0,
+    )
+    .sort(
+      (a, b) =>
+        b.copies7d - a.copies7d ||
+        b.views7d - a.views7d ||
+        b.totalReports - a.totalReports,
+    )
+    .slice(0, 8);
+}
+
+function countEvents(
+  events: CampaignEngagementRow[],
+  eventType: CampaignEngagementRow["event_type"],
+) {
+  return events.filter((event) => event.event_type === eventType).length;
+}
+
+function ActivityItem({ campaign }: { campaign: CampaignActivity }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold">{campaign.title}</p>
+          <Link
+            className="mt-1 inline-flex text-sm font-bold text-[#2D5D5E]"
+            href={`/campanas/${campaign.slug}`}
+          >
+            /campanas/{campaign.slug}
+          </Link>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-neutral-700">
+          7 días
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <ActivityMetric
+          icon={<Eye size={16} />}
+          label="Visitas"
+          value={campaign.views7d}
+        />
+        <ActivityMetric
+          icon={<MousePointerClick size={16} />}
+          label="Copias"
+          value={campaign.copies7d}
+        />
+        <ActivityMetric
+          icon={<Send size={16} />}
+          label="Avisos"
+          value={campaign.reports7d}
+        />
+        <ActivityMetric
+          icon={<CheckCircle2 size={16} />}
+          label="Verificadas"
+          value={campaign.verified7d}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-neutral-600">
+        <span className="rounded-full bg-white px-3 py-1">
+          Intención: {formatPercent(campaign.intentionRate7d)}
+        </span>
+        <span className="rounded-full bg-white px-3 py-1">
+          Total visitas: {formatCount(campaign.totalViews)}
+        </span>
+        <span className="rounded-full bg-white px-3 py-1">
+          Total copias: {formatCount(campaign.totalCopies)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ActivityMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl bg-white p-3">
+      <div className="flex items-center gap-2 text-neutral-500">
+        {icon}
+        <p className="text-xs font-bold">{label}</p>
+      </div>
+      <p className="mt-2 text-xl font-extrabold">{formatCount(value)}</p>
+    </div>
   );
 }
 
@@ -590,6 +812,19 @@ function formatUsdAprox(amount: number) {
   return `${new Intl.NumberFormat("es-MX", {
     maximumFractionDigits: 0,
   }).format(Number(amount))} USD`;
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("es-MX", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatPercent(value: number) {
+  return new Intl.NumberFormat("es-MX", {
+    maximumFractionDigits: 1,
+    style: "percent",
+  }).format(value);
 }
 
 function formatInputNumber(value: string | number | null | undefined) {

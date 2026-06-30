@@ -1,14 +1,36 @@
 "use client";
 
+import { trackCampaignEngagement } from "@/components/campaign-engagement-tracker";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import type { Locale } from "@/lib/i18n";
 
-export function CopyPaymentValueButton({ value }: { value: string }) {
+export function CopyPaymentValueButton({
+  locale = "es",
+  paymentMethodId,
+  slug,
+  value,
+}: {
+  locale?: Locale;
+  paymentMethodId?: string;
+  slug?: string;
+  value: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copyValue() {
     await navigator.clipboard.writeText(value);
     setCopied(true);
+    if (slug && paymentMethodId) {
+      trackCampaignEngagement({
+        eventType: "payment_method_copy",
+        locale,
+        path: window.location.pathname,
+        paymentMethodId,
+        referrer: document.referrer,
+        slug,
+      });
+    }
     window.setTimeout(() => setCopied(false), 2000);
   }
 
