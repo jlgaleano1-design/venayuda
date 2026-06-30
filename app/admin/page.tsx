@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArchiveX,
+  Ban,
   CheckCircle2,
   CircleDollarSign,
   Eye,
@@ -10,6 +11,7 @@ import {
   MousePointerClick,
   Send,
 } from "lucide-react";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -109,6 +111,17 @@ type CampaignRequestAuditRow = {
   slug: string | null;
 };
 
+type CampaignRequestBlockRow = {
+  block_type: CampaignRequestBlockType;
+  block_value: string;
+};
+
+type CampaignRequestBlockType =
+  | "email"
+  | "email_domain"
+  | "instagram_handle"
+  | "slug";
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const { profile, supabase } = await requireActiveAdminProfile();
   const params = await searchParams;
@@ -121,6 +134,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     { data: engagementEvents },
     { data: donationStatuses },
     { data: suspiciousCampaignAudits },
+    { data: activeRequestBlocks },
   ] = await Promise.all([
     supabase
       .from("campaigns")
@@ -174,6 +188,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       .order("created_at", { ascending: false })
       .limit(12)
       .returns<CampaignRequestAuditRow[]>(),
+    supabase
+      .from("campaign_request_blocks")
+      .select("block_type, block_value")
+      .eq("is_active", true)
+      .in("block_type", ["email", "email_domain", "instagram_handle", "slug"])
+      .returns<CampaignRequestBlockRow[]>(),
   ]);
 
   const campaigns = pendingCampaigns ?? [];
@@ -184,6 +204,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     engagementEvents: engagementEvents ?? [],
     publicCampaigns: publicCampaigns ?? [],
   });
+  const activeBlockKeys = new Set(
+    (activeRequestBlocks ?? []).map((block) =>
+      getBlockKey(block.block_type, block.block_value),
+    ),
+  );
   const fileUrls = await buildAdminFileUrls({
     campaigns,
     donations,
@@ -260,78 +285,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             value={formatUsdAprox(totals.availableBalance)}
           />
         </div>
-
-        <section className="surface-card">
-          <div className="flex flex-col gap-5 p-5">
-            <div>
-              <h2 className="text-lg font-extrabold">
-                Actividad de campañas
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">
-                Señales internas de intención: visitas, copias de métodos de
-                donación, avisos recibidos y donaciones verificadas.
-              </p>
-            </div>
-            {campaignActivity.length > 0 ? (
-              <div className="grid gap-3 lg:grid-cols-2">
-                {campaignActivity.map((campaign) => (
-                  <ActivityItem campaign={campaign} key={campaign.id} />
-                ))}
-              </div>
-            ) : (
-              <EmptyQueue />
-            )}
-          </div>
-        </section>
-
-        <section className="surface-card">
-          <div className="flex flex-col gap-5 p-5">
-            <div>
-              <h2 className="text-lg font-extrabold">
-                Campañas sospechosas
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">
-                Solicitudes publicadas con señales obvias de basura para revisar
-                y archivar rápido si hace falta.
-              </p>
-            </div>
-            {(suspiciousCampaignAudits ?? []).length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {(suspiciousCampaignAudits ?? []).map((audit) => (
-                  <SuspiciousCampaignItem audit={audit} key={audit.id} />
-                ))}
-              </div>
-            ) : (
-              <EmptyQueue />
-            )}
-          </div>
-        </section>
-
-        <section className="surface-card">
-          <div className="flex flex-col gap-5 p-5">
-            <div>
-              <h2 className="text-lg font-extrabold">
-                Campañas públicas
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">
-                Verifica campañas públicas o archiva las que no deben seguir
-                visibles.
-              </p>
-            </div>
-            {(publicCampaigns ?? []).length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {(publicCampaigns ?? []).map((campaign) => (
-                  <PublicCampaignModerationItem
-                    campaign={campaign}
-                    key={campaign.id}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyQueue />
-            )}
-          </div>
-        </section>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <QueueCard title="Solicitudes de campaña">
@@ -480,6 +433,83 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             )}
           </QueueCard>
         </div>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Actividad de campañas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Señales internas de intención: visitas, copias de métodos de
+                donación, avisos recibidos y donaciones verificadas.
+              </p>
+            </div>
+            {campaignActivity.length > 0 ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {campaignActivity.map((campaign) => (
+                  <ActivityItem campaign={campaign} key={campaign.id} />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Campañas sospechosas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Solicitudes publicadas con señales obvias de basura para revisar
+                y archivar rápido si hace falta.
+              </p>
+            </div>
+            {(suspiciousCampaignAudits ?? []).length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {(suspiciousCampaignAudits ?? []).map((audit) => (
+                  <SuspiciousCampaignItem
+                    activeBlockKeys={activeBlockKeys}
+                    audit={audit}
+                    key={audit.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Campañas públicas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Verifica campañas públicas o archiva las que no deben seguir
+                visibles.
+              </p>
+            </div>
+            {(publicCampaigns ?? []).length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {(publicCampaigns ?? []).map((campaign) => (
+                  <PublicCampaignModerationItem
+                    campaign={campaign}
+                    key={campaign.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
+
       </section>
     </main>
   );
@@ -650,11 +680,18 @@ function ActivityMetric({
   );
 }
 
-function SuspiciousCampaignItem({ audit }: { audit: CampaignRequestAuditRow }) {
+function SuspiciousCampaignItem({
+  activeBlockKeys,
+  audit,
+}: {
+  activeBlockKeys: Set<string>;
+  audit: CampaignRequestAuditRow;
+}) {
   const campaign = audit.campaign;
   const title = campaign?.title ?? audit.slug ?? "Campaña sin título";
   const slug = campaign?.slug ?? audit.slug;
   const canArchive = campaign?.id && campaign.status !== "archived";
+  const blockOptions = getSuspiciousBlockOptions(audit);
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
@@ -702,6 +739,47 @@ function SuspiciousCampaignItem({ audit }: { audit: CampaignRequestAuditRow }) {
           {formatDate(audit.created_at)}
         </span>
       </div>
+      {blockOptions.length > 0 ? (
+        <div className="mt-4 border-t border-amber-200 pt-3">
+          <p className="text-xs font-extrabold uppercase tracking-normal text-amber-900">
+            Bloqueos manuales
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {blockOptions.map((option) => {
+              const isBlocked = activeBlockKeys.has(
+                getBlockKey(option.type, option.value),
+              );
+
+              return isBlocked ? (
+                <span
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 text-sm font-extrabold text-neutral-600"
+                  key={`${option.type}:${option.value}`}
+                >
+                  <Ban size={16} />
+                  {option.doneLabel}
+                </span>
+              ) : (
+                <form action={blockCampaignRequestValue} key={`${option.type}:${option.value}`}>
+                  <input name="blockType" type="hidden" value={option.type} />
+                  <input name="blockValue" type="hidden" value={option.value} />
+                  <input
+                    name="reason"
+                    type="hidden"
+                    value={`Bloqueado desde campaña sospechosa ${audit.id}`}
+                  />
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
+                    type="submit"
+                  >
+                    <Ban size={16} />
+                    {option.label}
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -774,6 +852,38 @@ async function logout() {
   const { supabase } = await requireActiveAdminProfile();
   await supabase.auth.signOut();
   redirect("/admin/login");
+}
+
+async function blockCampaignRequestValue(formData: FormData) {
+  "use server";
+
+  const blockType = String(formData.get("blockType") ?? "");
+  const blockValue = normalizeBlockValue(String(formData.get("blockValue") ?? ""));
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+
+  if (!isCampaignRequestBlockType(blockType) || !blockValue) {
+    redirect("/admin?review=invalid");
+  }
+
+  const { supabase } = await requireActiveAdminProfile();
+  const { error } = await supabase.from("campaign_request_blocks").upsert(
+    {
+      block_type: blockType,
+      block_value: blockValue,
+      is_active: true,
+      reason: reason || "Bloqueado manualmente desde admin",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "block_type,block_value" },
+  );
+
+  revalidatePath("/admin");
+
+  if (error) {
+    redirect("/admin?review=error");
+  }
+
+  redirect("/admin?review=request-blocked");
 }
 
 function SummaryCard({
@@ -981,6 +1091,7 @@ function ReviewNotice({ status }: { status: string }) {
       missing: "No encontramos el registro solicitado.",
       "purchase-approved": "Compra aprobada.",
       "purchase-rejected": "Compra rechazada.",
+      "request-blocked": "Bloqueo manual activado para futuras solicitudes.",
     }[status] ?? "Acción registrada.";
 
   return (
@@ -1007,6 +1118,71 @@ function formatRiskFlag(flag: string) {
     .replace("looks like gibberish", "parece basura")
     .replace("low information", "poca información")
     .replace("fast submission", "envío rápido");
+}
+
+function getSuspiciousBlockOptions(audit: CampaignRequestAuditRow) {
+  const email = normalizeBlockValue(audit.contact_email ?? "");
+  const emailDomain = normalizeBlockValue(email.split("@").at(1) ?? "");
+  const instagramHandle = normalizeBlockValue(audit.instagram_handle ?? "");
+  const slug = normalizeBlockValue(audit.campaign?.slug ?? audit.slug ?? "");
+
+  return [
+    email
+      ? {
+          doneLabel: "Email bloqueado",
+          label: "Bloquear email",
+          type: "email" as const,
+          value: email,
+        }
+      : null,
+    emailDomain
+      ? {
+          doneLabel: "Dominio bloqueado",
+          label: "Bloquear dominio",
+          type: "email_domain" as const,
+          value: emailDomain,
+        }
+      : null,
+    instagramHandle
+      ? {
+          doneLabel: "Instagram bloqueado",
+          label: "Bloquear Instagram",
+          type: "instagram_handle" as const,
+          value: instagramHandle,
+        }
+      : null,
+    slug
+      ? {
+          doneLabel: "Slug bloqueado",
+          label: "Bloquear slug",
+          type: "slug" as const,
+          value: slug,
+        }
+      : null,
+  ].filter(
+    (
+      option,
+    ): option is {
+      doneLabel: string;
+      label: string;
+      type: CampaignRequestBlockType;
+      value: string;
+    } => Boolean(option),
+  );
+}
+
+function getBlockKey(type: CampaignRequestBlockType, value: string) {
+  return `${type}:${normalizeBlockValue(value)}`;
+}
+
+function isCampaignRequestBlockType(
+  value: string,
+): value is CampaignRequestBlockType {
+  return ["email", "email_domain", "instagram_handle", "slug"].includes(value);
+}
+
+function normalizeBlockValue(value: string) {
+  return value.trim().replace(/^@/, "").toLowerCase();
 }
 
 function formatMoney(amount: string | number, currency: string) {
