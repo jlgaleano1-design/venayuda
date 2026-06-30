@@ -219,7 +219,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       heroLine1: "Ayuda directa,",
       heroLine2: "sin intermediarios.",
       heroBody:
-        "Campañas creadas por quienes están apoyando en las zonas afectadas de Venezuela. Cada una muestra métodos de pago directos, comprobantes y actualizaciones de gastos para que puedas seguir cómo se utiliza tu aporte. Ayuda persona a persona.",
+        "Campañas creadas por quienes están apoyando en las zonas afectadas de Venezuela. Cada una muestra métodos de pago directos, comprobantes y actualizaciones de gastos para que puedas seguir cómo se utiliza tu aporte.",
       donateNow: "Donar ahora",
       createCampaign: "Crear campaña",
       collectionCenters: "Centros de acopio en el mundo",
@@ -373,7 +373,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       heroLine1: "Direct aid for Venezuela,",
       heroLine2: "with no middlemen.",
       heroBody:
-        "Campaigns created by people helping on the ground in Venezuela's affected areas. Each campaign includes direct payment methods, receipts, and updates on how funds are used, so you can follow where your donation goes. Person-to-person aid.",
+        "Campaigns created by people helping on the ground in Venezuela's affected areas. Each campaign includes direct payment methods, receipts, and updates on how funds are used, so you can follow where your donation goes.",
       donateNow: "Donate now",
       createCampaign: "Crear campaña",
       collectionCenters: "Collection centers worldwide",

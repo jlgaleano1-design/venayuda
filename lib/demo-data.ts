@@ -127,11 +127,12 @@ function formatCurrencyAmount(amount: number, currency: string) {
   try {
     const formatted = new Intl.NumberFormat("es-MX", {
       currency,
+      currencyDisplay: "code",
       maximumFractionDigits: currency === "USD" ? 0 : 2,
       style: "currency",
     }).format(amount);
 
-    return `${formatted} ${currency}`;
+    return formatted;
   } catch {
     return `${new Intl.NumberFormat("es-MX", {
       maximumFractionDigits: 2,
