@@ -54,6 +54,7 @@ type DonationRow = {
   public_message: string | null;
   transfer_reference: string | null;
   transfer_date: string | null;
+  verified_at: string | null;
 };
 
 type PurchaseRow = {
@@ -129,6 +130,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const [
     { data: pendingCampaigns },
     { data: pendingDonations },
+    { data: verifiedDonations },
     { data: pendingPurchases },
     { data: publicCampaigns },
     { data: engagementEvents },
@@ -148,11 +150,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     supabase
       .from("donations")
       .select(
-        "amount_original, amount_usd_estimated, campaign:campaigns(slug, title), created_at, currency_original, donor_contact, donor_name, id, proof_file_path, public_code, public_message, transfer_date, transfer_reference",
+        "amount_original, amount_usd_estimated, campaign:campaigns(slug, title), created_at, currency_original, donor_contact, donor_name, id, proof_file_path, public_code, public_message, transfer_date, transfer_reference, verified_at",
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .limit(20)
+      .returns<DonationRow[]>(),
+    supabase
+      .from("donations")
+      .select(
+        "amount_original, amount_usd_estimated, campaign:campaigns(slug, title), created_at, currency_original, donor_contact, donor_name, id, proof_file_path, public_code, public_message, transfer_date, transfer_reference, verified_at",
+      )
+      .eq("status", "verified")
+      .order("verified_at", { ascending: false })
       .returns<DonationRow[]>(),
     supabase
       .from("purchases")
@@ -198,6 +208,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const campaigns = pendingCampaigns ?? [];
   const donations = pendingDonations ?? [];
+  const verified = verifiedDonations ?? [];
   const purchases = pendingPurchases ?? [];
   const campaignActivity = buildCampaignActivity({
     donationStatuses: donationStatuses ?? [],
@@ -211,7 +222,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   );
   const fileUrls = await buildAdminFileUrls({
     campaigns,
-    donations,
+    donations: [...donations, ...verified],
     purchases,
     storageAdmin,
   });
@@ -433,6 +444,33 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             )}
           </QueueCard>
         </div>
+
+        <section className="surface-card">
+          <div className="flex flex-col gap-5 p-5">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Donaciones verificadas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                Aportes que ya fueron revisados manualmente y cuentan para el
+                total verificado público.
+              </p>
+            </div>
+            {verified.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {verified.map((donation) => (
+                  <VerifiedDonationItem
+                    donation={donation}
+                    fileUrl={fileUrls.donations[donation.id]}
+                    key={donation.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyQueue />
+            )}
+          </div>
+        </section>
 
         <section className="surface-card">
           <div className="flex flex-col gap-5 p-5">
@@ -676,6 +714,75 @@ function ActivityMetric({
         <p className="text-xs font-bold">{label}</p>
       </div>
       <p className="mt-2 text-xl font-extrabold">{formatCount(value)}</p>
+    </div>
+  );
+}
+
+function VerifiedDonationItem({
+  donation,
+  fileUrl,
+}: {
+  donation: DonationRow;
+  fileUrl?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold">
+            {formatMoney(donation.amount_original, donation.currency_original)}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-neutral-600">
+            {[
+              donation.campaign?.title,
+              donation.public_code,
+              donation.donor_name || donation.donor_contact,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "Sin detalle adicional"}
+          </p>
+          {donation.campaign?.slug ? (
+            <Link
+              className="mt-1 inline-flex text-sm font-bold text-[#2D5D5E]"
+              href={`/campanas/${donation.campaign.slug}`}
+            >
+              /campanas/{donation.campaign.slug}
+            </Link>
+          ) : null}
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-800">
+          <CheckCircle2 size={14} />
+          Verificada
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-neutral-600">
+        <span className="rounded-full bg-white px-3 py-1">
+          USD: {formatUsdAprox(Number(donation.amount_usd_estimated ?? 0))}
+        </span>
+        <span className="rounded-full bg-white px-3 py-1">
+          Verificada: {formatDate(donation.verified_at ?? donation.created_at)}
+        </span>
+        {donation.transfer_reference ? (
+          <span className="rounded-full bg-white px-3 py-1">
+            Ref: {donation.transfer_reference}
+          </span>
+        ) : null}
+      </div>
+      {donation.public_message ? (
+        <p className="mt-3 text-sm leading-6 text-neutral-700">
+          {truncate(donation.public_message)}
+        </p>
+      ) : null}
+      {fileUrl ? (
+        <a
+          className="mt-3 inline-flex rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-bold text-[#2D5D5E]"
+          href={fileUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Abrir comprobante
+        </a>
+      ) : null}
     </div>
   );
 }
