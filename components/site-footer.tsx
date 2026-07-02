@@ -9,6 +9,8 @@ export function SiteFooter({ locale = "es" }: { locale?: Locale }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const modalTitleId = useId();
   const t = getDictionary(locale).footer;
+  const contactParagraph = t.paragraphs[t.paragraphs.length - 1] ?? "";
+  const aboutParagraphs = t.paragraphs.slice(0, -1);
 
   return (
     <>
@@ -66,11 +68,11 @@ export function SiteFooter({ locale = "es" }: { locale?: Locale }) {
                   {t.intro}
                 </p>
               </div>
-              <p>{t.paragraphs[0]}</p>
-              <p>{t.paragraphs[1]}</p>
-              <p>{t.paragraphs[2]}</p>
+              {aboutParagraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
               <p>
-                {t.paragraphs[3]}{" "}
+                {contactParagraph}{" "}
                 <a
                   className="font-bold text-[#2D5D5E] underline-offset-4 hover:underline"
                   href="https://www.instagram.com/jos.galeano"

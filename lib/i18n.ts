@@ -104,7 +104,7 @@ type Dictionary = {
     contactSeparator: string;
     intro: string;
     more: string;
-    paragraphs: [string, string, string, string];
+    paragraphs: string[];
     summary: string;
     title: string;
   };
@@ -320,11 +320,10 @@ export const dictionaries: Record<Locale, Dictionary> = {
       avatarAlt: "Avatar de Jos",
       contactSeparator: "o a",
       intro:
-        "Hola, soy Jos. Venezolano viviendo en México, creé Vendonar porque no supe qué hacer con las ganas de estar allá, ayudando en la calle.",
+        "Hola, soy Jos. Venezolano viviendo en México. Creé Vendonar para ayudar a que más apoyo llegue de forma directa a Venezuela.",
       paragraphs: [
-        "Vendonar es un proyecto independiente para compartir campañas de ayuda directa. No procesa pagos, no cobra comisiones y no se queda con ningún porcentaje de las donaciones.",
-        "Mantenerlo funcionando implica tiempo y costos como hosting, base de datos, almacenamiento, correos de la plataforma, entre otros.",
-        "Si quieres apoyar, puedes compartir campañas, proponer mejoras, construir la red social, sumarte con tiempo o apoyar con parte de los costos operativos.",
+        "Vendonar es una iniciativa independiente que busca ser colectiva. Si identificas una campaña que debería estar aquí, conoces personas que necesitan ayuda, puedes apoyar verificando información, compartiendo campañas, construyendo red o ayudando con costos operativos, escríbeme.",
+        "Vendonar no procesa pagos, no cobra comisiones y no se queda con ningún porcentaje de las donaciones.",
         "Puedes escribirme a",
       ],
     },
