@@ -33,6 +33,13 @@ type PublicPurchaseRow = {
   vendor: string | null;
 };
 
+type DonorCountRow = {
+  donor_contact: string | null;
+  donor_name: string | null;
+  id: string;
+  public_code: string;
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminCampaignPage({
@@ -40,8 +47,12 @@ export default async function AdminCampaignPage({
 }: AdminCampaignPageProps) {
   const { campaignId } = await params;
   const { supabase } = await requireActiveAdminProfile();
-  const [{ data: campaign }, { data: summary }, { data: purchases }] =
-    await Promise.all([
+  const [
+    { data: campaign },
+    { data: summary },
+    { data: purchases },
+    { data: verifiedDonations },
+  ] = await Promise.all([
       supabase
         .from("campaigns")
         .select("id, responsible_person_name, slug, title")
@@ -64,11 +75,19 @@ export default async function AdminCampaignPage({
         .order("created_at", { ascending: false })
         .limit(8)
         .returns<PublicPurchaseRow[]>(),
+      supabase
+        .from("donations")
+        .select("donor_contact, donor_name, id, public_code")
+        .eq("campaign_id", campaignId)
+        .eq("status", "verified")
+        .returns<DonorCountRow[]>(),
     ]);
 
   if (!campaign) {
     notFound();
   }
+
+  const donorCount = countVerifiedDonors(verifiedDonations ?? []);
 
   return (
     <main className="min-h-screen bg-[#FFFCF8] text-[#2A3534]">
@@ -117,6 +136,10 @@ export default async function AdminCampaignPage({
             <section className="surface-card">
               <div className="flex flex-col gap-4 p-5">
                 <h2 className="text-xl font-extrabold">Resumen</h2>
+                <Metric
+                  label="Donantes verificados"
+                  value={`${donorCount} ${donorCount === 1 ? "donante" : "donantes"}`}
+                />
                 <Metric
                   label="Donación verificada"
                   value={formatUsdAprox(
@@ -190,6 +213,19 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-2xl font-extrabold">{value}</p>
     </div>
   );
+}
+
+function countVerifiedDonors(donations: DonorCountRow[]) {
+  const donorKeys = new Set(
+    donations.map((donation) => {
+      const contact = donation.donor_contact?.trim().toLowerCase();
+      const name = donation.donor_name?.trim().toLowerCase();
+
+      return contact || name || donation.public_code || donation.id;
+    }),
+  );
+
+  return donorKeys.size;
 }
 
 function formatDate(value: string) {
