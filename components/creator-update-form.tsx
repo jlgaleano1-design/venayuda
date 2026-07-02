@@ -12,12 +12,18 @@ import {
   validateStorageFile,
 } from "@/lib/storage-upload";
 
-type CreatorUpdateCampaign = Pick<Campaign, "creatorAccessCode" | "slug">;
+type CreatorUpdateCampaign = Pick<Campaign, "slug"> & {
+  creatorAccessCode?: string;
+};
 
 export function CreatorUpdateForm({
   campaign,
+  endpoint = "/api/creator-updates",
+  statusSuccessMessage = "Novedad publicada en tu campaña.",
 }: {
-  campaign: CreatorUpdateCampaign;
+  campaign: CreatorUpdateCampaign & { id?: string };
+  endpoint?: string;
+  statusSuccessMessage?: string;
 }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -95,10 +101,11 @@ export function CreatorUpdateForm({
       return;
     }
 
-    const response = await fetch("/api/creator-updates", {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        campaignId: campaign.id,
         campaignSlug: campaign.slug,
         accessCode: campaign.creatorAccessCode,
         title: formData.get("title"),
@@ -126,7 +133,7 @@ export function CreatorUpdateForm({
     setPhotoName("");
     setPhotoStatus("");
     setInvoiceStatus("");
-    setStatusMessage("Novedad publicada en tu campaña.");
+    setStatusMessage(statusSuccessMessage);
     event.currentTarget.reset();
   }
 

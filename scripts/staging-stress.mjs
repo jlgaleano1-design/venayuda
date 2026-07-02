@@ -18,6 +18,14 @@ const siteUrl = normalizeUrl(process.env.TARGET_SITE_URL);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const workerSecret = process.env.EMAIL_WORKER_SECRET ?? process.env.CRON_SECRET;
+const qaEmailDomain = process.env.QA_EMAIL_DOMAIN ?? "example.com";
+
+if (workerSecret && isReservedEmailDomain(qaEmailDomain)) {
+  fail(
+    "QA_EMAIL_DOMAIN debe ser un dominio real/controlado cuando EMAIL_WORKER_SECRET o CRON_SECRET estan configurados.",
+  );
+}
+
 const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
@@ -46,7 +54,7 @@ await step("Preparar campaña activa para stress de donaciones", async () => {
   const response = await postJson("/api/campaign-requests", {
     affectedArea: "Stress staging",
     description: "Campaña sintética base para stress test.",
-    email: `stress-base+${runId}@example.com`,
+    email: `stress-base+${runId}@${qaEmailDomain}`,
     organization: "Vendonar QA",
     paymentMethods: [
       {
@@ -84,7 +92,7 @@ await step("Enviar 50 solicitudes de campaña sintéticas", async () => {
     const response = await postJson("/api/campaign-requests", {
       affectedArea: "Stress staging",
       description: `Solicitud sintética stress ${index}.`,
-      email: `stress-campaign-${runId}-${index}@example.com`,
+      email: `stress-campaign-${runId}-${index}@${qaEmailDomain}`,
       organization: "Vendonar QA",
       paymentMethods: [
         {
@@ -114,7 +122,7 @@ await step("Enviar 100 reportes de donación sintéticos", async () => {
       amountUsdEstimated: String(10 + (index % 7)),
       campaignSlug: stressCampaignSlug,
       currency: "USD",
-      donorEmail: `stress-donor-${runId}-${index}@example.com`,
+      donorEmail: `stress-donor-${runId}-${index}@${qaEmailDomain}`,
       donorName: `Donante Stress ${index}`,
       isAnonymous: false,
       paymentMethodUsed: "Transferencia QA",
@@ -252,4 +260,19 @@ function fail(message) {
 
 function normalizeUrl(value) {
   return value.replace(/\/+$/g, "");
+}
+
+function isReservedEmailDomain(domain) {
+  const normalized = domain.toLowerCase();
+
+  return (
+    normalized === "example.com" ||
+    normalized === "example.net" ||
+    normalized === "example.org" ||
+    normalized === "test" ||
+    normalized.endsWith(".test") ||
+    normalized === "invalid" ||
+    normalized.endsWith(".invalid") ||
+    normalized === "localhost"
+  );
 }

@@ -926,6 +926,13 @@ function PublicCampaignModerationItem({
               </button>
             </form>
           )}
+          <Link
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-[#2D5D5E]/20 bg-white px-4 text-sm font-extrabold text-[#2D5D5E] transition hover:bg-[#2D5D5E]/5"
+            href={`/admin/campanas/${campaign.id}`}
+          >
+            <Eye size={16} />
+            Entrar
+          </Link>
           <form action={`/admin/review/campaigns/${campaign.id}`} method="post">
             <input name="decision" type="hidden" value="reject" />
             <button
@@ -946,7 +953,7 @@ function PublicCampaignModerationItem({
           Donado: {formatUsdAprox(Number(campaign.total_verified_donations_usd ?? 0))}
         </span>
         <span className="rounded-full bg-white px-3 py-1">
-          Usado: {formatUsdAprox(Number(campaign.total_approved_purchases_usd ?? 0))}
+          Reportado: {formatUsdAprox(Number(campaign.total_approved_purchases_usd ?? 0))}
         </span>
       </div>
     </div>

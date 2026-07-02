@@ -85,7 +85,7 @@ export async function POST(request: Request) {
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ??
       request.headers.get("origin") ??
-      "https://vendonar.com",
+      "https://vendonar.org",
   );
   const isLocalRequest = isLocalUrl(request.url) || isLocalUrl(siteUrl);
 

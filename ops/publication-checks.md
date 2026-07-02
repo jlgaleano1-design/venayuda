@@ -72,13 +72,19 @@ export NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
 export SUPABASE_SERVICE_ROLE_KEY="..."
 export CAMPAIGN_REVIEW_SECRET="..."
 export EMAIL_WORKER_SECRET="..."
+export QA_EMAIL_DOMAIN="qa.tu-dominio.com"
 export EMAIL_PROVIDER="smtp"
-export EMAIL_FROM="Vendonar <notificaciones@tu-dominio.com>"
+export EMAIL_FROM="Vendonar <notificaciones@vendonar.org>"
 export SMTP_HOST="..."
 export SMTP_PORT="587"
 export SMTP_USER="..."
 export SMTP_PASS="..."
 ```
+
+Si `EMAIL_WORKER_SECRET` o `CRON_SECRET` estan configurados, `QA_EMAIL_DOMAIN`
+debe ser un dominio real y controlado. Los scripts fallan con dominios
+reservados como `example.com` para evitar enviar pruebas invalidas desde el
+remitente de Vendonar.
 
 Ejecuta:
 

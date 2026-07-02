@@ -260,7 +260,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       unconfirmedDonation: "Sin confirmar",
       emptyDonations:
         "Los aportes reportados aparecerán acá automáticamente.",
-      confirmedUseOfFunds: "Uso de fondos confirmado",
+      confirmedUseOfFunds: "Uso de fondos reportado",
       emptyPurchases:
         "Los gastos y avances se publicarán acá cuando haya comprobantes revisados.",
       publicInvoice: "Comprobante publico",
@@ -414,7 +414,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       unconfirmedDonation: "Unconfirmed",
       emptyDonations:
         "Reported donations will appear here automatically.",
-      confirmedUseOfFunds: "Confirmed use of funds",
+      confirmedUseOfFunds: "Reported use of funds",
       emptyPurchases:
         "Expenses and progress updates will appear here after receipts are reviewed.",
       publicInvoice: "Public receipt",

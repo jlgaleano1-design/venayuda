@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCreatorAccessRecord } from "@/lib/creator-access";
+import { getActiveAdminProfile } from "@/lib/admin-auth";
 import { enqueueEmailEvent } from "@/lib/email-queue";
 import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
 import {
@@ -10,69 +10,70 @@ import {
 } from "@/lib/public-campaign-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const creatorUpdateSchema = z.object({
+const adminCampaignUpdateSchema = z.object({
+  campaignId: z.string().uuid(),
   campaignSlug: z.string().min(1),
-  accessCode: z.string().min(1),
   purchaseId: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
   amount: z.string().min(1),
   currency: z.string().min(1),
   vendor: z.string().optional(),
-  photoFileName: z.string().optional(),
   photoFilePath: z.string().optional(),
-  invoiceFileName: z.string().optional(),
   invoiceFilePath: z.string().optional(),
 });
 
 export async function POST(request: Request) {
-  const payload = creatorUpdateSchema.safeParse(await request.json());
+  const { profile } = await getActiveAdminProfile();
+
+  if (!profile) {
+    return NextResponse.json(
+      { error: "Necesitas entrar al panel admin." },
+      { status: 401 },
+    );
+  }
+
+  const payload = adminCampaignUpdateSchema.safeParse(await request.json());
 
   if (!payload.success) {
     return NextResponse.json(
-      { error: "Faltan datos para registrar la novedad." },
+      { error: "Faltan datos para registrar el uso de fondos." },
       { status: 400 },
     );
   }
 
   const update = payload.data;
-  let accessRecord: Awaited<ReturnType<typeof getCreatorAccessRecord>>;
-
-  try {
-    accessRecord = await getCreatorAccessRecord(update.accessCode);
-  } catch {
-    return NextResponse.json(
-      {
-        error:
-          "No pudimos recibir la novedad en este momento. Inténtalo de nuevo en unos minutos.",
-      },
-      { status: 503 },
-    );
-  }
-
-  if (!accessRecord || accessRecord.campaign.slug !== update.campaignSlug) {
-    return NextResponse.json(
-      { error: "Este enlace no tiene acceso a la campaña." },
-      { status: 403 },
-    );
-  }
-
   const supabase = createAdminClient();
-  const photoFilePath = update.photoFilePath ?? update.photoFileName ?? "";
-  const invoiceFilePath = update.invoiceFilePath ?? update.invoiceFileName ?? "";
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("id, slug, title")
+    .eq("id", update.campaignId)
+    .eq("slug", update.campaignSlug)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!campaign) {
+    return NextResponse.json(
+      { error: "No encontramos una campaña activa con esos datos." },
+      { status: 404 },
+    );
+  }
+
+  const photoFilePath = update.photoFilePath ?? "";
+  const invoiceFilePath = update.invoiceFilePath ?? "";
   const numericAmount = Number(update.amount);
   const currency = normalizeCurrency(update.currency);
 
   if (!photoFilePath) {
     return NextResponse.json(
-      { error: "La foto de la compra es obligatoria." },
+      { error: "La foto del uso de fondos es obligatoria." },
       { status: 400 },
     );
   }
 
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
     return NextResponse.json(
-      { error: "El monto de la compra no es válido." },
+      { error: "El monto del uso de fondos no es válido." },
       { status: 400 },
     );
   }
@@ -83,10 +84,7 @@ export async function POST(request: Request) {
   });
 
   if ("error" in usdEstimate) {
-    return NextResponse.json(
-      { error: usdEstimate.error },
-      { status: 422 },
-    );
+    return NextResponse.json({ error: usdEstimate.error }, { status: 422 });
   }
 
   const purchaseDate = new Date().toISOString().slice(0, 10);
@@ -94,42 +92,46 @@ export async function POST(request: Request) {
     .from("purchases")
     .insert({
       ...(update.purchaseId ? { id: update.purchaseId } : {}),
-      campaign_id: accessRecord.campaign.id,
+      campaign_id: campaign.id,
       title: update.title,
       description: update.description || null,
       amount_original: numericAmount,
       amount_usd_estimated: usdEstimate.amount,
       conversion_notes: usdEstimate.conversionNotes,
+      created_by: profile.user_id,
       currency_original: currency,
       exchange_rate_date: usdEstimate.exchangeRateDate,
       exchange_rate_source: usdEstimate.exchangeRateSource,
       exchange_rate_used: usdEstimate.exchangeRateUsed,
-      is_photo_public: true,
-      purchase_date: purchaseDate,
-      vendor: update.vendor || null,
-      photo_file_path: photoFilePath,
       invoice_file_path: invoiceFilePath || null,
-      submitted_by_creator_access_id: accessRecord.id,
-      approved_at: new Date().toISOString(),
+      is_photo_public: true,
+      photo_file_path: photoFilePath,
+      purchase_date: purchaseDate,
       status: "approved",
+      vendor: update.vendor || null,
+      approved_at: new Date().toISOString(),
+      approved_by: profile.user_id,
     })
     .select("id")
     .single();
 
   if (error || !purchase) {
     return NextResponse.json(
-      { error: "No pudimos guardar la novedad." },
+      { error: "No pudimos guardar el uso de fondos." },
       { status: 500 },
     );
   }
 
   revalidatePath("/");
-  revalidatePath(getPublicCampaignPath(accessRecord.campaign.slug));
+  revalidatePath("/admin");
+  revalidatePath(`/admin/campanas/${campaign.id}`);
+  revalidatePath(getPublicCampaignPath(campaign.slug));
+
   const impactEmailsQueued = await notifyVerifiedDonors({
     amount: update.amount,
-    campaignId: accessRecord.campaign.id,
-    campaignSlug: accessRecord.campaign.slug,
-    campaignTitle: accessRecord.campaign.title,
+    campaignId: campaign.id,
+    campaignSlug: campaign.slug,
+    campaignTitle: campaign.title,
     currency,
     description: update.description,
     purchaseDate,
@@ -143,7 +145,7 @@ export async function POST(request: Request) {
     impactEmailsQueued,
     purchaseId: purchase.id,
     status: "approved",
-    message: "Novedad publicada en la campaña.",
+    message: "Uso de fondos publicado.",
   });
 }
 

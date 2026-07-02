@@ -233,7 +233,7 @@ transaccionales y requiere:
 
 ```bash
 EMAIL_PROVIDER=smtp
-EMAIL_FROM="Vendonar <notificaciones@tu-dominio.com>"
+EMAIL_FROM="Vendonar <notificaciones@vendonar.org>"
 SMTP_HOST=valor-smtp-de-sender
 SMTP_PORT=587
 SMTP_USER=tu-usuario-smtp-de-sender

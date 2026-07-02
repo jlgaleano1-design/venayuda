@@ -20,6 +20,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const workerSecret = process.env.EMAIL_WORKER_SECRET ?? process.env.CRON_SECRET;
+const qaEmailDomain = process.env.QA_EMAIL_DOMAIN ?? "example.com";
+
+if (workerSecret && isReservedEmailDomain(qaEmailDomain)) {
+  fail(
+    "QA_EMAIL_DOMAIN debe ser un dominio real/controlado cuando EMAIL_WORKER_SECRET o CRON_SECRET estan configurados.",
+  );
+}
 
 const anonSupabase = createClient(supabaseUrl, anonKey, {
   auth: { persistSession: false },
@@ -30,8 +37,8 @@ const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
 
 const runId = Date.now().toString(36);
 const slug = `e2e-${runId}`;
-const donorEmail = `donante+${runId}@example.com`;
-const creatorEmail = `creador+${runId}@example.com`;
+const donorEmail = `donante+${runId}@${qaEmailDomain}`;
+const creatorEmail = `creador+${runId}@${qaEmailDomain}`;
 const pngFile = new Blob([tinyPng()], { type: "image/png" });
 
 const context = {
@@ -436,6 +443,21 @@ function log(message) {
 
 function normalizeUrl(value) {
   return value.replace(/\/+$/g, "");
+}
+
+function isReservedEmailDomain(domain) {
+  const normalized = domain.toLowerCase();
+
+  return (
+    normalized === "example.com" ||
+    normalized === "example.net" ||
+    normalized === "example.org" ||
+    normalized === "test" ||
+    normalized.endsWith(".test") ||
+    normalized === "invalid" ||
+    normalized.endsWith(".invalid") ||
+    normalized === "localhost"
+  );
 }
 
 function countBy(rows, key) {

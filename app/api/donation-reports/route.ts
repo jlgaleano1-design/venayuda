@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     request.headers.get("origin") ??
-    "https://vendonar.com";
+    "https://vendonar.org";
   const campaignUrl = getPublicCampaignUrl({
     siteUrl,
     slug: campaign.slug,
