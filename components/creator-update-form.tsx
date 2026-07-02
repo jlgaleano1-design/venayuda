@@ -2,6 +2,7 @@
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
@@ -25,6 +26,7 @@ export function CreatorUpdateForm({
   endpoint?: string;
   statusSuccessMessage?: string;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
@@ -119,9 +121,11 @@ export function CreatorUpdateForm({
       }),
     });
 
+    const result = await response.json().catch(() => null);
+
     if (!response.ok) {
       const errorMessage = await readResponseError(
-        response,
+        result,
         "No se pudo enviar la novedad. Inténtalo de nuevo.",
       );
       setStatus("error");
@@ -133,8 +137,21 @@ export function CreatorUpdateForm({
     setPhotoName("");
     setPhotoStatus("");
     setInvoiceStatus("");
-    setStatusMessage(statusSuccessMessage);
+    setStatusMessage(
+      getSuccessMessage({
+        fallback: statusSuccessMessage,
+        impactEmailsQueued:
+          typeof result?.impactEmailsQueued === "number"
+            ? result.impactEmailsQueued
+            : undefined,
+        impactEmailsSent:
+          typeof result?.impactEmailsSent === "number"
+            ? result.impactEmailsSent
+            : undefined,
+      }),
+    );
     event.currentTarget.reset();
+    router.refresh();
   }
 
   return (
@@ -213,13 +230,57 @@ export function CreatorUpdateForm({
   );
 }
 
-async function readResponseError(response: Response, fallback: string) {
-  try {
-    const result = await response.json();
-    return typeof result.error === "string" ? result.error : fallback;
-  } catch {
+function getSuccessMessage({
+  fallback,
+  impactEmailsQueued,
+  impactEmailsSent,
+}: {
+  fallback: string;
+  impactEmailsQueued?: number;
+  impactEmailsSent?: number;
+}) {
+  if (
+    typeof impactEmailsQueued !== "number" &&
+    typeof impactEmailsSent !== "number"
+  ) {
     return fallback;
   }
+
+  const sent = impactEmailsSent ?? 0;
+  const queued = impactEmailsQueued ?? 0;
+
+  if (sent > 0 && queued > 0) {
+    return `Uso de fondos publicado. ${sent} ${
+      sent === 1 ? "correo fue enviado" : "correos fueron enviados"
+    } y ${queued} ${queued === 1 ? "quedó" : "quedaron"} en cola.`;
+  }
+
+  if (sent > 0) {
+    return `Uso de fondos publicado. ${sent} ${
+      sent === 1 ? "correo fue enviado" : "correos fueron enviados"
+    } a donantes verificados.`;
+  }
+
+  if (queued === 0) {
+    return "Uso de fondos publicado. No había donantes verificados con correo para avisar.";
+  }
+
+  return `Uso de fondos publicado. ${queued} ${
+    queued === 1 ? "correo quedó" : "correos quedaron"
+  } en cola de envío.`;
+}
+
+function readResponseError(result: unknown, fallback: string) {
+  if (
+    result &&
+    typeof result === "object" &&
+    "error" in result &&
+    typeof result.error === "string"
+  ) {
+    return result.error;
+  }
+
+  return fallback;
 }
 
 function TextField({

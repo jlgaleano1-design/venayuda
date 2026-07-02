@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCreatorAccessRecord } from "@/lib/creator-access";
-import { enqueueEmailEvent } from "@/lib/email-queue";
+import { queueOrSendEmailEvent } from "@/lib/email-queue";
 import { estimateUsdAmount, normalizeCurrency } from "@/lib/exchange-rates";
 import {
   getPublicCampaignPath,
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 
   revalidatePath("/");
   revalidatePath(getPublicCampaignPath(accessRecord.campaign.slug));
-  const impactEmailsQueued = await notifyVerifiedDonors({
+  const impactEmailResult = await notifyVerifiedDonors({
     amount: update.amount,
     campaignId: accessRecord.campaign.id,
     campaignSlug: accessRecord.campaign.slug,
@@ -140,7 +140,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    impactEmailsQueued,
+    impactEmailsQueued: impactEmailResult.queued,
+    impactEmailsSent: impactEmailResult.sent,
     purchaseId: purchase.id,
     status: "approved",
     message: "Novedad publicada en la campaña.",
@@ -198,7 +199,7 @@ async function notifyVerifiedDonors({
   });
   const results = await Promise.allSettled(
     uniqueEmails.map((recipientEmail) =>
-      enqueueEmailEvent(supabase, "purchase_impact", {
+      queueOrSendEmailEvent(supabase, "purchase_impact", {
         amount,
         campaignTitle,
         campaignUrl,
@@ -211,5 +212,17 @@ async function notifyVerifiedDonors({
     ),
   );
 
-  return results.filter((result) => result.status === "fulfilled").length;
+  return results.reduce(
+    (summary, result) => {
+      if (result.status !== "fulfilled") {
+        return summary;
+      }
+
+      return {
+        queued: summary.queued + (result.value.queued ? 1 : 0),
+        sent: summary.sent + (result.value.sent ? 1 : 0),
+      };
+    },
+    { queued: 0, sent: 0 },
+  );
 }
