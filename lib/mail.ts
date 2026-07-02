@@ -445,40 +445,58 @@ export async function sendPurchaseImpactEmail(email: PurchaseImpactEmail) {
     return { sent: false, reason: "Email no configurado" };
   }
 
+  const amountLine = formatPurchaseImpactAmount(email);
+  const description = email.description?.trim();
+
   await sendMail(mailer, {
     from: mailer.from,
     to: email.recipientEmail,
-    subject: `Tu donación ayudó a comprar: ${email.purchaseTitle}`,
+    subject: `Tu donación ya se convirtió en ayuda: ${email.purchaseTitle}`,
     text: [
       "Hola,",
       "",
-      `La campaña ${email.campaignTitle} registró una compra aprobada: ${email.purchaseTitle}.`,
-      `Monto: ${email.amount} ${email.currency}`,
-      email.purchaseDate ? `Fecha: ${email.purchaseDate}` : null,
-      email.description ? `Detalle: ${email.description}` : null,
+      `Queríamos contarte algo concreto sobre la campaña ${email.campaignTitle}: parte de las donaciones ya se usó para ${email.purchaseTitle}.`,
+      amountLine,
+      description,
       "",
-      "Puedes verla en la campaña:",
+      "Puedes ver la actualización completa, con las fotos y comprobantes disponibles, aquí:",
       email.campaignUrl,
       "",
-      "Gracias por ayudar directo.",
+      "Gracias por estar del otro lado de esta ayuda. Cada aporte suma y permite responder a necesidades reales, de forma directa.",
+      "",
+      "Vendonar",
     ]
       .filter(Boolean)
       .join("\n"),
     html: renderBrandEmail({
-      preview: `Compra aprobada en ${email.campaignTitle}`,
-      title: "Tu aporte ya tiene update",
+      preview: `Tu donación ya se convirtió en ayuda: ${email.purchaseTitle}`,
+      title: "Tu donación ya se convirtió en ayuda",
       children: [
-        `<p>La campaña <strong>${escapeHtml(email.campaignTitle)}</strong> registró una compra aprobada.</p>`,
-        renderInfoList([
-          { label: "Compra", value: email.purchaseTitle },
-          { label: "Monto", value: `${email.amount} ${email.currency}` },
-          { label: "Fecha", value: email.purchaseDate ?? undefined },
-          { label: "Detalle", value: email.description },
-        ]),
+        `<p>Queríamos contarte algo concreto sobre la campaña <strong>${escapeHtml(email.campaignTitle)}</strong>: parte de las donaciones ya se usó para <strong>${escapeHtml(email.purchaseTitle)}</strong>.</p>`,
+        amountLine
+          ? `<p style="margin:22px 0 0;font-size:24px;font-weight:900;color:#2D5D5E;">${escapeHtml(amountLine)}</p>`
+          : "",
+        description
+          ? `<p style="margin-top:14px;">${escapeHtml(description)}</p>`
+          : "",
+        "<p>Puedes ver la actualización completa, con las fotos y comprobantes disponibles, aquí:</p>",
         `<p>${renderEmailButton("Ver campaña", email.campaignUrl)}</p>`,
+        "<p>Gracias por estar del otro lado de esta ayuda. Cada aporte suma y permite responder a necesidades reales, de forma directa.</p>",
+        "<p>Vendonar</p>",
       ].join(""),
     }),
   });
 
   return { sent: true };
+}
+
+function formatPurchaseImpactAmount(email: PurchaseImpactEmail) {
+  const amount = email.amount?.trim();
+  const currency = email.currency?.trim();
+
+  if (!amount || !currency) {
+    return null;
+  }
+
+  return `${amount} ${currency}`;
 }
