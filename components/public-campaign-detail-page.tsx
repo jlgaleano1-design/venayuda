@@ -9,7 +9,7 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CampaignEngagementTracker } from "@/components/campaign-engagement-tracker";
-import { CampaignStatusPill } from "@/components/campaign-status-pill";
+import { CampaignVerificationInfo } from "@/components/campaign-verification-info";
 import { CopyPaymentValueButton } from "@/components/copy-payment-value-button";
 import { DonationReportModal } from "@/components/donation-report-modal";
 import { ExpandableDescription } from "@/components/expandable-description";
@@ -113,6 +113,7 @@ export async function PublicCampaignDetailPage({
   }
 
   const organization = campaign.organization?.trim();
+  const isVerifiedByVendonar = Boolean(campaign.verifiedByVendonar);
   const campaignText = getCampaignText({
     description: campaign.description,
     descriptionEn: campaign.descriptionEn,
@@ -157,12 +158,17 @@ export async function PublicCampaignDetailPage({
 
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            <CampaignStatusPill campaign={campaign} locale={locale} />
+            <CampaignVerificationInfo
+              className="lg:hidden"
+              locale={locale}
+              verified={isVerifiedByVendonar}
+              variant="mobile-chip"
+            />
             <span className="tag-pill min-h-7 bg-neutral-100 text-neutral-700">
               {campaign.location}
             </span>
           </div>
-          <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl">
+          <h1 className="text-3xl font-black leading-tight tracking-normal md:text-4xl lg:text-[56px] lg:leading-[1.05]">
             {campaignText.title}
           </h1>
         </div>
@@ -218,6 +224,12 @@ export async function PublicCampaignDetailPage({
 
           <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2">
             <div className="flex flex-col gap-4">
+              <CampaignVerificationInfo
+                className="hidden lg:block"
+                locale={locale}
+                verified={isVerifiedByVendonar}
+                variant="desktop-dropdown"
+              />
               <div className="hidden lg:flex">
                 <ShareCampaignButton
                   campaign={shareCampaign}

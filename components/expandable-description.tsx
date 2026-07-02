@@ -13,7 +13,7 @@ export function ExpandableDescription({
   children,
   className,
   fadeColor = "#FFFCF8",
-  lines = 4,
+  lines = 6,
 }: ExpandableDescriptionProps) {
   const paragraphRef = useRef<HTMLParagraphElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
