@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, Card, Input, TextArea } from "@heroui/react";
-import { Plus } from "lucide-react";
+import { ExternalLink, Plus, RotateCcw, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FileField } from "@/components/file-field";
 import type { Campaign } from "@/lib/demo-data";
+import { getPublicCampaignPath } from "@/lib/public-campaign-url";
 import {
   buildPurchaseDocumentPath,
   storageBuckets,
@@ -34,6 +35,32 @@ export function CreatorUpdateForm({
   const [photoStatus, setPhotoStatus] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [shareStatus, setShareStatus] = useState("");
+  const publicCampaignPath = getPublicCampaignPath(campaign.slug);
+  const publicCampaignUrl =
+    typeof window === "undefined"
+      ? publicCampaignPath
+      : new URL(publicCampaignPath, window.location.origin).toString();
+
+  async function shareCampaign() {
+    setShareStatus("");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text: "Mira esta campaña en Vendonar.",
+          title: "Campaña en Vendonar",
+          url: publicCampaignUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(publicCampaignUrl);
+      setShareStatus("Link copiado.");
+    } catch {
+      setShareStatus("No pudimos compartir el link.");
+    }
+  }
 
   async function submitUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,6 +179,64 @@ export function CreatorUpdateForm({
     );
     event.currentTarget.reset();
     router.refresh();
+  }
+
+  if (status === "sent") {
+    return (
+      <Card className="surface-card shadow-none">
+        <Card.Content className="flex min-h-[420px] flex-col justify-center gap-6 p-6 md:p-8">
+          <div className="space-y-4">
+            <span className="soft-pill w-fit">Actualización publicada</span>
+            <h2 className="text-3xl font-black tracking-normal md:text-4xl">
+              Uso de fondos publicado
+            </h2>
+            <div className="max-w-2xl space-y-4 text-base leading-7 text-neutral-700">
+              <p>
+                Gracias por reportarlo. Ya publicamos esta actualización en la
+                campaña y avisamos por correo a los donantes verificados.
+              </p>
+              <p>
+                Esto ayuda a que las personas que donaron puedan ver cómo se
+                está usando la ayuda.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <a className="btn-primary" href={publicCampaignPath}>
+              Ver campaña
+              <ExternalLink size={18} />
+            </a>
+            <Button
+              className="btn-secondary"
+              type="button"
+              variant="secondary"
+              onPress={() => {
+                setStatus("idle");
+                setStatusMessage("");
+                setShareStatus("");
+              }}
+            >
+              <RotateCcw size={18} />
+              Reportar otro uso de fondos
+            </Button>
+            <Button
+              className="btn-secondary"
+              type="button"
+              variant="secondary"
+              onPress={shareCampaign}
+            >
+              <Share2 size={18} />
+              Compartir campaña
+            </Button>
+          </div>
+
+          {shareStatus ? (
+            <p className="text-sm font-bold text-[#2D5D5E]">{shareStatus}</p>
+          ) : null}
+        </Card.Content>
+      </Card>
+    );
   }
 
   return (
