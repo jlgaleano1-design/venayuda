@@ -54,7 +54,7 @@ export type Campaign = {
   purchases: {
     title: string;
     description?: string;
-    amount: string;
+    amount?: string;
     date: string;
     invoicePublic: boolean;
     photoUrl?: string;
@@ -95,11 +95,15 @@ export function formatOriginalAndUsd({
   amountUsdEstimated,
   currencyOriginal,
 }: {
-  amountOriginal: number | string;
+  amountOriginal?: number | string | null;
   amountUsdEstimated?: number | string | null;
   currencyOriginal: string;
 }) {
   const originalCurrency = currencyOriginal.trim().toUpperCase();
+  if (amountOriginal === null || amountOriginal === undefined) {
+    return "";
+  }
+
   const original = formatCurrencyAmount(Number(amountOriginal), originalCurrency);
 
   if (amountUsdEstimated === null || amountUsdEstimated === undefined) {

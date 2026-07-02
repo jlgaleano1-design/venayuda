@@ -148,11 +148,11 @@ export default async function AdminCampaignPage({
                     <div key={purchase.id} className="space-y-1">
                       <div className="flex items-start justify-between gap-3">
                         <p className="font-bold">{purchase.title}</p>
-                        <p className="whitespace-nowrap text-sm">
-                          {formatUsdAprox(
-                            Number(purchase.amount_usd_estimated ?? 0),
-                          )}
-                        </p>
+                        {purchase.amount_usd_estimated ? (
+                          <p className="whitespace-nowrap text-sm">
+                            {formatUsdAprox(Number(purchase.amount_usd_estimated))}
+                          </p>
+                        ) : null}
                       </div>
                       <p className="text-sm text-neutral-600">
                         {formatDate(purchase.purchase_date ?? purchase.created_at)}

@@ -66,7 +66,7 @@ type PublicPurchaseRow = {
   campaign_id: string;
   title: string;
   description: string | null;
-  amount_original: number | string;
+  amount_original: number | string | null;
   amount_usd_estimated: number | string | null;
   currency_original: string;
   purchase_date: string | null;

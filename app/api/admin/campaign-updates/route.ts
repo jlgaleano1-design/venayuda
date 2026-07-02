@@ -16,7 +16,7 @@ const adminCampaignUpdateSchema = z.object({
   purchaseId: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
-  amount: z.string().min(1),
+  amount: z.string().optional(),
   currency: z.string().min(1),
   vendor: z.string().optional(),
   photoFilePath: z.string().optional(),
@@ -61,7 +61,8 @@ export async function POST(request: Request) {
 
   const photoFilePath = update.photoFilePath ?? "";
   const invoiceFilePath = update.invoiceFilePath ?? "";
-  const numericAmount = Number(update.amount);
+  const amount = update.amount?.trim() ?? "";
+  const numericAmount = amount ? Number(amount) : null;
   const currency = normalizeCurrency(update.currency);
 
   if (!photoFilePath) {
@@ -71,19 +72,25 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+  if (
+    numericAmount !== null &&
+    (!Number.isFinite(numericAmount) || numericAmount <= 0)
+  ) {
     return NextResponse.json(
       { error: "El monto del uso de fondos no es válido." },
       { status: 400 },
     );
   }
 
-  const usdEstimate = await estimateUsdAmount({
-    amount: numericAmount,
-    currency,
-  });
+  const usdEstimate =
+    numericAmount === null
+      ? null
+      : await estimateUsdAmount({
+          amount: numericAmount,
+          currency,
+        });
 
-  if ("error" in usdEstimate) {
+  if (usdEstimate && "error" in usdEstimate) {
     return NextResponse.json({ error: usdEstimate.error }, { status: 422 });
   }
 
@@ -96,13 +103,13 @@ export async function POST(request: Request) {
       title: update.title,
       description: update.description || null,
       amount_original: numericAmount,
-      amount_usd_estimated: usdEstimate.amount,
-      conversion_notes: usdEstimate.conversionNotes,
+      amount_usd_estimated: usdEstimate?.amount ?? null,
+      conversion_notes: usdEstimate?.conversionNotes ?? null,
       created_by: profile.user_id,
       currency_original: currency,
-      exchange_rate_date: usdEstimate.exchangeRateDate,
-      exchange_rate_source: usdEstimate.exchangeRateSource,
-      exchange_rate_used: usdEstimate.exchangeRateUsed,
+      exchange_rate_date: usdEstimate?.exchangeRateDate ?? null,
+      exchange_rate_source: usdEstimate?.exchangeRateSource ?? null,
+      exchange_rate_used: usdEstimate?.exchangeRateUsed ?? null,
       invoice_file_path: invoiceFilePath || null,
       is_photo_public: true,
       photo_file_path: photoFilePath,
@@ -128,7 +135,7 @@ export async function POST(request: Request) {
   revalidatePath(getPublicCampaignPath(campaign.slug));
 
   const impactEmailResult = await notifyVerifiedDonors({
-    amount: update.amount,
+    amount,
     campaignId: campaign.id,
     campaignSlug: campaign.slug,
     campaignTitle: campaign.title,

@@ -162,10 +162,9 @@ export function CreatorUpdateForm({
             <TextField label="Qué compraste" name="title" required />
             <TextField label="Proveedor / tienda" name="vendor" />
             <TextField
-              label="Monto gastado en dólares"
+              label="Monto gastado en dólares (opcional)"
               name="amount"
               prefix="USD"
-              required
               step="any"
               type="number"
             />

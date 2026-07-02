@@ -312,7 +312,9 @@ export async function PublicCampaignDetailPage({
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-bold">{purchase.title}</p>
-                        <p className="text-sm">{purchase.amount}</p>
+                        {purchase.amount ? (
+                          <p className="text-sm">{purchase.amount}</p>
+                        ) : null}
                       </div>
                       {purchase.description ? (
                         <ExpandableDescription
